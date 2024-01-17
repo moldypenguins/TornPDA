@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.3.0
+// @version      0.3.1
 // @description  Show racing skill, current speed, race results, precise skill.
 // @author       moldypenguins [2881784] - Adapted from Lugburz
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -283,23 +283,11 @@
                   } else {
                     status.html(`<div class="finished-${p} finished">${p}</div>`);
                   }
-              
-                  /*
-                  const position = p === 1 ? 'gold' : (p === 2 ? 'silver' : (p === 3 ? 'bronze' : ''));
-                  let place;
-                  if (p != 11 && (p%10) == 1)
-                      place = p + 'st';
-                  else if (p != 12 && (p%10) == 2)
-                      place = p + 'nd';
-                  else if (p != 13 && (p%10) == 3)
-                      place = p + 'rd';
-                  else
-                      place = p + 'th';
-  
-                  const result = typeof results[i][2] === 'number' ? formatTimeMsec(results[i][2] * 1000) : results[i][2];
+
                   const bestLap = results[i][3] ? formatTimeMsec(results[i][3] * 1000) : null;
-                  $(this).find('li.name').html($(this).find('li.name').html().replace(name, ((SHOW_POSITION_ICONS && position) ? `<i class="race_position ${position}"></i>` : '') + `${name} ${place} ${result}` + (bestLap ? ` (best: ${bestLap})` : '')));
-                  */
+                  if(bestLap) {
+                    $(this).find('li.name').html($(this).find('li.name').html().replace(name, `${name} (best: ${bestLap})`));
+                  }
                   return false;
               }
           });
@@ -307,6 +295,18 @@
   }
 
 
+  function pad(num, size) {
+    return ('000000000' + num).substring(num.length + 9 - size);
+  }
+
+  function formatTimeMsec(msec, alwaysShowHours = false) {
+    const hours = Math.floor((msec % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((msec % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((msec % (1000 * 60)) / 1000);
+    const mseconds = Math.floor(msec % 1000);
+
+    return ((hours > 0 ? hours + ":" : '') + (hours > 0 || minutes > 0 ? pad(minutes, 2) + ":" : '') + pad(seconds, 2) + "." + pad(mseconds, 3));
+  }
 
 
 
