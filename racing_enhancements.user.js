@@ -183,7 +183,7 @@
 
   let waitForElementsAndRun = setInterval(async () => { await run(); }, 100);
   
-  async function run() {
+  async function run(xhr) {
       if ($("#racingupdatesnew").length > 0 && $(".drivers-list").length > 0) {
           clearInterval(waitForElementsAndRun);
 
@@ -196,7 +196,7 @@
               if ($(this).text() == 'Name:') { $(this).hide(); }
               if ($(this).text() == 'Last Lap:') { $(this).text('Last:'); }
               if ($(this).text() == 'Completion:') { 
-                  $(this).text('Done:'); 
+                  $(this).text('Total:'); 
                   if (SHOW_SPEED) { 
                       $(this).addClass('t-hide'); 
                       $('.pd-completion').addClass('t-hide'); 
@@ -206,6 +206,11 @@
 
           // Main logic
           try {
+              if (xhr) {
+                  parseRacingData(JSON.parse(xhr.responseText));
+                  showPenalty
+              }
+
               if (SHOW_SKILL) {
                   leaderboardObserver.observe(document.querySelector('.drivers-list #leaderBoard'), { childList: true });
               }
@@ -214,23 +219,143 @@
                   await showSpeed(); 
               }
 
+
+              
+
+
           } catch (e) {
               // wrapper not found
           }
       }
   }
 
-  $(document).ajaxComplete((event, xhr, settings) => {
+  $(document).ajaxComplete(async (event, xhr, settings) => {
       if (xhr.readyState > 3 && xhr.status == 200) {
           try {
               let url = new URL(settings.url);
               if (url.pathname.substring(url.pathname.lastIndexOf('/') + 1, url.pathname.indexOf('.php')) !== "loader") { return; }
-              waitForElementsAndRun = setInterval(async () => { await run(); });
+              await run(xhr);
           } catch(error) {
               // invalid url
           }
       }
   });
+
+
+
+
+
+  function showPenalty() {
+
+  }
+
+  
+  function updateSkill(level) {
+      const skill = Number(level).toFixed(5);
+      const prev = GM.getValue('racinglevel');
+  
+      const now = Date.now();
+      if (prev !== "undefined" && typeof prev !== "undefined" && level > prev) {
+          const lastInc = Number(level - prev).toFixed(5);
+          if (lastInc) {
+              $('div.skill').append(`<div style="margin-top:10px;">Last gain: ${lastInc}</div>`);
+          }
+      }
+      GM.setValue('racinglevel', level);
+  
+      if ($('#racingMainContainer').find('div.skill').size() > 0) {
+          if ($("#sidebarroot").find("a[class^='menu-value']").size() > 0) {
+              // move the elements to the left a little bit to fit 5th decimal digit in desktop mode
+              $('#racingMainContainer').find('div.skill-desc').css('left', '5px');
+              $('#racingMainContainer').find('div.skill').css('left', '5px').text(skill);
+          } else {
+              $('#racingMainContainer').find('div.skill').text(skill);
+          }
+      }
+  }
+  
+
+
+
+  function parseRacingData(data) {
+      updateSkill(data['user']['racinglevel']);
+  
+      const leavepenalty = data['user']['leavepenalty'];
+
+
+      if (penaltyNotif) { clearTimeout(penaltyNotif); }
+
+      const penaltyLeft = leavepenalty * 1000 - Date.now();
+      if (NOTIFICATIONS && penaltyLeft > 0) {
+          penaltyNotif = setTimeout(function() {
+              GM.notification("You may join an official race now.", "Torn: Racing enhancements");
+          }, penaltyLeft);
+      }
+  
+      // display race link
+      if ($('#raceLink').size() < 1) {
+          RACE_ID = data.raceID;
+          const raceLink = `<a id="raceLink" href="https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${RACE_ID}" style="float: right; margin-left: 12px;">Link to the race</a>`;
+          $(raceLink).insertAfter('#racingEnhSettings');
+      }
+  
+      // calc, sort & show race results
+      if (data.timeData.status >= 3) {
+          const carsData = data.raceData.cars;
+          const carInfo = data.raceData.carInfo;
+          const trackIntervals = data.raceData.trackData.intervals.length;
+          let results = [], crashes = [];
+  
+          for (const playername in carsData) {
+              const userId = carInfo[playername].userID;
+              const intervals = decode64(carsData[playername]).split(',');
+              let raceTime = 0;
+              let bestLap = 9999999999;
+  
+              if (intervals.length / trackIntervals == data.laps) {
+                  for (let i = 0; i < data.laps; i++) {
+                      let lapTime = 0;
+                      for (let j = 0; j < trackIntervals; j++) {
+                          lapTime += Number(intervals[i * trackIntervals + j]);
+                      }
+                      bestLap = Math.min(bestLap, lapTime);
+                      raceTime += Number(lapTime);
+                  }
+                  results.push([playername, userId, raceTime, bestLap]);
+              } else {
+                  crashes.push([playername, userId, 'crashed']);
+              }
+          }
+  
+          // sort by time
+          results.sort(compare);
+          addExportButton(results, crashes, data.user.playername, data.raceID, data.timeData.timeEnded);
+  
+          if (SHOW_RESULTS) {
+              showResults(results);
+              showResults(crashes, results.length);
+          }
+      }
+
+
+      if ($('#racingAdditionalContainer').find('div.msg.right-round').size() > 0 &&
+          $('#racingAdditionalContainer').find('div.msg.right-round').text().trim().startsWith('You have recently left')) {
+              const penalty = leavepenalty * 1000;
+              const now = Date.now();
+              if (penalty > now) {
+                  const date = new Date(penalty);
+                  $('#racingAdditionalContainer').find('div.msg.right-round').text('You may join an official race at ' + formatTime(date) + '.');
+              }
+      }
+  }
+  
+  // compare by time
+  function compare(a, b) {
+      if (a[2] > b[2]) return 1;
+      if (b[2] > a[2]) return -1;
+  
+      return 0;
+  }
 
 
   GM.addStyle(`
