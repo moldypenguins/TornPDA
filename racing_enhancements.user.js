@@ -275,15 +275,13 @@
                   const p = i + start + 1;
 
                   if (p == 1) {
-                      status.html('<div class="status gold"></div>');
+                    status.html('<div class="status gold"></div>');
                   } else if (p == 2) {
-                      status.html('<div class="status silver"></div>');
+                    status.html('<div class="status silver"></div>');
                   } else if (p == 3) {
-                      status.html('<div class="status bronze"></div>');
-                  } else if (p >= 4) {
-                      status.html(`<div class="finished-${p} finished"></div>`);
-                  } else  {
-                      status.html(`<div class="status racing"></div>`);
+                    status.html('<div class="status bronze"></div>');
+                  } else {
+                    status.html(`<div class="finished-${p} finished">${p}</div>`);
                   }
               
                   /*
