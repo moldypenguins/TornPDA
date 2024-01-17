@@ -6,8 +6,8 @@
 // @author       moldypenguins [2881784]
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
-// @updateURL    https://github.com/moldypenguins/TornPDA/racing_enhancements.user.js
-// @downloadURL  https://github.com/moldypenguins/TornPDA/racing_enhancements.user.js
+// @updateURL    https://github.com/moldypenguins/TornPDA/raw/main/racing_enhancements.user.js
+// @downloadURL  https://github.com/moldypenguins/TornPDA/raw/main/racing_enhancements.user.js
 // @connect      api.torn.com
 // @run-at       document-body
 // ==/UserScript==
