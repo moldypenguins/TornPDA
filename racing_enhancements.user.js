@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.1.1
+// @version      0.2.0
 // @description  Show car's current speed, precise skill, official race penalty, racing skill of others.
 // @author       moldypenguins [2881784] - Adapted from Lugburz
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -83,7 +83,7 @@
 
 
   function getDriverId(driverUl) {
-    return +driverUl.closest('li').id.substr(4);
+      return +driverUl.closest('li').id.substr(4);
   }
 
   let updating = false;
@@ -167,7 +167,7 @@
 
           if (last_compl >= 0) {
               let speed = (compl - last_compl) / 100 * laps * len * 60 * 60 * 1000 / period;
-              $('#speed_mph').text(speed.toFixed(2) + 'mph');
+              $('#speed_mph').text((speed.toFixed(2) || '0.00') + 'mph');
           }
           last_compl = compl;
       }, period);
@@ -193,17 +193,17 @@
 
           // save some space
           $('#racingdetails').find('li.pd-name').each(function() {
-            if ($(this).text() == 'Name:') { $(this).hide(); }
-            if ($(this).text() == 'Last Lap:') { $(this).text('Last:'); }
-            if ($(this).text() == 'Completion:') { 
-              $(this).text('Done:'); 
-              if (SHOW_SPEED) { 
-                $(this).addClass('t-hide'); 
-                $('.pd-completion').addClass('t-hide'); 
+              if ($(this).text() == 'Name:') { $(this).hide(); }
+              if ($(this).text() == 'Last Lap:') { $(this).text('Last:'); }
+              if ($(this).text() == 'Completion:') { 
+                  $(this).text('Done:'); 
+                  if (SHOW_SPEED) { 
+                      $(this).addClass('t-hide'); 
+                      $('.pd-completion').addClass('t-hide'); 
+                  }
               }
-            }
           });
-          
+
           // Main logic
           try {
               if (SHOW_SKILL) {
