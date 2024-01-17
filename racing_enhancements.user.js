@@ -83,7 +83,7 @@
 
 
   function getDriverId(driverUl) {
-      return +driverUl.closest('li').id.substr(4);
+    return +driverUl.closest('li').id.substr(4);
   }
 
   let updating = false;
@@ -193,11 +193,17 @@
 
           // save some space
           $('#racingdetails').find('li.pd-name').each(function() {
-              if ($(this).text() == 'Name:') { $(this).hide(); }
-              if ($(this).text() == 'Last Lap:') { $(this).text('Last:'); }
-              if ($(this).text() == 'Completion:') { $(this).text('Finish:'); }
+            if ($(this).text() == 'Name:') { $(this).hide(); }
+            if ($(this).text() == 'Last Lap:') { $(this).text('Last:'); }
+            if ($(this).text() == 'Completion:') { 
+              $(this).text('Done:'); 
+              if (SHOW_SPEED) { 
+                $(this).addClass('t-hide'); 
+                $('.pd-completion').addClass('t-hide'); 
+              }
+            }
           });
-
+          
           // Main logic
           try {
               if (SHOW_SKILL) {
