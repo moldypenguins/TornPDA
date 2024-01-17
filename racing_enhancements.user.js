@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.2.0
+// @version      0.3.0
 // @description  Show car's current speed, precise skill, official race penalty, racing skill of others.
 // @author       moldypenguins [2881784] - Adapted from Lugburz
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -38,15 +38,14 @@
       });
   }
 
-  var RACE_ID = '*';
+  let RACE_ID = '*';
 
-  var period = 1000;
-  var last_compl = -1.0;
-  var x = 0;
+  // Speed
+  let period = 1000;
+  let last_compl = -1.0;
+  let x = 0;
 
-  var penaltyNotif = 0;
-
-  //cache racing skill
+  // Cache racing skill
   let racingSkillCacheByDriverId = new Map();
 
 
@@ -56,27 +55,25 @@
   const SHOW_SPEED = GM.getValue('showSpeedChk') != 0;
   // Whether to show race result as soon as a race starts.
   const SHOW_RESULTS = GM.getValue('showResultsChk') != 0;
-  // whether to show the top3 position icon
-  const SHOW_POSITION_ICONS = GM.getValue('showPositionIconChk') != 0;
 
 
   function addEnhancementsDiv() {
       let div = '<div id="racingEnhancements">' +
-          '<a id="racingEnhancementsOptions">Racing Enhancements</a>' +
-          '<div id="racingEnhancementsOptionsContainer" style="display:none;"><ul>' +
-          '<li><input type="checkbox" style="margin-left: 5px; margin-right: 5px" id="showSkillChk"><label>Show racing skill</label></li>' +
-          '<li><input type="checkbox" style="margin-left: 5px; margin-right: 5px" id="showSpeedChk"><label>Show current speed</label></li>' +
-          //'<li><input type="checkbox" style="margin-left: 5px; margin-right: 5px" id="showResultsChk"><label>Show results</label></li>' +
-          //'<li><input type="checkbox" style="margin-left: 5px; margin-right: 5px" id="showPositionIconChk"><label>Show position icons</label></li>' +
-          '</ul></div></div>'
+                      '<a id="racingEnhancementsTitle">Racing Enhancements</a>' +
+                      '<ul id="racingEnhancementsContainer" style="display: none;">' +
+                          '<li><input type="checkbox" id="showSkillChk"><label>Show racing skill</label></li>' +
+                          '<li><input type="checkbox" id="showSpeedChk"><label>Show current speed</label></li>' +
+                          '<li><input type="checkbox" id="showResultsChk"><label>Show results</label></li>' +
+                      '</ul>' + 
+                  '</div>';
       $('.drivers-list').children(":first").after(div);
 
-      $('#racingEnhancementsOptions').on('click', () => $('#racingEnhancementsOptionsContainer').toggle());
+      $('#racingEnhancementsTitle').on('click', () => $('#racingEnhancementsContainer').toggle());
 
-      $('#racingEnhancementsOptionsContainer').find('input[type=checkbox]').each(function() {
+      $('#racingEnhancementsContainer').find('input[type=checkbox]').each(function() {
           $(this).prop('checked', GM.getValue($(this).attr('id')) != 0);
       });
-      $('#racingEnhancementsOptionsContainer').on('click', 'input', function() {
+      $('#racingEnhancementsContainer').on('click', 'input', function() {
           GM.setValue($(this).attr('id'), $(this).prop('checked') ? 1 : 0);
       });
   }
@@ -95,7 +92,7 @@
       if (!driverIds || !driverIds.length) { return; }
 
       updating = true;
-      $('#updating').size() < 1 && $('#racingEnhancementsOptions').after('<div id="updating" style="color:green;font-size:10px;float:right;">Updating...</div>');
+      $('#updating').size() < 1 && $('#racingEnhancements').prepend('<span id="updating"></span>');
 
       const racingSkills = await getRacingSkillForDrivers(driverIds);
       for (let driver of leaderboard.querySelectorAll('.driver-item')) {
@@ -122,7 +119,7 @@
       for (let driverId of driverIdsToFetchSkillFor) {
           let driver = await torn_api(`user.${driverId}.personalstats.RacingUiUx`)
           if (driver.error) {
-              $('#racingEnhancementsOptions').after(`<div id="error">API error: ${JSON.stringify(json.error)}</div>`);
+              $('#racingEnhancementsTitle').after(`<div id="error">API error: ${JSON.stringify(json.error)}</div>`);
               break;
           } else {
               racingSkillCacheByDriverId.set(+driverId, driver.personalstats && driver.personalstats.racingskill ? driver.personalstats.racingskill : 'N/A');
@@ -167,7 +164,7 @@
 
           if (last_compl >= 0) {
               let speed = (compl - last_compl) / 100 * laps * len * 60 * 60 * 1000 / period;
-              $('#speed_mph').text((speed.toFixed(2) || '0.00') + 'mph');
+              $('#speed_mph').text(typeof(speed) === 'number' ? speed.toFixed(2) + 'mph' : speed);
           }
           last_compl = compl;
       }, period);
@@ -187,7 +184,7 @@
       if ($("#racingupdatesnew").length > 0 && $(".drivers-list").length > 0) {
           clearInterval(waitForElementsAndRun);
 
-          if ($('#racingEnhancementsOptions').length < 1) {
+          if ($('#racingEnhancementsTitle').length < 1) {
               addEnhancementsDiv();
           }
 
@@ -207,8 +204,7 @@
           // Main logic
           try {
               if (xhr) {
-                  parseRacingData(JSON.parse(xhr.responseText));
-                  showPenalty
+                  await parseRacingData(JSON.parse(xhr.responseText));
               }
 
               if (SHOW_SKILL) {
@@ -234,7 +230,11 @@
           try {
               let url = new URL(settings.url);
               if (url.pathname.substring(url.pathname.lastIndexOf('/') + 1, url.pathname.indexOf('.php')) !== "loader") { return; }
-              await run(xhr);
+              
+              //something is broke in here
+              //await run(xhr);
+              waitForElementsAndRun = setInterval(async () => { await run(xhr); }, 100);
+
           } catch(error) {
               // invalid url
           }
@@ -242,15 +242,11 @@
   });
 
 
+  
 
-
-
-  function showPenalty() {
-
-  }
 
   
-  function updateSkill(level) {
+  async function updateSkill(level) {
       const skill = Number(level).toFixed(5);
       const prev = GM.getValue('racinglevel');
   
@@ -276,28 +272,17 @@
   
 
 
+  async function parseRacingData(data) {
+      await updateSkill(data.user.racinglevel);
 
-  function parseRacingData(data) {
-      updateSkill(data['user']['racinglevel']);
-  
-      const leavepenalty = data['user']['leavepenalty'];
-
-
-      if (penaltyNotif) { clearTimeout(penaltyNotif); }
-
-      const penaltyLeft = leavepenalty * 1000 - Date.now();
-      if (NOTIFICATIONS && penaltyLeft > 0) {
-          penaltyNotif = setTimeout(function() {
-              GM.notification("You may join an official race now.", "Torn: Racing enhancements");
-          }, penaltyLeft);
-      }
-  
       // display race link
       if ($('#raceLink').size() < 1) {
           RACE_ID = data.raceID;
           const raceLink = `<a id="raceLink" href="https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${RACE_ID}" style="float: right; margin-left: 12px;">Link to the race</a>`;
           $(raceLink).insertAfter('#racingEnhSettings');
       }
+
+      //GM.log(`[Racing Enhancements] STATUS: ${data.timeData.status}`);
   
       // calc, sort & show race results
       if (data.timeData.status >= 3) {
@@ -329,23 +314,12 @@
   
           // sort by time
           results.sort(compare);
-          addExportButton(results, crashes, data.user.playername, data.raceID, data.timeData.timeEnded);
-  
+          //addExportButton(results, crashes, data.user.playername, data.raceID, data.timeData.timeEnded);
+
           if (SHOW_RESULTS) {
               showResults(results);
               showResults(crashes, results.length);
           }
-      }
-
-
-      if ($('#racingAdditionalContainer').find('div.msg.right-round').size() > 0 &&
-          $('#racingAdditionalContainer').find('div.msg.right-round').text().trim().startsWith('You have recently left')) {
-              const penalty = leavepenalty * 1000;
-              const now = Date.now();
-              if (penalty > now) {
-                  const date = new Date(penalty);
-                  $('#racingAdditionalContainer').find('div.msg.right-round').text('You may join an official race at ' + formatTime(date) + '.');
-              }
       }
   }
   
@@ -357,58 +331,77 @@
       return 0;
   }
 
+  function showResults(results, start = 0) {
+      for (let i = 0; i < results.length; i++) {
+          $('#leaderBoard').children('li').each(function() {
+              const name = $(this).find('li.name').text().trim();
+              const status = $(this).find('li.status-wrap');
+              if (name == results[i][0]) {
+                const p = i + start + 1;
+
+                switch(p) {
+                    case 1:
+                        status.html('<div class="status gold"></div>');
+                        break;
+                    case 2:
+                        status.html('<div class="status silver"></div>');
+                        break;
+                    case 3:
+                        status.html('<div class="status bronze"></div>');
+                        break;
+                    default:
+                        status.html(`<div class="finished-${p} finished"></div>`);
+                        break;
+                }
+                return false;
+            }
+          });
+      }
+  }
+
+
+
+
 
   GM.addStyle(`
-  .rs-display {
-      position: absolute;
-      right: 5px;
-  }
-  ul.driver-item > li.name {
-      overflow: auto;
-  }
-  li.name .race_position {
-      background:url(/images/v2/racing/car_status.svg) 0 0 no-repeat;
-      display:inline-block;
-      width:20px;
-      height:18px;
-      vertical-align:text-bottom;
-  }
-  li.name .race_position.gold {
-      background-position:0 0;
-  }
-  li.name .race_position.silver {
-      background-position:0 -22px;
-  }
-  li.name .race_position.bronze {
-      background-position:0 -44px;
-  }
+  .rs-display { position: absolute; right: 5px; }
+  ul.driver-item > li.name { overflow: auto; }
+
   #racingEnhancements {
       padding:5px 10px;
       margin-bottom:2px;
       background:repeating-linear-gradient(90deg,#242424,#242424 2px,#2e2e2e 0,#2e2e2e 4px);
   }
-  #racingEnhancementsOptions {
+  #racingEnhancementsTitle {
+      text-decoration:none;
       cursor:pointer;
+      display:block;
   }
-  #racingEnhancements ul {
+  #racingEnhancementsContainer {
       list-style-type:none;
       margin:0;
   }
-  #racingEnhancements ul li {
+  #racingEnhancementsContainer li {
       margin:5px 0;
       padding:0;
       font-size: 10px;
       line-height: 10px;
   }
-  #racingEnhancements ul li input[type='checkbox'] {
-      height: 10px;
+  #racingEnhancementsContainer li input[type='checkbox'] {
+      height:10px;
       vertical-align:middle;
+      margin:0 5px;
   }
-  #error {
-      color:red;
-      font-size:10px;
-      float:right;
+  #updating { 
+      background-image: url(/images/v2/main/ajax-loader.gif);
+      background-image: var(--default-preloader-url);
+      background-repeat: no-repeat;
+      width: 80px;
+      height: 10px;
+      display: inline-block;
+      float: right;
   }
+  #error { color:red; font-size:10px; float:right; }
   `);
 
 
