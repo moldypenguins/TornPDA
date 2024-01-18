@@ -48,14 +48,13 @@
   // Cache racing skill
   let racingSkillCacheByDriverId = new Map();
 
-
   // Whether to show racing skill.
   const SHOW_SKILL = GM.getValue('showSkillChk') != 0;
   // Whether to show current speed.
   const SHOW_SPEED = GM.getValue('showSpeedChk') != 0;
   // Whether to show race result as soon as a race starts.
   const SHOW_RESULTS = GM.getValue('showResultsChk') != 0;
-
+  
 
   function addEnhancementsDiv() {
       let div = '<div id="racingEnhancements">' +
@@ -275,18 +274,18 @@
                   const p = i + start + 1;
 
                   if (p == 1) {
-                    status.html('<div class="status gold"></div>');
+                      status.html('<div class="status gold"></div>');
                   } else if (p == 2) {
-                    status.html('<div class="status silver"></div>');
+                      status.html('<div class="status silver"></div>');
                   } else if (p == 3) {
-                    status.html('<div class="status bronze"></div>');
+                      status.html('<div class="status bronze"></div>');
                   } else {
-                    status.html(`<div class="finished-${p} finished">${p}</div>`);
+                      status.html(`<div class="finished-${p} finished">${p}</div>`);
                   }
 
                   const bestLap = results[i][3] ? formatTimeMsec(results[i][3] * 1000) : null;
                   if(bestLap) {
-                    $(this).find('li.name').html($(this).find('li.name').html().replace(name, `${name} (best: ${bestLap})`));
+                      $(this).find('li.name').html($(this).find('li.name').html().replace(name, `${name}<span class="bl-display">(Best: ${bestLap})</span>`));
                   }
                   return false;
               }
@@ -296,17 +295,18 @@
 
 
   function pad(num, size) {
-    return ('000000000' + num).substring(num.length + 9 - size);
+      return ('000000000' + num).slice(-size);
   }
 
   function formatTimeMsec(msec, alwaysShowHours = false) {
-    const hours = Math.floor((msec % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((msec % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((msec % (1000 * 60)) / 1000);
-    const mseconds = Math.floor(msec % 1000);
-
-    return ((hours > 0 ? hours + ":" : '') + (hours > 0 || minutes > 0 ? pad(minutes, 2) + ":" : '') + pad(seconds, 2) + "." + pad(mseconds, 3));
+      const hours = Math.floor((msec % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((msec % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((msec % (1000 * 60)) / 1000);
+      const mseconds = Math.floor(msec % 1000);
+  
+      return ((hours > 0 ? hours + ":" : '') + (hours > 0 || minutes > 0 ? pad(minutes, 2) + ":" : '') + pad(seconds, 2) + "." + pad(mseconds, 3));
   }
+
 
 
 
@@ -317,7 +317,7 @@
       return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  let waitForElementsAndRun = setInterval(async () => { await run(); }, 100);
+  let waitForElementsAndRun = 0;// = setInterval(async () => { await run(); }, 100);
   
   async function run(xhr) {
       if ($("#racingupdatesnew").length > 0 && $(".drivers-list").length > 0) {
@@ -329,7 +329,7 @@
 
           // save some space
           $('#racingdetails').find('li.pd-name').each(function() {
-              if ($(this).text() == 'Name:') { $(this).hide(); }
+              if ($(this).text() == 'Name:') { $(this).text(''); }
               if ($(this).text() == 'Last Lap:') { $(this).text('Last:'); }
               if ($(this).text() == 'Completion:') { 
                   $(this).text('Total:'); 
@@ -355,9 +355,6 @@
               }
 
 
-              
-
-
           } catch (e) {
               // wrapper not found
           }
@@ -370,10 +367,9 @@
               let url = new URL(settings.url);
               if (url.pathname.substring(url.pathname.lastIndexOf('/') + 1, url.pathname.indexOf('.php')) !== "loader") { return; }
               
-              //something is broke in here
-              //await run(xhr);
+              //if (url.queryString) {
               waitForElementsAndRun = setInterval(async () => { await run(xhr); }, 100);
-
+              //}
           } catch(error) {
               // invalid url
           }
@@ -392,7 +388,10 @@
 
   GM.addStyle(`
   .rs-display { position: absolute; right: 5px; }
+  .bl-display { font-size:0.66rem; margin-left:10px; }
+
   ul.driver-item > li.name { overflow: auto; }
+  .d #racingdetails li.pd-pilotname { padding-right:13px; }
 
   #racingEnhancements {
       padding:5px 10px;
