@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.3.1
+// @version      0.3.2
 // @description  Show racing skill, current speed, race results, precise skill.
 // @author       moldypenguins [2881784] - Adapted from Lugburz
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -25,16 +25,16 @@
           // Reject if key isn't set.
           $.getJSON(streamURL)
               .done((result) => {
-              if (result.error != undefined) {
-                  reject(result.error);
-              } else {
-                  resolve(result);
-              }
-          })
+                  if (result.error != undefined) {
+                      reject(result.error);
+                  } else {
+                      resolve(result);
+                  }
+              })
               .fail(function (jqxhr, textStatus, error) {
-              var err = textStatus + ', ' + error;
-              reject(err);
-          });
+                  var err = textStatus + ', ' + error;
+                  reject(err);
+              });
       });
   }
 
@@ -56,7 +56,7 @@
   const SHOW_RESULTS = GM.getValue('showResultsChk') != 0;
   
 
-  function addEnhancementsDiv() {
+  async function addEnhancementsDiv() {
       let div = '<div id="racingEnhancements">' +
                       '<a id="racingEnhancementsTitle">Racing Enhancements</a>' +
                       '<ul id="racingEnhancementsContainer" style="display: none;">' +
@@ -79,60 +79,41 @@
 
 
   function getDriverId(driverUl) {
-      return +driverUl.closest('li').id.substr(4);
+      return +$(driverUl).parent('li')[0].id.substr(4);
   }
 
-  let updating = false;
+  
   let leaderboardObserver = new MutationObserver(async (mutations) => {
-      let leaderboard = document.querySelector('.drivers-list #leaderBoard');
-      if (updating || leaderboard === null) { return; }
+      let leaderboard = $('.drivers-list #leaderBoard');
+      if (leaderboard.length < 1) { return; }
 
-      const driverIds = Array.from(leaderboard.querySelectorAll('.driver-item')).map(driver => getDriverId(driver));
+      const driverIds = Array.from(leaderboard.find('.driver-item')).map(driver => getDriverId(driver));
       if (!driverIds || !driverIds.length) { return; }
 
-      updating = true;
-      $('#updating').size() < 1 && $('#racingEnhancementsTitle').before('<span id="updating"></span>');
-
-      const racingSkills = await getRacingSkillForDrivers(driverIds);
-      for (let driver of leaderboard.querySelectorAll('.driver-item')) {
-          const driverId = getDriverId(driver);
-          if (!!racingSkills[driverId]) {
-              const skill = racingSkills[driverId];
-              const nameDiv = driver.querySelector('.name');
-              nameDiv.style.position = 'relative';
-              if (!driver.querySelector('.rs-display')) {
-                  nameDiv.insertAdjacentHTML('beforeend', `<span class="rs-display">Skill: ${skill}</span>`);
+      leaderboard.find('.driver-item').each(async (num, driver) => {
+          let racingSkill = ' ';
+          let driverId = getDriverId(driver);
+          if (racingSkillCacheByDriverId.has(driverId)) {
+              // Use cached skill
+              racingSkill = racingSkillCacheByDriverId.get(driverId);
+          } else {
+              // Fetch skill
+              let driverStats = await torn_api(`user.${driverId}.personalstats.RacingUiUx`);
+              if (driverStats.error) {
+                  $('#racingEnhancementsTitle').after(`<div id="error">API error: ${JSON.stringify(json.error)}</div>`);
+                  return false;
+              } else {
+                  if (driverStats.personalstats && driverStats.personalstats.racingskill) {
+                      racingSkillCacheByDriverId.set(+driverId, driverStats.personalstats.racingskill);
+                      racingSkill = driverStats.personalstats.racingskill;
+                  }
               }
           }
-      }
-
-      
-      $('#updating').size() > 0 && $('#updating').remove();
-      updating = false;
-  });
-
-
-  let racersCount = 0;
-  async function getRacingSkillForDrivers(driverIds) {
-      let driverIdsToFetchSkillFor = driverIds.filter(driverId => !racingSkillCacheByDriverId.has(driverId));
-      for (let driverId of driverIdsToFetchSkillFor) {
-          let driver = await torn_api(`user.${driverId}.personalstats.RacingUiUx`)
-          if (driver.error) {
-              $('#racingEnhancementsTitle').after(`<div id="error">API error: ${JSON.stringify(json.error)}</div>`);
-              break;
-          } else {
-              racingSkillCacheByDriverId.set(+driverId, driver.personalstats && driver.personalstats.racingskill ? driver.personalstats.racingskill : 'N/A');
-              racersCount++;
-              if (racersCount > 19) { await sleep(1500); }
+          if ($(driver).children('.skill').length < 1) {
+              $(driver).children('.name').after(`<li class="skill">RS: ${racingSkill}</li>`);
           }
-      }
-      const resultHash = {};
-      for (const driverId of driverIds) {
-          const skill = racingSkillCacheByDriverId.get(driverId);
-          if (!!skill) { resultHash[driverId] = skill; }
-      }
-      return resultHash;
-  }
+      });
+  });
 
 
   function maybeClear() {
@@ -191,8 +172,8 @@
       if ($('#racingMainContainer').find('div.skill').size() > 0) {
           if ($("#sidebarroot").find("a[class^='menu-value']").size() > 0) {
               // move the elements to the left a little bit to fit 5th decimal digit in desktop mode
-              $('#racingMainContainer').find('div.skill-desc').css('left', '5px');
-              $('#racingMainContainer').find('div.skill').css('left', '5px').text(skill);
+              $('#racingMainContainer').find('div.skill-desc').css('left', '9px');
+              $('#racingMainContainer').find('div.skill').css('left', '9px').text(skill);
           } else {
               $('#racingMainContainer').find('div.skill').text(skill);
           }
@@ -219,6 +200,7 @@
               GM.setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${RACE_ID}`);
           });
       }
+
 
       // calc, sort & show race results
       if (SHOW_RESULTS && data.timeData.status >= 3) {
@@ -317,14 +299,17 @@
       return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  let waitForElementsAndRun = 0;// = setInterval(async () => { await run(); }, 100);
-  
+
   async function run(xhr) {
       if ($("#racingupdatesnew").length > 0 && $(".drivers-list").length > 0) {
           clearInterval(waitForElementsAndRun);
 
           if ($('#racingEnhancementsTitle').length < 1) {
-              addEnhancementsDiv();
+              await addEnhancementsDiv();
+          }
+
+          if ($('#updating').length < 1) {
+              $('#racingEnhancementsTitle').before('<span id="updating"></span>');
           }
 
           // save some space
@@ -343,6 +328,7 @@
           // Main logic
           try {
               if (xhr) {
+
                   await parseRacingData(JSON.parse(xhr.responseText));
               }
 
@@ -357,7 +343,14 @@
 
           } catch (e) {
               // wrapper not found
+
+          } finally {
+              if ($('#updating').length > 0) {
+                  await sleep(500);
+                  $('#updating').remove();
+              }
           }
+
       }
   }
 
@@ -367,23 +360,17 @@
               let url = new URL(settings.url);
               if (url.pathname.substring(url.pathname.lastIndexOf('/') + 1, url.pathname.indexOf('.php')) !== "loader") { return; }
               
-              //if (url.queryString) {
-              waitForElementsAndRun = setInterval(async () => { await run(xhr); }, 100);
-              //}
+              waitForElementsAndRun = setInterval(run, 0, xhr);
+              
           } catch(error) {
               // invalid url
+
           }
       }
   });
 
-
+  let waitForElementsAndRun = setInterval(run, 0);
   
-
-
-  
-
-
-
 
 
   GM.addStyle(`
@@ -433,6 +420,18 @@
       margin-right:10px;
   }
   #error { color:red; font-size:10px; float:right; }
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
+      width:300px!important;
+  }
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.skill {
+      width:42px;
+      line-height:30px;
+      padding:0 5px
+  }
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li:hover .driver-item>li.skill, 
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li.selected .driver-item>li.skill {
+      background:url('/images/v2/racing/selected_driver.png') 0 0 repeat-x;
+  }
   `);
 
 
