@@ -444,12 +444,14 @@
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.speed {
       width:65px;
       line-height:30px;
-      padding:0 5px
+      padding:0 5px;
+      white-space:nowrap;
   }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.skill {
       width:50px;
       line-height:30px;
-      padding:0 5px
+      padding:0 5px;
+      white-space:nowrap;
   }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li:hover .driver-item>li.speed, 
   .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li.selected .driver-item>li.speed,
