@@ -435,19 +435,38 @@
       text-align:center; 
       display:block;
     }
-    .d .racing-main-wrap .header-wrap .banner .skill-desc {
-      left:9px!important;
+    @media screen and (min-width: 785px) {
+      .d .racing-main-wrap .header-wrap .banner .skill-desc {
+        left:9px!important;
+      }
+      .d .racing-main-wrap .header-wrap .banner .skill {
+        left:9px!important;
+        font-size:0.75rem!important;
+      }
+      .d .racing-main-wrap .header-wrap .banner .lastgain {
+        top:82px;
+        left:87px;
+        color:#00ff00;
+        position:absolute;
+        font-size:0.75rem;
+      }
     }
-    .d .racing-main-wrap .header-wrap .banner .skill {
-      left:9px!important;
-      font-size:0.75rem!important;
-    }
-    .d .racing-main-wrap .header-wrap .banner .lastgain {
-      top:82px;
-      left:87px;
-      color:#00ff00;
-      position:absolute;
-      font-size:0.75rem;
+    @media screen and (max-width: 784px) {
+      .d .racing-main-wrap .header-wrap .banner .skill-desc {
+        left:10px!important;
+      }
+      .d .racing-main-wrap .header-wrap .banner .skill {
+        left:125px!important;
+        font-size:0.75rem!important;
+        line-height:0.85rem;
+      }
+      .d .racing-main-wrap .header-wrap .banner .lastgain {
+        top:10px;
+        left:200px;
+        color:#00ff00;
+        position:absolute;
+        font-size:0.75rem;
+      }
     }
     .d #racingdetails li.pd-pilotname { 
       padding-right:13px; 
