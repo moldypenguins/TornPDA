@@ -84,7 +84,7 @@
           }
           if ($(this).text() == 'Completion:') { $(this).remove(); }
       });
-      $('pd-laptime').removeClass('t-hide');
+      $('li.pd-laptime').removeClass('t-hide');
       if (SHOW_RESULTS && $('.pd-besttime').length < 1) {
           $('#racingdetails li.pd-completion').after('<li class="pd-val pd-besttime">--:--</li>');
           $('#racingdetails li.pd-completion').after('<li class="pd-name">Best:</li>');
