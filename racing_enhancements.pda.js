@@ -199,8 +199,9 @@
     }
   }
 
-  let raceResults = [];
+
   // Parse ajax response
+  let raceResults = [];
   async function parseRacingData(data) {
     // update driver skill
     await updateSkill(data.user.racinglevel);
@@ -225,6 +226,9 @@
 
     // calc, sort & show race results
     if (SHOW_RESULTS && data.timeData.status >= 3) {
+      // Clear results
+      raceResults = [];
+      
       let carsData = data.raceData.cars;
       let carInfo = data.raceData.carInfo;
       let trackIntervals = data.raceData.trackData.intervals.length;
@@ -389,108 +393,108 @@
 
   // Styles
   GM.addStyle(`
-    #racingEnhancements {
-      padding:5px 10px;
-      margin-bottom:2px;
-      background:repeating-linear-gradient(90deg,#242424,#242424 2px,#2e2e2e 0,#2e2e2e 4px);
-    }
-    #raceLink, #raceLinkPlaceholder {
-      display:inline-block;
-      float:right;
-    }
-    #racingEnhancementsTitle {
-      text-decoration:none;
-      cursor:pointer;
-      display:block;
-    }
-    #racingEnhancementsContainer {
-      list-style-type:none;
-      margin:0;
-    }
-    #racingEnhancementsContainer li {
-      margin:5px 0;
-      padding:0;
-      font-size: 10px;
-      line-height: 10px;
-    }
-    #racingEnhancementsContainer li input[type='checkbox'] {
-      height:10px;
-      vertical-align:middle;
-      margin:0 5px;
-    }
+  #racingEnhancements {
+    padding:5px 10px;
+    margin-bottom:2px;
+    background:repeating-linear-gradient(90deg,#242424,#242424 2px,#2e2e2e 0,#2e2e2e 4px);
+  }
+  #raceLink, #raceLinkPlaceholder {
+    display:inline-block;
+    float:right;
+  }
+  #racingEnhancementsTitle {
+    text-decoration:none;
+    cursor:pointer;
+    display:block;
+  }
+  #racingEnhancementsContainer {
+    list-style-type:none;
+    margin:0;
+  }
+  #racingEnhancementsContainer li {
+    margin:5px 0;
+    padding:0;
+    font-size: 10px;
+    line-height: 10px;
+  }
+  #racingEnhancementsContainer li input[type='checkbox'] {
+    height:10px;
+    vertical-align:middle;
+    margin:0 5px;
+  }
 
-    #updating { 
-      background-image:url(/images/v2/main/ajax-loader.gif);
-      background-image:var(--default-preloader-url);
-      background-repeat:no-repeat;
-      width:80px;
-      height:10px;
-      display:inline-block;
-      float:right;
-      margin-right:10px;
+  #updating { 
+    background-image:url(/images/v2/main/ajax-loader.gif);
+    background-image:var(--default-preloader-url);
+    background-repeat:no-repeat;
+    width:80px;
+    height:10px;
+    display:inline-block;
+    float:right;
+    margin-right:10px;
+  }
+  #error { 
+    color:#FF6666; 
+    font-size:12px; 
+    text-align:center; 
+    display:block;
+  }
+  @media screen and (min-width: 785px) {
+    .d .racing-main-wrap .header-wrap .banner .skill-desc {
+      left:9px!important;
     }
-    #error { 
-      color:#FF6666; 
-      font-size:12px; 
-      text-align:center; 
-      display:block;
+    .d .racing-main-wrap .header-wrap .banner .skill {
+      left:9px!important;
+      font-size:0.75rem!important;
     }
-    @media screen and (min-width: 785px) {
-      .d .racing-main-wrap .header-wrap .banner .skill-desc {
-        left:9px!important;
-      }
-      .d .racing-main-wrap .header-wrap .banner .skill {
-        left:9px!important;
-        font-size:0.75rem!important;
-      }
-      .d .racing-main-wrap .header-wrap .banner .lastgain {
-        top:82px;
-        left:87px;
-        color:#00ff00;
-        position:absolute;
-        font-size:0.75rem;
-      }
+    .d .racing-main-wrap .header-wrap .banner .lastgain {
+      top:82px;
+      left:87px;
+      color:#00ff00;
+      position:absolute;
+      font-size:0.75rem;
     }
-    @media screen and (max-width: 784px) {
-      .d .racing-main-wrap .header-wrap .banner .skill-desc {
-        left:10px!important;
-      }
-      .d .racing-main-wrap .header-wrap .banner .skill {
-        left:125px!important;
-        font-size:0.75rem!important;
-        line-height:0.85rem;
-      }
-      .d .racing-main-wrap .header-wrap .banner .lastgain {
-        top:10px;
-        left:200px;
-        color:#00ff00;
-        position:absolute;
-        font-size:0.75rem;
-      }
+  }
+  @media screen and (max-width: 784px) {
+    .d .racing-main-wrap .header-wrap .banner .skill-desc {
+      left:10px!important;
     }
-    .d #racingdetails li.pd-pilotname { 
-      padding-right:13px; 
+    .d .racing-main-wrap .header-wrap .banner .skill {
+      left:125px!important;
+      font-size:0.75rem!important;
+      line-height:0.85rem;
     }
-    .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-      width:${342 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
+    .d .racing-main-wrap .header-wrap .banner .lastgain {
+      top:10px;
+      left:200px;
+      color:#00ff00;
+      position:absolute;
+      font-size:0.75rem;
     }
-    .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.speed {
-      width:65px;
-      line-height:30px;
-      padding:0 5px;
-      white-space:nowrap;
-    }
-    .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.skill {
-      width:50px;
-      line-height:30px;
-      padding:0 5px;
-      white-space:nowrap;
-    }
-    .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li:hover .driver-item>li.speed, 
-    .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li.selected .driver-item>li.speed,
-    .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li:hover .driver-item>li.skill, 
-    .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li.selected .driver-item>li.skill {
-      background:url('/images/v2/racing/selected_driver.png') 0 0 repeat-x;
-    }
-  `);
+  }
+  .d #racingdetails li.pd-pilotname { 
+    padding-right:13px; 
+  }
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
+    width:${342 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
+  }
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.speed {
+    width:65px;
+    line-height:30px;
+    padding:0 5px;
+    white-space:nowrap;
+  }
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.skill {
+    width:50px;
+    line-height:30px;
+    padding:0 5px;
+    white-space:nowrap;
+  }
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li:hover .driver-item>li.speed, 
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li.selected .driver-item>li.speed,
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li:hover .driver-item>li.skill, 
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li.selected .driver-item>li.skill {
+    background:url('/images/v2/racing/selected_driver.png') 0 0 repeat-x;
+  }
+`);
 })();
