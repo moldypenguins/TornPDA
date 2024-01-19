@@ -75,6 +75,29 @@
       $('#racingEnhancementsContainer').on('click', 'input', function() {
           GM.setValue($(this).attr('id'), $(this).prop('checked') ? 1 : 0);
       });
+
+      // save some space
+      $('#racingdetails').find('li.pd-name').each(function() {
+          if ($(this).text() == 'Name:') { $(this).text(''); }
+          if ($(this).text() == 'Last Lap:') { $(this).text('Last:'); }
+          if ($(this).text() == 'Completion:') { 
+              $(this).text('Total:'); 
+              if (SHOW_SPEED) {
+                  $(this).addClass('t-hide'); 
+                  $('.pd-completion').addClass('t-hide'); 
+                  $(this).removeClass('m-hide');
+                  $('.pd-completion').removeClass('m-hide');
+              }
+          }
+      });
+
+      //add link placeholder
+      if ($('#raceLink').length < 1 && $('#raceLinkPlaceholder').length < 1) {
+          const raceLinkPlaceholder = `<span id="raceLinkPlaceholder">` + 
+          '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><g><path d="M3.09,4.36c1.25-1.25,3.28-1.26,4.54,0,.15.15.29.32.41.5l-1.12,1.12c-.32-.74-1.13-1.15-1.92-.97-.31.07-.59.22-.82.45l-2.15,2.15c-.65.66-.63,1.72.03,2.37.65.63,1.69.63,2.34,0l.66-.66c.6.24,1.25.34,1.89.29l-1.47,1.47c-1.26,1.26-3.29,1.26-4.55,0-1.26-1.26-1.26-3.29,0-4.55h0l2.15-2.15ZM6.51.94l-1.47,1.46c.64-.05,1.29.05,1.89.29l.66-.66c.65-.65,1.72-.65,2.37,0,.65.65.65,1.72,0,2.37h0l-2.15,2.15c-.66.65-1.71.65-2.37,0-.15-.15-.28-.33-.36-.53l-1.12,1.12c.12.18.25.34.4.49,1.25,1.26,3.29,1.26,4.54,0,0,0,0,0,0,0l2.15-2.15c1.26-1.26,1.25-3.29,0-4.55-1.26-1.26-3.29-1.25-4.55,0Z" fill="currentColor" stroke-width="0"></path></g></svg>' + 
+          '</span>';
+          $('#racingEnhancements').prepend(raceLinkPlaceholder);
+      }
   }
 
 
@@ -125,7 +148,7 @@
   }
 
   async function showSpeed() {
-      if ($('#racingdetails').size() < 1 || $('#racingdetails').find('#speed_mph').size() > 0) { return; }
+      if ($('#racingdetails').length < 1 || $('#racingdetails').find('#speed_mph').length > 0) { return; }
       
       $('#racingdetails').append('<li class="pd-name">Speed:</li>');
       $('#racingdetails').append('<li class="pd-val pd-speed" id="speed_mph">0.00mph</li>');
@@ -133,7 +156,7 @@
       maybeClear();
 
       x = setInterval(function() {
-          if ($('#racingupdatesnew').find('div.track-info').size() < 1) {
+          if ($('#racingupdatesnew').find('div.track-info').length < 1) {
               maybeClear();
               return;
           }
@@ -169,8 +192,8 @@
       }
       GM.setValue('racinglevel', level);
   
-      if ($('#racingMainContainer').find('div.skill').size() > 0) {
-          if ($("#sidebarroot").find("a[class^='menu-value']").size() > 0) {
+      if ($('#racingMainContainer').find('div.skill').length > 0) {
+          if ($("#sidebarroot").find("a[class^='menu-value']").length > 0) {
               // move the elements to the left a little bit to fit 5th decimal digit in desktop mode
               $('#racingMainContainer').find('div.skill-desc').css('left', '9px');
               $('#racingMainContainer').find('div.skill').css('left', '9px').text(skill);
@@ -186,8 +209,13 @@
       await updateSkill(data.user.racinglevel);
 
       // display race link
-      if ($('#raceLink').size() < 1) {
+      if ($('#raceLink').length < 1) {
           RACE_ID = data.raceID;
+
+          if ($('#raceLinkPlaceholder').length > 0) {
+              $('#raceLinkPlaceholder').remove();
+          }
+
           const raceLink = `<a id="raceLink" href="https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${RACE_ID}">` + 
           '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><g><path d="M3.09,4.36c1.25-1.25,3.28-1.26,4.54,0,.15.15.29.32.41.5l-1.12,1.12c-.32-.74-1.13-1.15-1.92-.97-.31.07-.59.22-.82.45l-2.15,2.15c-.65.66-.63,1.72.03,2.37.65.63,1.69.63,2.34,0l.66-.66c.6.24,1.25.34,1.89.29l-1.47,1.47c-1.26,1.26-3.29,1.26-4.55,0-1.26-1.26-1.26-3.29,0-4.55h0l2.15-2.15ZM6.51.94l-1.47,1.46c.64-.05,1.29.05,1.89.29l.66-.66c.65-.65,1.72-.65,2.37,0,.65.65.65,1.72,0,2.37h0l-2.15,2.15c-.66.65-1.71.65-2.37,0-.15-.15-.28-.33-.36-.53l-1.12,1.12c.12.18.25.34.4.49,1.25,1.26,3.29,1.26,4.54,0,0,0,0,0,0,0l2.15-2.15c1.26-1.26,1.25-3.29,0-4.55-1.26-1.26-3.29-1.25-4.55,0Z" fill="currentColor" stroke-width="0"></path></g></svg>' + 
           '</a>';
@@ -199,6 +227,9 @@
               //SEE: https://www.torn.com/page.php?sid=education&category=7&course=67
               GM.setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${RACE_ID}`);
           });
+
+
+
       }
 
       // calc, sort & show race results
@@ -311,21 +342,6 @@
               $('#racingEnhancementsTitle').before('<span id="updating"></span>');
           }
 
-          // save some space
-          $('#racingdetails').find('li.pd-name').each(function() {
-              if ($(this).text() == 'Name:') { $(this).text(''); }
-              if ($(this).text() == 'Last Lap:') { $(this).text('Last:'); }
-              if ($(this).text() == 'Completion:') { 
-                  $(this).text('Total:'); 
-                  if (SHOW_SPEED) {
-                      $(this).addClass('t-hide'); 
-                      $('.pd-completion').addClass('t-hide'); 
-                      $(this).removeClass('m-hide');
-                      $('.pd-completion').removeClass('m-hide');
-                  }
-              }
-          });
-
           // Main logic
           try {
               if (xhr) {
@@ -381,7 +397,7 @@
       margin-bottom:2px;
       background:repeating-linear-gradient(90deg,#242424,#242424 2px,#2e2e2e 0,#2e2e2e 4px);
   }
-  #raceLink{
+  #raceLink, #raceLinkPlaceholder {
       display:inline-block;
       float:right;
   }
