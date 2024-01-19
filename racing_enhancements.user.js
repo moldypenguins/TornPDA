@@ -395,11 +395,6 @@
 
 
   GM.addStyle(`
-  .bestlap { position: absolute; right: 5px; }
-
-  ul.driver-item > li.name { overflow: auto; }
-  .d #racingdetails li.pd-pilotname { padding-right:13px; }
-
   #racingEnhancements {
       padding:5px 10px;
       margin-bottom:2px;
@@ -440,8 +435,11 @@
       margin-right:10px;
   }
   #error { color:red; font-size:10px; float:right; }
+
+
+
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-      width:${SHOW_SPEED && SHOW_SKILL ? '252' : SHOW_SPEED || SHOW_SKILL ? '297' : '342'}px!important;
+      width:${SHOW_SPEED && SHOW_SKILL ? '247' : SHOW_SPEED || SHOW_SKILL ? '292' : '337'}px!important;
   }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.speed {
       width:65px;
@@ -449,7 +447,7 @@
       padding:0 5px
   }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.skill {
-      width:45px;
+      width:50px;
       line-height:30px;
       padding:0 5px
   }
