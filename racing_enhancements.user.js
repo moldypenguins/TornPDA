@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.3.3
+// @version      0.4.0
 // @description  Show racing skill, current speed, race results, precise skill.
 // @author       moldypenguins [2881784] - Adapted from Lugburz
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -16,6 +16,8 @@
   'use strict';
 
   let API_KEY = '###PDA-APIKEY###';
+
+  let speedPeriod = 1000;
 
   let torn_api = async (args) => {
       const a = args.split('.')
@@ -106,7 +108,7 @@
       return +$(driverUl).parent('li')[0].id.substr(4);
   }
 
-
+  let speedIntervalByDriverId = new Map();
   let leaderboardObserver = new MutationObserver(async (mutations) => {
       let leaderboard = $('.drivers-list #leaderBoard');
       if (leaderboard.length < 1) { return; }
@@ -121,7 +123,9 @@
               if($(driver).children('.speed').length < 1) {
                   $(driver).children('.time').before(`<li class="speed">0.00mph</li>`);
               }
-              await updateSpeed(driverId);
+              if(!speedIntervalByDriverId.has(driverId)) {
+                  speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, speedPeriod, driverId));
+              }
           }
 
           let racingSkill = '';
@@ -154,7 +158,6 @@
 
   
   // Speed
-  let period = 10000;
   let lastTimeByDriverId = new Map();
   async function updateSpeed(driverId) {
       let driverUl = $(`#lbr-${driverId} ul`);
@@ -166,7 +169,7 @@
           let compl = driverUl.children('.time').text().replace('%', '');
 
           if (lastTimeByDriverId.has(driverId)) {
-              let speed = (compl - lastTimeByDriverId.get(driverId)) / 100 * laps * len * 60 * 60 * 1000 / period;
+              let speed = (compl - lastTimeByDriverId.get(driverId)) / 100 * laps * len * 60 * 60 * 1000 / speedPeriod;
               driverUl.children('.speed').text(speed.toFixed(2) + 'mph');
           }
           lastTimeByDriverId.set(driverId, compl);
