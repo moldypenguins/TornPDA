@@ -201,7 +201,6 @@
           });
       }
 
-
       // calc, sort & show race results
       if (SHOW_RESULTS && data.timeData.status >= 3) {
           const carsData = data.raceData.cars;
@@ -267,7 +266,7 @@
 
                   const bestLap = results[i][3] ? formatTimeMsec(results[i][3] * 1000) : null;
                   if(bestLap) {
-                      $(this).find('li.name').html($(this).find('li.name').html().replace(name, `${name}<span class="bl-display">(Best: ${bestLap})</span>`));
+                      $(this).find('li.name').html($(this).find('li.name').html().replace(name, `${name}<span class="bestlap t-hide">(Best: ${bestLap})</span>`));
                   }
                   return false;
               }
@@ -318,9 +317,11 @@
               if ($(this).text() == 'Last Lap:') { $(this).text('Last:'); }
               if ($(this).text() == 'Completion:') { 
                   $(this).text('Total:'); 
-                  if (SHOW_SPEED) { 
+                  if (SHOW_SPEED) {
                       $(this).addClass('t-hide'); 
                       $('.pd-completion').addClass('t-hide'); 
+                      $(this).removeClass('m-hide');
+                      $('.pd-completion').removeClass('m-hide');
                   }
               }
           });
@@ -328,19 +329,15 @@
           // Main logic
           try {
               if (xhr) {
-
                   await parseRacingData(JSON.parse(xhr.responseText));
               }
-
               if (SHOW_SKILL) {
                   leaderboardObserver.observe(document.querySelector('.drivers-list #leaderBoard'), { childList: true });
               }
-
               if (SHOW_SPEED) { 
                   await showSpeed(); 
               }
-
-
+              
           } catch (e) {
               // wrapper not found
 
@@ -361,7 +358,7 @@
               if (url.pathname.substring(url.pathname.lastIndexOf('/') + 1, url.pathname.indexOf('.php')) !== "loader") { return; }
               
               waitForElementsAndRun = setInterval(run, 0, xhr);
-              
+
           } catch(error) {
               // invalid url
 
@@ -374,8 +371,7 @@
 
 
   GM.addStyle(`
-  .rs-display { position: absolute; right: 5px; }
-  .bl-display { font-size:0.66rem; margin-left:10px; }
+  .bestlap { position: absolute; right: 5px; }
 
   ul.driver-item > li.name { overflow: auto; }
   .d #racingdetails li.pd-pilotname { padding-right:13px; }
@@ -421,10 +417,10 @@
   }
   #error { color:red; font-size:10px; float:right; }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-      width:300px!important;
+      width:295px!important;
   }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.skill {
-      width:42px;
+      width:47px;
       line-height:30px;
       padding:0 5px
   }
