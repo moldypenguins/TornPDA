@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.4.1
+// @version      0.4.2
 // @description  Show racing skill, current speed, race results, precise skill.
 // @author       moldypenguins [2881784] - Adapted from Lugburz
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -18,7 +18,6 @@
   const API_KEY = '###PDA-APIKEY###';
 
   const speedPeriod = 1000;
-
 
   // Whether to show racing skill.
   const ADD_LINKS = GM.getValue("addLinksChk") != 0;
@@ -65,13 +64,13 @@
       "</div>";
     $(".drivers-list").children(":first").after(div);
 
-    $("#racingEnhancementsTitle").on("click", () => $("#racingEnhancementsContainer").toggle());
+    $("#racingEnhancementsTitle").on("click", (event) => $("#racingEnhancementsContainer").toggle());
 
     $("#racingEnhancementsContainer").find("input[type=checkbox]").each((index, checkbox) => {
       $(checkbox).prop("checked", GM.getValue($(checkbox).attr("id")) != 0);
     });
-    $("#racingEnhancementsContainer input").on("click", () => {
-      GM.setValue($(this).attr("id"), $(this).prop("checked") ? 1 : 0);
+    $("#racingEnhancementsContainer input").on("click", (event) => {
+      GM.setValue(event.target.id, event.target.checked ? 1 : 0);
     });
 
     // save some space
@@ -474,5 +473,5 @@
     .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li.selected .driver-item>li.skill {
       background:url('/images/v2/racing/selected_driver.png') 0 0 repeat-x;
     }
-    `);
+  `);
 })();
