@@ -40,14 +40,12 @@
 
   let RACE_ID = '*';
 
-  // Speed
-  let period = 1000;
-  let last_compl = -1.0;
-  let x = 0;
-
   // Cache racing skill
   let racingSkillCacheByDriverId = new Map();
 
+  
+  // Whether to show racing skill.
+  const ADD_LINKS = GM.getValue('addLinksChk') != 0;
   // Whether to show racing skill.
   const SHOW_SKILL = GM.getValue('showSkillChk') != 0;
   // Whether to show current speed.
@@ -58,8 +56,10 @@
 
   async function addEnhancementsDiv() {
       let div = '<div id="racingEnhancements">' +
+                      '<span id="updating" style="display:none;"></span>' + 
                       '<a id="racingEnhancementsTitle">Racing Enhancements</a>' +
                       '<ul id="racingEnhancementsContainer" style="display: none;">' +
+                          '<li><input type="checkbox" id="addLinksChk"><label>Add profile links</label></li>' +
                           '<li><input type="checkbox" id="showSkillChk"><label>Show racing skill</label></li>' +
                           '<li><input type="checkbox" id="showSpeedChk"><label>Show current speed</label></li>' +
                           '<li><input type="checkbox" id="showResultsChk"><label>Show race results</label></li>' +
@@ -78,18 +78,16 @@
 
       // save some space
       $('#racingdetails').find('li.pd-name').each(function() {
-          if ($(this).text() == 'Name:') { $(this).text(''); }
+          if ($(this).text() == 'Name:') { $(this).text('Driver:'); }
+          if ($(this).text() == 'Position:') { $(this).text('Pos:'); }
           if ($(this).text() == 'Last Lap:') { $(this).text('Last:'); }
-          if ($(this).text() == 'Completion:') { 
-              $(this).text('Total:'); 
-              if (SHOW_SPEED) {
-                  $(this).addClass('t-hide'); 
-                  $('.pd-completion').addClass('t-hide'); 
-                  $(this).removeClass('m-hide');
-                  $('.pd-completion').removeClass('m-hide');
-              }
-          }
+          if ($(this).text() == 'Completion:') { $(this).remove(); }
       });
+      if (SHOW_RESULTS && $('.pd-bestlap').length < 1) {
+          $('#racingdetails li.pd-completion').after('<li class="pd-val pd-bestlap t-hide">--:--</li>');
+          $('#racingdetails li.pd-completion').after('<li class="pd-name">Best:</li>');
+      }
+      $('#racingdetails li.pd-completion').remove();
 
       //add link placeholder
       if ($('#raceLink').length < 1 && $('#raceLinkPlaceholder').length < 1) {
@@ -98,6 +96,7 @@
           '</span>';
           $('#racingEnhancements').prepend(raceLinkPlaceholder);
       }
+
   }
 
 
@@ -105,7 +104,8 @@
       return +$(driverUl).parent('li')[0].id.substr(4);
   }
 
-  
+
+  let speedIntervalByDriverId = new Map();
   let leaderboardObserver = new MutationObserver(async (mutations) => {
       let leaderboard = $('.drivers-list #leaderBoard');
       if (leaderboard.length < 1) { return; }
@@ -114,8 +114,16 @@
       if (!driverIds || !driverIds.length) { return; }
 
       leaderboard.find('.driver-item').each(async (num, driver) => {
-          let racingSkill = ' ';
           let driverId = getDriverId(driver);
+          
+          if (SHOW_SPEED) {
+              if($(driver).children('.speed').length < 1) {
+                  $(driver).children('.name').after(`<li class="speed">0.00mph</li>`);
+              }
+              speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, 1000, driverId));
+          }
+
+          let racingSkill = '';
           if (racingSkillCacheByDriverId.has(driverId)) {
               // Use cached skill
               racingSkill = racingSkillCacheByDriverId.get(driverId);
@@ -132,48 +140,43 @@
                   }
               }
           }
-          if ($(driver).children('.skill').length < 1) {
-              $(driver).children('.name').after(`<li class="skill">RS: ${racingSkill}</li>`);
+          if (SHOW_SKILL && $(driver).children('.skill').length < 1) {
+              $(driver).children('.time').before(`<li class="skill">RS: ${racingSkill}</li>`);
           }
+
       });
   });
 
 
-  function maybeClear() {
-      if (x != 0 ) {
-          clearInterval(x);
-          last_compl = -1.0;
-          x = 0;
+  
+  // Speed
+  let period = 1000;
+  let last_compl = -1.0;
+
+  let lastTime = new Map();
+
+  async function updateSpeed(driverId) {
+      let driverUl = $(`#lbr-${driverId} ul`);
+      if (driverUl.length < 1) { return; }
+
+      if (driverUl.children('.time').text().indexOf('%') >= 0) {
+          let laps = $('#racingupdatesnew').find('div.title-black').text().split(" - ")[1].split(" ")[0];
+          let len = $('#racingupdatesnew').find('div.track-info').attr('data-length').replace('mi', '');
+          let compl = $('#racingdetails').find('li.pd-completion').text().replace('%', '');
+
+          if (last_compl >= 0) {
+              let speed = (compl - last_compl) / 100 * laps * len * 60 * 60 * 1000 / period;
+              driverUl.children('.speed').text(speed.toFixed(2) + 'mph');
+          }
+          last_compl = compl;
+
+      } else {
+          driverUl.children('.speed').text('0.00mph');
+          if(speedIntervalByDriverId.has(driverId)) {
+              clearInterval(speedIntervalByDriverId.get(driverId));
+          }
       }
-  }
 
-  async function showSpeed() {
-      if ($('#racingdetails').length < 1 || $('#racingdetails').find('#speed_mph').length > 0) { return; }
-      
-      $('#racingdetails').append('<li class="pd-name">Speed:</li>');
-      $('#racingdetails').append('<li class="pd-val pd-speed" id="speed_mph">0.00mph</li>');
-
-      maybeClear();
-
-      x = setInterval(function() {
-          if ($('#racingupdatesnew').find('div.track-info').length < 1) {
-              maybeClear();
-              return;
-          }
-          if($('#racingdetails').find('li.pd-completion').text().indexOf('%') >= 0) {
-              let laps = $('#racingupdatesnew').find('div.title-black').text().split(" - ")[1].split(" ")[0];
-              let len = $('#racingupdatesnew').find('div.track-info').attr('data-length').replace('mi', '');
-              let compl = $('#racingdetails').find('li.pd-completion').text().replace('%', '');
-
-              if (last_compl >= 0) {
-                  let speed = (compl - last_compl) / 100 * laps * len * 60 * 60 * 1000 / period;
-                  $('#speed_mph').text(speed.toFixed(2) + 'mph');
-              }
-              last_compl = compl;
-          } else {
-              $('#speed_mph').text('0.00mph');
-          }
-      }, period);
   }
 
 
@@ -321,7 +324,17 @@
 
 
 
-
+  async function addLinks() {
+      const names = $('ul.overview').find('li.name');
+      names.each(function() {
+          const parent = $(this).parent().parent();
+          if (parent.attr('id').startsWith('lbr-')) {
+              const username = $(this).html().replace('<span>', '').replace('</span>', '');
+              const user_id = parent.attr('id').replace('lbr-', '');
+              $(this).html(`<a href=/profiles.php?XID=${user_id}>${username}</a>`);
+          }
+      });
+  }
 
 
   // Sleep and wait for elements to load
@@ -338,30 +351,25 @@
               await addEnhancementsDiv();
           }
 
-          if ($('#updating').length < 1) {
-              $('#racingEnhancementsTitle').before('<span id="updating"></span>');
-          }
+          $('#updating').show();
 
           // Main logic
           try {
               if (xhr) {
                   await parseRacingData(JSON.parse(xhr.responseText));
               }
-              if (SHOW_SKILL) {
+              if (SHOW_SPEED || SHOW_SKILL) { 
                   leaderboardObserver.observe(document.querySelector('.drivers-list #leaderBoard'), { childList: true });
               }
-              if (SHOW_SPEED) { 
-                  await showSpeed(); 
+              if (ADD_LINKS) {
+                  await addLinks();
               }
-              
           } catch (e) {
               // wrapper not found
 
           } finally {
-              if ($('#updating').length > 0) {
-                  await sleep(500);
-                  $('#updating').remove();
-              }
+              await sleep(500);
+              $('#updating').hide();
           }
 
       }
@@ -433,13 +441,20 @@
   }
   #error { color:red; font-size:10px; float:right; }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-      width:295px!important;
+      width:${SHOW_SPEED && SHOW_SKILL ? '252' : SHOW_SPEED || SHOW_SKILL ? '297' : '342'}px!important;
   }
-  .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.skill {
-      width:47px;
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.speed {
+      width:65px;
       line-height:30px;
       padding:0 5px
   }
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.skill {
+      width:45px;
+      line-height:30px;
+      padding:0 5px
+  }
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li:hover .driver-item>li.speed, 
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li.selected .driver-item>li.speed,
   .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li:hover .driver-item>li.skill, 
   .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li.selected .driver-item>li.skill {
       background:url('/images/v2/racing/selected_driver.png') 0 0 repeat-x;
