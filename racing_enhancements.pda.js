@@ -19,6 +19,7 @@
 
   const speedPeriod = 1000;
 
+
   // Whether to show racing skill.
   const ADD_LINKS = GM.getValue("addLinksChk") != 0;
   // Whether to show racing skill.
