@@ -38,8 +38,6 @@
       });
   }
 
-  let RACE_ID = '*';
-
   // Cache racing skill
   let racingSkillCacheByDriverId = new Map();
 
@@ -78,13 +76,17 @@
 
       // save some space
       $('#racingdetails').find('li.pd-name').each(function() {
-          if ($(this).text() == 'Name:') { $(this).text('Driver:'); }
+          if ($(this).text() == 'Name:') { $(this).text(''); }
           if ($(this).text() == 'Position:') { $(this).text('Pos:'); }
-          if ($(this).text() == 'Last Lap:') { $(this).text('Last:'); }
+          if ($(this).text() == 'Last Lap:') { 
+              $(this).text('Last:');
+              $(this).removeClass('t-hide');
+          }
           if ($(this).text() == 'Completion:') { $(this).remove(); }
       });
-      if (SHOW_RESULTS && $('.pd-bestlap').length < 1) {
-          $('#racingdetails li.pd-completion').after('<li class="pd-val pd-bestlap t-hide">--:--</li>');
+      $('pd-laptime').removeClass('t-hide');
+      if (SHOW_RESULTS && $('.pd-besttime').length < 1) {
+          $('#racingdetails li.pd-completion').after('<li class="pd-val pd-besttime">--:--</li>');
           $('#racingdetails li.pd-completion').after('<li class="pd-name">Best:</li>');
       }
       $('#racingdetails li.pd-completion').remove();
@@ -105,7 +107,6 @@
   }
 
 
-  let speedIntervalByDriverId = new Map();
   let leaderboardObserver = new MutationObserver(async (mutations) => {
       let leaderboard = $('.drivers-list #leaderBoard');
       if (leaderboard.length < 1) { return; }
@@ -118,9 +119,9 @@
           
           if (SHOW_SPEED) {
               if($(driver).children('.speed').length < 1) {
-                  $(driver).children('.name').after(`<li class="speed">0.00mph</li>`);
+                  $(driver).children('.time').before(`<li class="speed">0.00mph</li>`);
               }
-              speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, 1000, driverId));
+              await updateSpeed(driverId);
           }
 
           let racingSkill = '';
@@ -129,19 +130,22 @@
               racingSkill = racingSkillCacheByDriverId.get(driverId);
           } else {
               // Fetch skill
-              let driverStats = await torn_api(`user.${driverId}.personalstats.RacingUiUx`);
-              if (driverStats.error) {
-                  $('#racingEnhancementsTitle').after(`<div id="error">API error: ${JSON.stringify(json.error)}</div>`);
-                  return false;
-              } else {
+              try {
+                  let driverStats = await torn_api(`user.${driverId}.personalstats.RacingUiUx`);
                   if (driverStats.personalstats && driverStats.personalstats.racingskill) {
                       racingSkillCacheByDriverId.set(+driverId, driverStats.personalstats.racingskill);
                       racingSkill = driverStats.personalstats.racingskill;
                   }
+              } catch (error) {
+                  if ($('#error').length > 0) {
+                      $('#error').remove();
+                  }
+                  $('#racingEnhancementsTitle').after(`<div id="error">API error: ${JSON.stringify(error)}</div>`);
+                  return false;
               }
           }
           if (SHOW_SKILL && $(driver).children('.skill').length < 1) {
-              $(driver).children('.time').before(`<li class="skill">RS: ${racingSkill}</li>`);
+              $(driver).children('.name').after(`<li class="skill">RS: ${racingSkill}</li>`);
           }
 
       });
@@ -150,11 +154,8 @@
 
   
   // Speed
-  let period = 1000;
-  let last_compl = -1.0;
-
-  let lastTime = new Map();
-
+  let period = 10000;
+  let lastTimeByDriverId = new Map();
   async function updateSpeed(driverId) {
       let driverUl = $(`#lbr-${driverId} ul`);
       if (driverUl.length < 1) { return; }
@@ -162,19 +163,16 @@
       if (driverUl.children('.time').text().indexOf('%') >= 0) {
           let laps = $('#racingupdatesnew').find('div.title-black').text().split(" - ")[1].split(" ")[0];
           let len = $('#racingupdatesnew').find('div.track-info').attr('data-length').replace('mi', '');
-          let compl = $('#racingdetails').find('li.pd-completion').text().replace('%', '');
+          let compl = driverUl.children('.time').text().replace('%', '');
 
-          if (last_compl >= 0) {
-              let speed = (compl - last_compl) / 100 * laps * len * 60 * 60 * 1000 / period;
+          if (lastTimeByDriverId.has(driverId)) {
+              let speed = (compl - lastTimeByDriverId.get(driverId)) / 100 * laps * len * 60 * 60 * 1000 / period;
               driverUl.children('.speed').text(speed.toFixed(2) + 'mph');
           }
-          last_compl = compl;
+          lastTimeByDriverId.set(driverId, compl);
 
       } else {
           driverUl.children('.speed').text('0.00mph');
-          if(speedIntervalByDriverId.has(driverId)) {
-              clearInterval(speedIntervalByDriverId.get(driverId));
-          }
       }
 
   }
@@ -209,17 +207,16 @@
 
 
   async function parseRacingData(data) {
+      // update driver skill
       await updateSkill(data.user.racinglevel);
 
       // display race link
       if ($('#raceLink').length < 1) {
-          RACE_ID = data.raceID;
-
           if ($('#raceLinkPlaceholder').length > 0) {
               $('#raceLinkPlaceholder').remove();
           }
 
-          const raceLink = `<a id="raceLink" href="https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${RACE_ID}">` + 
+          const raceLink = `<a id="raceLink" href="https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${data.raceID}">` + 
           '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><g><path d="M3.09,4.36c1.25-1.25,3.28-1.26,4.54,0,.15.15.29.32.41.5l-1.12,1.12c-.32-.74-1.13-1.15-1.92-.97-.31.07-.59.22-.82.45l-2.15,2.15c-.65.66-.63,1.72.03,2.37.65.63,1.69.63,2.34,0l.66-.66c.6.24,1.25.34,1.89.29l-1.47,1.47c-1.26,1.26-3.29,1.26-4.55,0-1.26-1.26-1.26-3.29,0-4.55h0l2.15-2.15ZM6.51.94l-1.47,1.46c.64-.05,1.29.05,1.89.29l.66-.66c.65-.65,1.72-.65,2.37,0,.65.65.65,1.72,0,2.37h0l-2.15,2.15c-.66.65-1.71.65-2.37,0-.15-.15-.28-.33-.36-.53l-1.12,1.12c.12.18.25.34.4.49,1.25,1.26,3.29,1.26,4.54,0,0,0,0,0,0,0l2.15-2.15c1.26-1.26,1.25-3.29,0-4.55-1.26-1.26-3.29-1.25-4.55,0Z" fill="currentColor" stroke-width="0"></path></g></svg>' + 
           '</a>';
           $('#racingEnhancements').prepend(raceLink);
@@ -228,11 +225,8 @@
               event.stopPropagation();
               //TODO: add tooltip
               //SEE: https://www.torn.com/page.php?sid=education&category=7&course=67
-              GM.setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${RACE_ID}`);
+              GM.setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${data.raceID}`);
           });
-
-
-
       }
 
       // calc, sort & show race results
@@ -300,7 +294,7 @@
 
                   const bestLap = results[i][3] ? formatTimeMsec(results[i][3] * 1000) : null;
                   if(bestLap) {
-                      $(this).find('li.name').html($(this).find('li.name').html().replace(name, `${name}<span class="bestlap t-hide">(Best: ${bestLap})</span>`));
+                      $(this).find('li.name').html($(this).find('li.name').html().replace(name, `${name}<span class="besttime">(Best: ${bestLap})</span>`));
                   }
                   return false;
               }
@@ -395,6 +389,9 @@
 
 
   GM.addStyle(`
+  ul.driver-item > li.name { overflow: auto; }
+  .d #racingdetails li.pd-pilotname { padding-right:13px; }
+
   #racingEnhancements {
       padding:5px 10px;
       margin-bottom:2px;
@@ -425,21 +422,23 @@
       margin:0 5px;
   }
   #updating { 
-      background-image: url(/images/v2/main/ajax-loader.gif);
-      background-image: var(--default-preloader-url);
-      background-repeat: no-repeat;
-      width: 80px;
-      height: 10px;
-      display: inline-block;
-      float: right;
+      background-image:url(/images/v2/main/ajax-loader.gif);
+      background-image:var(--default-preloader-url);
+      background-repeat:no-repeat;
+      width:80px;
+      height:10px;
+      display:inline-block;
+      float:right;
       margin-right:10px;
   }
-  #error { color:red; font-size:10px; float:right; }
-
-
-
+  #error { 
+      color:#FF6666; 
+      font-size:12px; 
+      text-align:center; 
+      display:block;
+  }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-      width:${SHOW_SPEED && SHOW_SKILL ? '247' : SHOW_SPEED || SHOW_SKILL ? '292' : '337'}px!important;
+      width:${342 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
   }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.speed {
       width:65px;
