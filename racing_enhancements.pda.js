@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.4.0
+// @version      0.4.1
 // @description  Show racing skill, current speed, race results, precise skill.
 // @author       moldypenguins [2881784] - Adapted from Lugburz
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -144,20 +144,14 @@
       } else {
         // Fetch racing skill
         try {
-          let driverStats = await torn_api(
-            `user.${driverId}.personalstats.RacingUiUx`
-          );
+          let driverStats = await torn_api(`user.${driverId}.personalstats.RacingUiUx`);
           if (driverStats.personalstats && driverStats.personalstats.racingskill) {
             racingSkillCacheByDriverId.set(+driverId, driverStats.personalstats.racingskill);
             racingSkill = driverStats.personalstats.racingskill;
           }
         } catch (error) {
-          if ($("#error").length > 0) {
-            $("#error").remove();
-          }
-          $("#racingEnhancementsTitle").after(
-            `<div id="error">API error: ${JSON.stringify(error)}</div>`
-          );
+          if ($("#error").length > 0) { $("#error").remove(); }
+          $("#racingEnhancementsTitle").after(`<div id="error">API error: ${JSON.stringify(error)}</div>`);
           return false;
         }
       }
@@ -171,9 +165,7 @@
   let lastTimeByDriverId = new Map();
   async function updateSpeed(driverId) {
     let driverUl = $(`#lbr-${driverId} ul`);
-    if (driverUl.length < 1) {
-      return;
-    }
+    if (driverUl.length < 1) { return; }
 
     if (driverUl.children(".time").text().indexOf("%") >= 0) {
       let laps = $("#racingupdatesnew").find("div.title-black").text().split(" - ")[1].split(" ")[0];
@@ -192,28 +184,19 @@
 
   // Skill
   async function updateSkill(level) {
-    let skill = Number(level).toFixed(5);
-    let prev = GM.getValue("racinglevel");
+    let curr = Number(level).toFixed(6);
+    let prev = GM.getValue("racingSkill");
 
-    if (prev !== "undefined" && typeof prev !== "undefined" && level > prev) {
-      let lastInc = Number(level - prev).toFixed(5);
+    if (typeof(prev) !== "undefined" && curr > prev) {
+      let lastInc = Number(curr - prev).toFixed(6);
       if (lastInc) {
         $("div.skill").append(`<div class="lastgain" style="margin-top:10px;">Last gain: ${lastInc}</div>`);
       }
     }
-    GM.setValue("racinglevel", level);
+    GM.setValue("racingSkill", curr);
 
     if ($("#racingMainContainer").find("div.skill").length > 0) {
-      if ($("#sidebarroot").find("a[class^='menu-value']").length > 0) {
-        // move the elements to the left a little bit to fit 5th decimal digit in desktop mode
-        $("#racingMainContainer").find("div.skill-desc").css("left", "9px");
-        $("#racingMainContainer")
-          .find("div.skill")
-          .css("left", "9px")
-          .text(skill);
-      } else {
-        $("#racingMainContainer").find("div.skill").text(skill);
-      }
+      $("#racingMainContainer").find("div.skill").text(curr);
     }
   }
 
@@ -269,13 +252,15 @@
       }
 
       // sort by status then time
-      raceResults.sort((a, b) => a.toLocaleLowerCase().localeCompare(b[2].toLocaleLowerCase()) || b[2] - a[2]);
+      raceResults.sort((a, b) => {
+        return b[2].toLocaleLowerCase().localeCompare(a[2].toLocaleLowerCase()) || a[3] - b[3];
+      });
 
       // add export results
       //addExportButton(raceResults, data.user.playername, data.raceID, data.timeData.timeEnded);
 
       // set result for each driver
-      raceResults.each((index, result) => {
+      raceResults.forEach((result, index) => {
         let driverUl = $(`#lbr-${result[0]} ul`);
         if(driverUl.length < 1) { return; }
 
@@ -293,6 +278,30 @@
           statusLi.html(`<div class="finished-${place} finished">${place}</div>`);
         }
       });
+    } else if (!SHOW_RESULTS && data.timeData.status >= 3) {
+      $('li[id^=lbr-] ul').children('.status-wrap').html(`<div class="status racing"></div>`);
+
+    } else if(data.timeData.status < 3) {
+      $('li[id^=lbr-] ul').children('.status-wrap').html(`<div class="status waiting"></div>`);
+
+    }
+  }
+
+  async function showResults() {
+    if(raceResults.length < 1) { return; }
+
+    // set best lap for selected driver
+    let selectedDriverUl = $('#leaderBoard li.selected[id^=lbr-] ul');
+    if(selectedDriverUl.length < 1) { selectedDriverUl = $(`#leaderBoard #lbr-${$('script[uid]').attr('uid')} ul`); }
+    let selectedDriverId = getDriverId(selectedDriverUl);
+
+    //userId, playername, status, raceTime, bestLap
+    let driverResult = raceResults.find((r) => {
+      return Number(r[0]) === selectedDriverId;
+    });
+    let bestLap = driverResult[4] ? formatTime(driverResult[4] * 1000) : null;
+    if (bestLap) {
+      $('li.pd-besttime').text(bestLap);
     }
   }
 
@@ -301,7 +310,12 @@
     let hours = Math.floor((msec % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     let minutes = Math.floor((msec % (1000 * 60 * 60)) / (1000 * 60));
     let seconds = Math.floor((msec % (1000 * 60)) / 1000);
-    return ((hours > 0 ? hours + ":" : "") + (hours > 0 || minutes > 0 ? ('00' + minutes).slice(-2) + ":" : "") + ('00' + seconds).slice(-2));
+    let mseconds = Math.floor(msec % 1000);
+    return (
+      ('00' + minutes).toString().slice(-2) + ":" + 
+      ('00' + seconds).toString().slice(-2) + "." + 
+      ('000' + mseconds).toString().slice(3)
+    );
   }
 
   // Add profile links to driver names
@@ -338,18 +352,8 @@
         if (xhr) {
           await parseRacingData(JSON.parse(xhr.responseText));
         }
-        if(raceResults.length > 0) {
-          // set best lap for selected driver
-          let selectedDriverUl = $('#leaderBoard li.selected[id^=lbr-] ul');
-          if(selectedDriverUl.length < 1) { selectedDriverUl = $(`#leaderBoard #lbr-${$('script[uid]').attr('uid')} ul`); }
-          let selectedDriverId = getDriverId(selectedDriverUl);
-
-          //userId, playername, status, raceTime, bestLap
-          let driverResult = raceResults.find(r => r[0] === selectedDriverId);
-          let bestLap = driverResult[4] ? formatTime(raceResults[i][4] * 1000) : null;
-          if (bestLap) {
-            driverUl.children('.pd-besttime').text(bestLap);
-          }
+        if(SHOW_RESULTS) {
+          showResults();
         }
         if (SHOW_SPEED || SHOW_SKILL) {
           leaderboardObserver.observe(document.querySelector(".drivers-list #leaderBoard"), { childList: true });
@@ -415,6 +419,7 @@
       vertical-align:middle;
       margin:0 5px;
     }
+
     #updating { 
       background-image:url(/images/v2/main/ajax-loader.gif);
       background-image:var(--default-preloader-url);
@@ -431,7 +436,20 @@
       text-align:center; 
       display:block;
     }
-
+    .d .racing-main-wrap .header-wrap .banner .skill-desc {
+      left:9px!important;
+    }
+    .d .racing-main-wrap .header-wrap .banner .skill {
+      left:9px!important;
+      font-size:0.75rem!important;
+    }
+    .d .racing-main-wrap .header-wrap .banner .lastgain {
+      top:82px;
+      left:87px;
+      color:#00ff00;
+      position:absolute;
+      font-size:0.75rem;
+    }
     .d #racingdetails li.pd-pilotname { 
       padding-right:13px; 
     }
