@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.4.2
+// @version      0.4.3
 // @description  Show racing skill, current speed, race results, precise skill.
 // @author       moldypenguins [2881784] - Adapted from Lugburz
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -76,7 +76,7 @@
     // save some space
     $("#racingdetails").find("li.pd-name").each((index, detail) => {
       if ($(detail).text() === "Name:") {
-        $(detail).text("");
+        $(detail).remove();
       }
       if ($(detail).text() === "Position:") {
         $(detail).text("Pos:");
@@ -224,11 +224,13 @@
       });
     }
 
+    console.log(`[Racing Enhancements] Race Status: ${data.timeData.status}`);
+
     // calc, sort & show race results
     if (SHOW_RESULTS && data.timeData.status >= 3) {
       // Clear results
       raceResults = [];
-      
+
       let carsData = data.raceData.cars;
       let carInfo = data.raceData.carInfo;
       let trackIntervals = data.raceData.trackData.intervals.length;
@@ -390,6 +392,7 @@
 
   // Run
   let waitForElementsAndRun = setInterval(run, 0);
+  $('a[tab-value="race"]').trigger("click");
 
   // Styles
   GM.addStyle(`
@@ -471,12 +474,18 @@
       position:absolute;
       font-size:0.75rem;
     }
-  }
-  .d #racingdetails li.pd-pilotname { 
-    padding-right:13px; 
+    .d #racingdetails .pd-name {
+      padding-right:1px;
+    }
+    .d #racingdetails .pd-val:not(.pd-pilotname) {
+        padding-left:1px;
+    }
   }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
     width:${342 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
+  }
+  .r .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
+    width:${202 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
   }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.speed {
     width:65px;
