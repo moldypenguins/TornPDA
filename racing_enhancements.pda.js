@@ -457,6 +457,9 @@
       position:absolute;
       font-size:0.75rem;
     }
+    .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
+      width:${342 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
+    }
   }
   @media screen and (max-width: 784px) {
     .d .racing-main-wrap .header-wrap .banner .skill-desc {
@@ -480,13 +483,11 @@
     .d #racingdetails .pd-val:not(.pd-pilotname) {
         padding-left:1px;
     }
+    .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
+      width:${202 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
+    }
   }
-  .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-    width:${342 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
-  }
-  .r .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-    width:${202 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
-  }
+
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.speed {
     width:65px;
     line-height:30px;
