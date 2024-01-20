@@ -344,27 +344,6 @@
     }
   }
 
-  /*
-  function addPlaybackButton() {
-    if ($("#racingupdatesnew").size() > 0 && $('div.race-player-container').size() < 1) {
-      $('div.drivers-list > div.cont-black').prepend(
-        `<div class="race-player-container"><button id="play-pause-btn" class="play"></button>` + 
-        `<div id="speed-slider"><span id="prev-speed" class="disabled"></span><span id="speed-value">x1</span><span id="next-speed" class="enabled"></span></div>` + 
-        `<div id="replay-bar-container"><span id="progress-active"></span><span id="progress-inactive"></span></div>` + 
-        `<div id="race-timer-container"><span id="race-timer">00:00:00</span></div></div>`
-      );
-    }
-  }
-  */
-
-
-
-
-
-
-
-
-
 
   function formatTime(msec) {
     let hours = Math.floor((msec % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
