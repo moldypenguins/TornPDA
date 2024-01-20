@@ -189,7 +189,7 @@
     if (typeof(prev) !== "undefined" && curr > prev) {
       let lastInc = Number(curr - prev).toFixed(6);
       if (lastInc) {
-        $("div.skill").append(`<div class="lastgain" style="margin-top:10px;">Last gain: ${lastInc}</div>`);
+        $("div.skill").append(`<div class="lastgain">${lastInc}</div>`);
       }
     }
     GM.setValue("racingSkill", curr);
@@ -279,7 +279,7 @@
         let place = index + 1;
         let statusLi = driverUl.children('.status-wrap');
         if (result[2] === "crashed") {
-          statusLi.html(`<div class="status crashed"></div>`);
+          statusLi.html(`<div class="status crash"></div>`);
         } else if (place == 1) {
           statusLi.html('<div class="status gold"></div>');
         } else if (place == 2) {
