@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.4.3
+// @version      0.4.6
 // @description  Show racing skill, current speed, race results, precise skill.
 // @author       moldypenguins [2881784] - Adapted from Lugburz
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -20,7 +20,7 @@
 (function () {
   "use strict";
 
-  const API_KEY = "mVFn5g2CVGC1aRwl";
+  const API_KEY = "lmCw1VG5VFng2CaR";
 
   const speedPeriod = 1000;
 
@@ -194,7 +194,7 @@
     if (typeof(prev) !== "undefined" && curr > prev) {
       let lastInc = Number(curr - prev).toFixed(6);
       if (lastInc) {
-        $("div.skill").append(`<div class="lastgain" style="margin-top:10px;">Last gain: ${lastInc}</div>`);
+        $("div.skill").after(`<div class="lastgain">${lastInc}</div>`);
       }
     }
     GM_setValue("racingSkill", curr);
@@ -233,39 +233,48 @@
 
     // calc, sort & show race results
     if (SHOW_RESULTS && data.timeData.status >= 3) {
-      // Clear results
-      raceResults = [];
+      // Populate results
+      if(raceResults.length < 1) {
+        let carsData = data.raceData.cars;
+        let carInfo = data.raceData.carInfo;
+        let trackIntervals = data.raceData.trackData.intervals.length;
 
-      let carsData = data.raceData.cars;
-      let carInfo = data.raceData.carInfo;
-      let trackIntervals = data.raceData.trackData.intervals.length;
-
-      
-      for (let playername in carsData) {
-        let userId = carInfo[playername].userID;
-        let intervals = atob(carsData[playername]).split(",");
-        let raceTime = 0;
-        let bestLap = 9999999999;
-        if (intervals.length / trackIntervals == data.laps) {
-          for (let i = 0; i < data.laps; i++) {
-            let lapTime = 0;
-            for (let j = 0; j < trackIntervals; j++) {
-              lapTime += Number(intervals[i * trackIntervals + j]);
+        
+        for (let playername in carsData) {
+          let userId = carInfo[playername].userID;
+          let intervals = atob(carsData[playername]).split(",");
+          let raceTime = 0;
+          let bestLap = 9999999999;
+          if (intervals.length / trackIntervals == data.laps) {
+            for (let i = 0; i < data.laps; i++) {
+              let lapTime = 0;
+              for (let j = 0; j < trackIntervals; j++) {
+                lapTime += Number(intervals[i * trackIntervals + j]);
+              }
+              bestLap = Math.min(bestLap, lapTime);
+              raceTime += Number(lapTime);
             }
-            bestLap = Math.min(bestLap, lapTime);
-            raceTime += Number(lapTime);
+            raceResults.push([userId, playername, "finished", raceTime, bestLap]);
+          } else {
+            raceResults.push([userId, playername, "crashed", 0, 0]);
           }
-          raceResults.push([userId, playername, "finished", raceTime, bestLap]);
-        } else {
-          raceResults.push([userId, playername, "crashed", 0, 0]);
         }
+
+        // sort by status then time
+        raceResults.sort((a, b) => {
+          return b[2].toLocaleLowerCase().localeCompare(a[2].toLocaleLowerCase()) || a[3] - b[3];
+        });
+
       }
+    }
+  }
 
-      // sort by status then time
-      raceResults.sort((a, b) => {
-        return b[2].toLocaleLowerCase().localeCompare(a[2].toLocaleLowerCase()) || a[3] - b[3];
-      });
+  async function showResults() {
+    // if no results set driver status to waiting
+    if(raceResults.length < 1) {
+      $('li[id^=lbr-] ul').children('.status-wrap').html(`<div class="status waiting"></div>`);
 
+    } else {
       // add export results
       //addExportButton(raceResults, data.user.playername, data.raceID, data.timeData.timeEnded);
 
@@ -277,7 +286,7 @@
         let place = index + 1;
         let statusLi = driverUl.children('.status-wrap');
         if (result[2] === "crashed") {
-          statusLi.html(`<div class="status crashed"></div>`);
+          statusLi.html(`<div class="status crash"></div>`);
         } else if (place == 1) {
           statusLi.html('<div class="status gold"></div>');
         } else if (place == 2) {
@@ -288,31 +297,29 @@
           statusLi.html(`<div class="finished-${place} finished">${place}</div>`);
         }
       });
-    } else if (!SHOW_RESULTS && data.timeData.status >= 3) {
-      $('li[id^=lbr-] ul').children('.status-wrap').html(`<div class="status racing"></div>`);
+      
+      // set best lap for selected driver
+      let selectedDriverUl = $('#leaderBoard li.selected[id^=lbr-] ul');
+      if(selectedDriverUl.length < 1) { selectedDriverUl = $(`#leaderBoard #lbr-${$('script[uid]').attr('uid')} ul`); }
+      let selectedDriverId = getDriverId(selectedDriverUl);
+      //userId, playername, status, raceTime, bestLap
+      await setBestLap(selectedDriverId);
 
-    } else if(data.timeData.status < 3) {
-      $('li[id^=lbr-] ul').children('.status-wrap').html(`<div class="status waiting"></div>`);
+      $('#leaderBoard li[id^=lbr-]').on("click", async (event) => {
+        await setBestLap(Number(event.currentTarget.id.substring(4)));
+      });
 
     }
   }
 
-  async function showResults() {
-    if(raceResults.length < 1) { return; }
 
-    // set best lap for selected driver
-    let selectedDriverUl = $('#leaderBoard li.selected[id^=lbr-] ul');
-    if(selectedDriverUl.length < 1) { selectedDriverUl = $(`#leaderBoard #lbr-${$('script[uid]').attr('uid')} ul`); }
-    let selectedDriverId = getDriverId(selectedDriverUl);
-
-    //userId, playername, status, raceTime, bestLap
-    let driverResult = raceResults.find((r) => {
-      return Number(r[0]) === selectedDriverId;
+  async function setBestLap(driverId) {
+    let driverResult = raceResults.find((r) => { 
+      return Number(r[0]) === driverId; 
     });
     let bestLap = driverResult[4] ? formatTime(driverResult[4] * 1000) : null;
-    if (bestLap) {
-      $('li.pd-besttime').text(bestLap);
-    }
+    if (bestLap) { $('li.pd-besttime').text(bestLap); }
+    else { $('li.pd-besttime').text('--:--'); }
   }
 
 
@@ -395,9 +402,16 @@
     }
   });
 
-  // Run
+  // Check for null tab
+  let params = new Proxy(new URLSearchParams(window.location.search), {
+    get: (searchParams, prop) => searchParams.get(prop),
+  });
+  if(typeof(params.tab) !== "undefined" && params.tab === null) {
+    $('a[tab-value="race"]').trigger("click");
+  }
+  
   let waitForElementsAndRun = setInterval(run, 0);
-  $('a[tab-value="race"]').trigger("click");
+
 
   // Styles
   GM_addStyle(`
@@ -449,10 +463,10 @@
   }
   @media screen and (min-width: 785px) {
     .d .racing-main-wrap .header-wrap .banner .skill-desc {
-      left:9px!important;
+      left:6px!important;
     }
     .d .racing-main-wrap .header-wrap .banner .skill {
-      left:9px!important;
+      left:6px!important;
       font-size:0.75rem!important;
     }
     .d .racing-main-wrap .header-wrap .banner .lastgain {
@@ -461,6 +475,9 @@
       color:#00ff00;
       position:absolute;
       font-size:0.75rem;
+    }
+    .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
+      width:${342 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
     }
   }
   @media screen and (max-width: 784px) {
@@ -485,13 +502,11 @@
     .d #racingdetails .pd-val:not(.pd-pilotname) {
         padding-left:1px;
     }
+    .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
+      width:${202 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
+    }
   }
-  .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-    width:${342 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
-  }
-  .r .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-    width:${202 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
-  }
+
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.speed {
     width:65px;
     line-height:30px;
