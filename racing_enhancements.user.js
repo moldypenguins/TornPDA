@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.4.6
+// @version      0.5.0
 // @description  Show racing skill, current speed, race results, precise skill.
 // @author       moldypenguins [2881784] - Adapted from Lugburz
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -20,7 +20,7 @@
 (function () {
   "use strict";
 
-  const API_KEY = "lmCw1VG5VFng2CaR";
+  const API_KEY = "Cg2Cm1VFnaRwl5VG";
 
   const speedPeriod = 1000;
 
@@ -216,16 +216,21 @@
       if ($("#raceLinkPlaceholder").length > 0) {
         $("#raceLinkPlaceholder").remove();
       }
-      let raceLink = `<a id="raceLink" href="https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${data.raceID}">` +
+      let raceLink = `<a id="raceLink" title="Copy link" href="https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${data.raceID}">` +
           '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><g><path d="M3.09,4.36c1.25-1.25,3.28-1.26,4.54,0,.15.15.29.32.41.5l-1.12,1.12c-.32-.74-1.13-1.15-1.92-.97-.31.07-.59.22-.82.45l-2.15,2.15c-.65.66-.63,1.72.03,2.37.65.63,1.69.63,2.34,0l.66-.66c.6.24,1.25.34,1.89.29l-1.47,1.47c-1.26,1.26-3.29,1.26-4.55,0-1.26-1.26-1.26-3.29,0-4.55h0l2.15-2.15ZM6.51.94l-1.47,1.46c.64-.05,1.29.05,1.89.29l.66-.66c.65-.65,1.72-.65,2.37,0,.65.65.65,1.72,0,2.37h0l-2.15,2.15c-.66.65-1.71.65-2.37,0-.15-.15-.28-.33-.36-.53l-1.12,1.12c.12.18.25.34.4.49,1.25,1.26,3.29,1.26,4.54,0,0,0,0,0,0,0l2.15-2.15c1.26-1.26,1.25-3.29,0-4.55-1.26-1.26-3.29-1.25-4.55,0Z" fill="currentColor" stroke-width="0"></path></g></svg>' +
         "</a>";
       $("#racingEnhancements").prepend(raceLink);
       $("#raceLink").on("click", function (event) {
         event.preventDefault();
         event.stopPropagation();
-        //TODO: add tooltip
-        //SEE: https://www.torn.com/page.php?sid=education&category=7&course=67
         GM_setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${data.raceID}`);
+
+        let tooltip = $(`#${$("#raceLink").attr("aria-describedby")} .ui-tooltip-content`);
+        if(tooltip.length > 0) {
+          tooltip[0].childNodes[0].nodeValue = 'Copied';
+          let newLeft = (Number(tooltip.parent('div').css('left').replace('px', '')) + 6) + 'px';
+          tooltip.parent('div').css("left", newLeft);
+        }
       });
     }
 
@@ -266,6 +271,9 @@
         });
 
       }
+
+      // add export results
+      addExportButton(raceResults, data.user.id, data.raceID, data.timeData.timeEnded);
     }
   }
 
@@ -275,9 +283,6 @@
       $('li[id^=lbr-] ul').children('.status-wrap').html(`<div class="status waiting"></div>`);
 
     } else {
-      // add export results
-      //addExportButton(raceResults, data.user.playername, data.raceID, data.timeData.timeEnded);
-
       // set result for each driver
       raceResults.forEach((result, index) => {
         let driverUl = $(`#lbr-${result[0]} ul`);
@@ -312,7 +317,6 @@
     }
   }
 
-
   async function setBestLap(driverId) {
     let driverResult = raceResults.find((r) => { 
       return Number(r[0]) === driverId; 
@@ -321,6 +325,52 @@
     if (bestLap) { $('li.pd-besttime').text(bestLap); }
     else { $('li.pd-besttime').text('--:--'); }
   }
+
+
+
+
+  function addExportButton(results, driverId, raceId, timeEnded) {
+    if ($('#exportResults').size() < 1) {
+      let csv = 'position,id,name,status,time,best_lap,racing_skill\n';
+      for (let i = 0; i < results.length; i++) {
+        const timeStr = formatTime(results[i][3] * 1000);
+        const bestLap = formatTime(results[i][4] * 1000);
+        csv += [i+1, results[i][0], results[i][1], results[i][2], timeStr, bestLap, (results[i][0] === driverId ? GM_getValue('racingSkill') : '')].join(',') + '\n';
+      }
+
+      const timeE = new Date();
+      timeE.setTime(timeEnded * 1000);
+      const fileName = `${timeE.getUTCFullYear()}${("00" + (timeE.getUTCMonth() + 1)).slice(-2)}${("00" + timeE.getUTCDate()).slice(-2)}-race_${raceId}.csv`;
+
+      const myblob = new Blob([csv], {type: 'application/octet-stream'});
+      const myurl = window.URL.createObjectURL(myblob);
+      const exportBtn = `<a id="exportResults" title="Export CSV" href="${myurl}" download="${fileName}">` + 
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" height="12" width="12"><path d="M17,2.25V18H2V2.25H5.5l-2,2.106V16.5h12V4.356L13.543,2.25H17Zm-2.734,3L11.781,2.573V2.266A2.266,2.266,0,0,0,7.25,2.25v.323L4.777,5.25ZM9.5,1.5a.75.75,0,1,1-.75.75A.75.75,0,0,1,9.5,1.5ZM5.75,12.75h7.5v.75H5.75Zm0-.75h7.5v-.75H5.75Zm0-1.5h7.5V9.75H5.75Zm0-1.5h7.5V8.25H5.75Z" fill="currentColor" stroke-width="0"></path></svg>' + 
+        '</a>';
+      $('#raceLink').after(exportBtn);
+    }
+  }
+
+  /*
+  function addPlaybackButton() {
+    if ($("#racingupdatesnew").size() > 0 && $('div.race-player-container').size() < 1) {
+      $('div.drivers-list > div.cont-black').prepend(
+        `<div class="race-player-container"><button id="play-pause-btn" class="play"></button>` + 
+        `<div id="speed-slider"><span id="prev-speed" class="disabled"></span><span id="speed-value">x1</span><span id="next-speed" class="enabled"></span></div>` + 
+        `<div id="replay-bar-container"><span id="progress-active"></span><span id="progress-inactive"></span></div>` + 
+        `<div id="race-timer-container"><span id="race-timer">00:00:00</span></div></div>`
+      );
+    }
+  }
+  */
+
+
+
+
+
+
+
+
 
 
   function formatTime(msec) {
@@ -420,9 +470,10 @@
     margin-bottom:2px;
     background:repeating-linear-gradient(90deg,#242424,#242424 2px,#2e2e2e 0,#2e2e2e 4px);
   }
-  #raceLink, #raceLinkPlaceholder {
+  #exportResults, #raceLink, #raceLinkPlaceholder {
     display:inline-block;
     float:right;
+    margin-left:5px;
   }
   #racingEnhancementsTitle {
     text-decoration:none;
