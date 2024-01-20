@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.4.4
+// @version      0.4.6
 // @description  Show racing skill, current speed, race results, precise skill.
 // @author       moldypenguins [2881784] - Adapted from Lugburz
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -189,7 +189,7 @@
     if (typeof(prev) !== "undefined" && curr > prev) {
       let lastInc = Number(curr - prev).toFixed(6);
       if (lastInc) {
-        $("div.skill").append(`<div class="lastgain">${lastInc}</div>`);
+        $("div.skill").after(`<div class="lastgain">${lastInc}</div>`);
       }
     }
     GM.setValue("racingSkill", curr);
@@ -395,9 +395,16 @@
     }
   });
 
-  // Run
+  // Check for null tab
+  let params = new Proxy(new URLSearchParams(window.location.search), {
+    get: (searchParams, prop) => searchParams.get(prop),
+  });
+  if(typeof(params.tab) !== "undefined" && params.tab === null) {
+    $('a[tab-value="race"]').trigger("click");
+  }
+  
   let waitForElementsAndRun = setInterval(run, 0);
-  $('a[tab-value="race"]').trigger("click");
+
 
   // Styles
   GM.addStyle(`
@@ -449,10 +456,10 @@
   }
   @media screen and (min-width: 785px) {
     .d .racing-main-wrap .header-wrap .banner .skill-desc {
-      left:9px!important;
+      left:6px!important;
     }
     .d .racing-main-wrap .header-wrap .banner .skill {
-      left:9px!important;
+      left:6px!important;
       font-size:0.75rem!important;
     }
     .d .racing-main-wrap .header-wrap .banner .lastgain {
