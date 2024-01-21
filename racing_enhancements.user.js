@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.5.0
+// @version      0.5.1
 // @description  Show racing skill, current speed, race results, precise skill.
 // @author       moldypenguins [2881784] - Adapted from Lugburz
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -20,7 +20,7 @@
 (function () {
   "use strict";
 
-  const API_KEY = "Cg2Cm1VFnaRwl5VG";
+  const API_KEY = "GCg1Rwl5VVFn2Cam";
 
   const speedPeriod = 1000;
 
@@ -507,7 +507,7 @@
       font-size:0.75rem;
     }
     .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-      width:${342 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
+      width:${335 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
     }
   }
   @media screen and (max-width: 784px) {
@@ -533,10 +533,14 @@
         padding-left:1px;
     }
     .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-      width:${202 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
+      width:${200 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
     }
   }
 
+  
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.time {
+    width:50px;
+  }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.speed {
     width:65px;
     line-height:30px;
