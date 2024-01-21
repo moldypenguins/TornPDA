@@ -447,6 +447,11 @@
     float:right;
     margin-left:5px;
   }
+  @media screen and (max-width: 784px) {
+    #exportResults {
+      display:none;
+    }
+  }
   #racingEnhancementsTitle {
     text-decoration:none;
     cursor:pointer;
