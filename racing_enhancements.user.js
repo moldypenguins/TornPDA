@@ -20,7 +20,7 @@
 (function () {
   "use strict";
 
-  const API_KEY = "GCg1Rwl5VVFn2Cam";
+  const API_KEY = "1VFnl2CaRwgm5VGC";
 
   const speedPeriod = 1000;
 
@@ -454,6 +454,11 @@
     float:right;
     margin-left:5px;
   }
+  @media screen and (max-width: 784px) {
+    #exportResults {
+      display:none;
+    }
+  }
   #racingEnhancementsTitle {
     text-decoration:none;
     cursor:pointer;
@@ -537,6 +542,7 @@
     }
   }
 
+  
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.time {
     width:50px!important;
     line-height:30px;
