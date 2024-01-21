@@ -537,9 +537,9 @@
     }
   }
 
-  
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.time {
-    width:50px;
+    width:50px!important;
+    line-height:30px;
   }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.speed {
     width:65px;
@@ -548,7 +548,7 @@
     white-space:nowrap;
   }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.skill {
-    width:50px;
+    width:45px;
     line-height:30px;
     padding:0 5px;
     white-space:nowrap;
