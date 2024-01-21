@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.5.0
+// @version      0.5.1
 // @description  Show racing skill, current speed, race results, precise skill.
 // @author       moldypenguins [2881784] - Adapted from Lugburz
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -20,13 +20,13 @@
   const speedPeriod = 1000;
 
   // Whether to show racing skill.
-  const ADD_LINKS = GM.getValue("addLinksChk") != 0;
+  const ADD_LINKS = GM_getValue("addLinksChk") != 0;
   // Whether to show racing skill.
-  const SHOW_SKILL = GM.getValue("showSkillChk") != 0;
+  const SHOW_SKILL = GM_getValue("showSkillChk") != 0;
   // Whether to show current speed.
-  const SHOW_SPEED = GM.getValue("showSpeedChk") != 0;
+  const SHOW_SPEED = GM_getValue("showSpeedChk") != 0;
   // Whether to show race result as soon as a race starts.
-  const SHOW_RESULTS = GM.getValue("showResultsChk") != 0;
+  const SHOW_RESULTS = GM_getValue("showResultsChk") != 0;
 
   let torn_api = async (args) => {
     let a = args.split(".");
@@ -67,10 +67,10 @@
     $("#racingEnhancementsTitle").on("click", (event) => $("#racingEnhancementsContainer").toggle());
 
     $("#racingEnhancementsContainer").find("input[type=checkbox]").each((index, checkbox) => {
-      $(checkbox).prop("checked", GM.getValue($(checkbox).attr("id")) != 0);
+      $(checkbox).prop("checked", GM_getValue($(checkbox).attr("id")) != 0);
     });
     $("#racingEnhancementsContainer input").on("click", (event) => {
-      GM.setValue(event.target.id, event.target.checked ? 1 : 0);
+      GM_setValue(event.target.id, event.target.checked ? 1 : 0);
     });
 
     // save some space
@@ -184,7 +184,7 @@
   // Skill
   async function updateSkill(level) {
     let curr = Number(level).toFixed(6);
-    let prev = GM.getValue("racingSkill");
+    let prev = GM_getValue("racingSkill");
 
     if (typeof(prev) !== "undefined" && curr > prev) {
       let lastInc = Number(curr - prev).toFixed(6);
@@ -192,7 +192,7 @@
         $("div.skill").after(`<div class="lastgain">${lastInc}</div>`);
       }
     }
-    GM.setValue("racingSkill", curr);
+    GM_setValue("racingSkill", curr);
 
     if ($("#racingMainContainer").find("div.skill").length > 0) {
       $("#racingMainContainer").find("div.skill").text(curr);
@@ -218,7 +218,7 @@
       $("#raceLink").on("click", function (event) {
         event.preventDefault();
         event.stopPropagation();
-        GM.setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${data.raceID}`);
+        GM_setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${data.raceID}`);
 
         let tooltip = $(`#${$("#raceLink").attr("aria-describedby")} .ui-tooltip-content`);
         if(tooltip.length > 0) {
@@ -328,7 +328,7 @@
       for (let i = 0; i < results.length; i++) {
         const timeStr = formatTime(results[i][3] * 1000);
         const bestLap = formatTime(results[i][4] * 1000);
-        csv += [i+1, results[i][0], results[i][1], results[i][2], timeStr, bestLap, (results[i][0] === driverId ? GM.getValue('racingSkill') : '')].join(',') + '\n';
+        csv += [i+1, results[i][0], results[i][1], results[i][2], timeStr, bestLap, (results[i][0] === driverId ? GM_getValue('racingSkill') : '')].join(',') + '\n';
       }
 
       const timeE = new Date();
@@ -436,7 +436,7 @@
 
 
   // Styles
-  GM.addStyle(`
+  GM_addStyle(`
   #racingEnhancements {
     padding:5px 10px;
     margin-bottom:2px;
@@ -500,7 +500,7 @@
       font-size:0.75rem;
     }
     .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-      width:${342 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
+      width:${335 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
     }
   }
   @media screen and (max-width: 784px) {
@@ -526,10 +526,14 @@
         padding-left:1px;
     }
     .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-      width:${202 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
+      width:${200 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
     }
   }
 
+  
+  .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.time {
+    width:50px;
+  }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.speed {
     width:65px;
     line-height:30px;
