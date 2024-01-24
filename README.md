@@ -3,7 +3,7 @@
 
 <h2>Screenshots</h2>
 <picture>
-  <img alt="parts" src=".github/images/parts.png">
+  <img style="max-width:49%;" alt="parts" src=".github/images/parts.png" />
 </picture>
 
 
