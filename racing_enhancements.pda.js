@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.6.0
+// @version      0.6.1
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -442,7 +442,6 @@
   });
 
 
-
   let waitForAdditionalContainer = setInterval(runPage, 0);
   function runPage() {
     if($("#racingAdditionalContainer").length < 1) { return; }
@@ -465,13 +464,15 @@
       let categoryName = [...category.classList].filter(c => c != "unlock")[0];
 
       categories[categoryId] = { bought: {}, unbought: {} }
-      $(`li.${categoryName}`).each((index, partGroup) => {
-        let groupName = partGroup.getAttribute('data-part');
-        let pGroup = [...partGroup.classList].filter(c => ![categoryName, "tt-hide", "m-hide", "unlock"].includes(c));
-        if(pGroup.length > 0 && pGroup.includes("bought")) {
-          categories[categoryId].bought[pGroup.filter(g => g != "bought")[0]] = groupName;
-        } else if(pGroup.length > 0) {
-          categories[categoryId].unbought[pGroup[0]] = groupName;
+      $(`.pm-items li.${categoryName}[data-part]:not([data-part=""])`).each((index, part) => {
+        let groupName = part.getAttribute('data-part');
+        let pGroup = [...part.classList].filter(c => !["tt-modified", "unlock"].includes(c));
+        if(pGroup.length > 0) {
+          if(pGroup.includes("bought")) {
+            categories[categoryId].bought[groupName] = pGroup.filter(g => g != "bought")[0];
+          } else {
+            categories[categoryId].unbought[groupName] = pGroup[0];
+          }
         }
       });
 
@@ -485,11 +486,19 @@
         if($('#groups-available').length > 0) {
           $('#groups-available').remove();
         }
-        $('.info-msg .msg').append(`<div id="groups-available"><strong>Parts Available:</strong> ${Object.values(categories[cat[1]].unbought).sort().join(", ")}</div>`);
+        $('.info-msg .msg').append(`<div id="groups-available"><strong>Parts Available:</strong> ${Object.keys(categories[cat[1]].unbought).sort().join(", ")}</div>`);
       }
     });
-    
-    
+     
+  }
+
+
+  // Check for null tab
+  let params = new Proxy(new URLSearchParams(window.location.search), {
+    get: (searchParams, prop) => searchParams.get(prop),
+  });
+  if(typeof(params.tab) !== "undefined" && params.tab === null) {
+    $('a[tab-value="race"]').trigger("click");
   }
 
 
@@ -572,7 +581,14 @@
     line-height:0.8rem;
   }
 
+  .d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap>li .progress-bar {
+    width:69px;
+  }
+
   @media screen and (min-width: 785px) {
+    .d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap>li .name {
+      width:103px;
+    }
     .d .racing-main-wrap .header-wrap .banner .skill {
       left:10px!important;
     }
@@ -587,6 +603,9 @@
     }
   }
   @media screen and (max-width: 784px) {
+    .d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap>li .name {
+      width:101px;
+    }
     .d .racing-main-wrap .header-wrap .banner .skill {
       left:130px!important;
     }
