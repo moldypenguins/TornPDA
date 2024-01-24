@@ -14,12 +14,15 @@
     <img alt="racing" src=".github/images/racing.png" width="33%" valign="top" />
   </picture>
   <picture>
-    <img alt="log" src=".github/images/log.png" width="33%" valign="top" />
+    <img alt="finished" src=".github/images/finished.png" width="33%" valign="top" />
   </picture>
 </div>
 <div>
   <picture>
-    <img alt="parts" src=".github/images/parts.png" width="50%" valign="top" />
+    <img alt="parts" src=".github/images/parts.png" width="33%" valign="top" />
+  </picture>
+  <picture>
+    <img alt="desktop" src=".github/images/desktop.png" width="66%" valign="top" />
   </picture>
 </div>
 
