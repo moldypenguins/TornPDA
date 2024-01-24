@@ -11,6 +11,9 @@
     <img alt="options" src=".github/images/options.png" width="30%" valign="top" />
   </picture>
   <picture>
+    <img alt="racing" src=".github/images/racing.png" width="30%" valign="top" />
+  </picture>
+  <picture>
     <img alt="parts" src=".github/images/parts.png" width="30%" valign="top" />
   </picture>
 </div>
