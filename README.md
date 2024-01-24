@@ -6,7 +6,7 @@
 
 
 <h3>Screenshots</h3>
-<div>
+<div valign="top">
   <picture>
     <img alt="options" src=".github/images/options.png" width="30%" />
   </picture>
