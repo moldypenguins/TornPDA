@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.5.1
-// @description  Show racing skill, current speed, race results, precise skill.
-// @author       moldypenguins [2881784] - Adapted from Lugburz
+// @version      0.6.0
+// @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
+// @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
 // @updateURL    https://github.com/moldypenguins/TornPDA/raw/main/racing_enhancements.user.js
@@ -20,13 +20,13 @@
   const speedPeriod = 1000;
 
   // Whether to show racing skill.
-  const ADD_LINKS = GM_getValue("addLinksChk") != 0;
+  const ADD_LINKS = GM.getValue("addLinksChk") != 0;
   // Whether to show racing skill.
-  const SHOW_SKILL = GM_getValue("showSkillChk") != 0;
+  const SHOW_SKILL = GM.getValue("showSkillChk") != 0;
   // Whether to show current speed.
-  const SHOW_SPEED = GM_getValue("showSpeedChk") != 0;
+  const SHOW_SPEED = GM.getValue("showSpeedChk") != 0;
   // Whether to show race result as soon as a race starts.
-  const SHOW_RESULTS = GM_getValue("showResultsChk") != 0;
+  const SHOW_RESULTS = GM.getValue("showResultsChk") != 0;
 
   let torn_api = async (args) => {
     let a = args.split(".");
@@ -67,10 +67,10 @@
     $("#racingEnhancementsTitle").on("click", (event) => $("#racingEnhancementsContainer").toggle());
 
     $("#racingEnhancementsContainer").find("input[type=checkbox]").each((index, checkbox) => {
-      $(checkbox).prop("checked", GM_getValue($(checkbox).attr("id")) != 0);
+      $(checkbox).prop("checked", GM.getValue($(checkbox).attr("id")) != 0);
     });
     $("#racingEnhancementsContainer input").on("click", (event) => {
-      GM_setValue(event.target.id, event.target.checked ? 1 : 0);
+      GM.setValue(event.target.id, event.target.checked ? 1 : 0);
     });
 
     // save some space
@@ -117,7 +117,10 @@
   let racingSkillCacheByDriverId = new Map();
   let speedIntervalByDriverId = new Map();
   // Watch for changes
-  let leaderboardObserver = new MutationObserver(async (mutations) => {
+  let leaderboardObserver = new MutationObserver(async (mutations) => { await updateLeaderboard(); });
+
+  //Update leaderboard
+  async function updateLeaderboard() {
     let leaderboard = $(".drivers-list #leaderBoard");
     if (leaderboard.length < 1) { return; }
 
@@ -158,7 +161,9 @@
         $(driver).children(".name").after(`<li class="skill">RS: ${racingSkill}</li>`);
       }
     });
-  });
+  }
+
+
 
   // Speed
   let lastTimeByDriverId = new Map();
@@ -183,16 +188,16 @@
 
   // Skill
   async function updateSkill(level) {
-    let curr = Number(level).toFixed(6);
-    let prev = GM_getValue("racingSkill");
+    let curr = Number(level).toFixed(5);
+    let prev = GM.getValue("racingSkill");
 
     if (typeof(prev) !== "undefined" && curr > prev) {
-      let lastInc = Number(curr - prev).toFixed(6);
+      let lastInc = Number(curr - prev).toFixed(5);
       if (lastInc) {
-        $("div.skill").after(`<div class="lastgain">${lastInc}</div>`);
+        $("div.skill").after(`<div class="lastgain">+${lastInc}</div>`);
       }
     }
-    GM_setValue("racingSkill", curr);
+    GM.setValue("racingSkill", curr);
 
     if ($("#racingMainContainer").find("div.skill").length > 0) {
       $("#racingMainContainer").find("div.skill").text(curr);
@@ -218,7 +223,7 @@
       $("#raceLink").on("click", function (event) {
         event.preventDefault();
         event.stopPropagation();
-        GM_setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${data.raceID}`);
+        GM.setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${data.raceID}`);
 
         let tooltip = $(`#${$("#raceLink").attr("aria-describedby")} .ui-tooltip-content`);
         if(tooltip.length > 0) {
@@ -328,7 +333,7 @@
       for (let i = 0; i < results.length; i++) {
         const timeStr = formatTime(results[i][3] * 1000);
         const bestLap = formatTime(results[i][4] * 1000);
-        csv += [i+1, results[i][0], results[i][1], results[i][2], timeStr, bestLap, (results[i][0] === driverId ? GM_getValue('racingSkill') : '')].join(',') + '\n';
+        csv += [i+1, results[i][0], results[i][1], results[i][2], timeStr, bestLap, (results[i][0] === driverId ? GM.getValue('racingSkill') : '')].join(',') + '\n';
       }
 
       const timeE = new Date();
@@ -376,9 +381,15 @@
   }
 
   // Main run
+  let waitForElementsAndRun = 0;
   async function run(xhr) {
     if ($("#racingupdatesnew").length > 0 && $(".drivers-list").length > 0) {
       clearInterval(waitForElementsAndRun);
+      waitForElementsAndRun = 0;
+
+      //find active tab
+      let tab = $('.categories li.active').children('.btn-action-tab').attr('tab-value');
+
 
       if ($("#racingEnhancementsTitle").length < 1) {
         await addEnhancementsDiv();
@@ -395,6 +406,7 @@
           showResults();
         }
         if (SHOW_SPEED || SHOW_SKILL) {
+          await updateLeaderboard();
           leaderboardObserver.observe(document.querySelector(".drivers-list #leaderBoard"), { childList: true });
         }
         if (ADD_LINKS) {
@@ -406,8 +418,12 @@
         await sleep(500);
         $("#updating").hide();
       }
+      
     }
   }
+
+
+  
 
   // On ajax complete event
   $(document).ajaxComplete(async (event, xhr, settings) => {
@@ -415,8 +431,9 @@
       try {
         let url = new URL(settings.url);
         if (url.pathname.substring(url.pathname.lastIndexOf("/") + 1, url.pathname.indexOf(".php")) !== "loader") { return; }
-
         waitForElementsAndRun = setInterval(run, 0, xhr);
+        
+
       } catch (error) {
         // invalid url
         
@@ -424,19 +441,61 @@
     }
   });
 
-  // Check for null tab
-  let params = new Proxy(new URLSearchParams(window.location.search), {
-    get: (searchParams, prop) => searchParams.get(prop),
-  });
-  if(typeof(params.tab) !== "undefined" && params.tab === null) {
-    $('a[tab-value="race"]').trigger("click");
+
+
+  let waitForAdditionalContainer = setInterval(runPage, 0);
+  function runPage() {
+    if($("#racingAdditionalContainer").length < 1) { return; }
+    clearInterval(waitForAdditionalContainer);
+    waitForAdditionalContainer = 0;
+
+    let racingAdditionalContainerObserver = new MutationObserver(async (mutations) => { 
+      await pageLoaded(); 
+    });
+    racingAdditionalContainerObserver.observe(document.querySelector("#racingAdditionalContainer"), { childList: true });
   }
-  
-  let waitForElementsAndRun = setInterval(run, 0);
+
+  async function pageLoaded() {
+    //wait for dom to load
+    if($('.pm-categories').length < 1) { return; }
+
+    let categories = {};
+    $('.pm-categories li:not(.empty):not(.clear)').each((index, category) => {
+      let categoryId = category.getAttribute('data-category');
+      let categoryName = [...category.classList].filter(c => c != "unlock")[0];
+
+      categories[categoryId] = { bought: {}, unbought: {} }
+      $(`li.${categoryName}`).each((index, partGroup) => {
+        let groupName = partGroup.getAttribute('data-part');
+        let pGroup = [...partGroup.classList].filter(c => ![categoryName, "tt-hide", "m-hide", "unlock"].includes(c));
+        if(pGroup.length > 0 && pGroup.includes("bought")) {
+          categories[categoryId].bought[pGroup.filter(g => g != "bought")[0]] = groupName;
+        } else if(pGroup.length > 0) {
+          categories[categoryId].unbought[pGroup[0]] = groupName;
+        }
+      });
+
+      let divParts = `<div class="parts">${Object.keys(categories[categoryId].bought).length} / ${Object.keys(categories[categoryId].bought).length + Object.keys(categories[categoryId].unbought).length}</div>`;
+      $(category).find('a.link div.icons div.icon').after(divParts);
+    });
+
+    $('.pm-categories li a.link').on("click", (event) => {
+      let cat = event.currentTarget.getAttribute("href").match(/#cat=(\d+)/);
+      if(cat.length > 1) {
+        if($('#groups-available').length > 0) {
+          $('#groups-available').remove();
+        }
+        $('.info-msg .msg').append(`<div id="groups-available"><strong>Parts Available:</strong> ${Object.values(categories[cat[1]].unbought).sort().join(", ")}</div>`);
+      }
+    });
+    
+    
+  }
+
 
 
   // Styles
-  GM_addStyle(`
+  GM.addStyle(`
   #racingEnhancements {
     padding:5px 10px;
     margin-bottom:2px;
@@ -489,40 +548,53 @@
     text-align:center; 
     display:block;
   }
+
+  #groups-available {
+    margin-top: 10px;
+    font-size: 0.6rem;
+    line-height: 0.6rem;
+  }
+
+  .d .racing-main-wrap .pm-categories-wrap .pm-categories .parts {
+    position: absolute;
+    bottom: 10px;
+    left: 15px;
+    color: #00ff00;
+  }
+
+
+  .d .racing-main-wrap .header-wrap .banner .skill-desc {
+    left:10px!important;
+  }
+  .d .racing-main-wrap .header-wrap .banner .skill,
+  .d .racing-main-wrap .header-wrap .banner .lastgain {
+    font-size:0.8rem!important;
+    line-height:0.8rem;
+  }
+
   @media screen and (min-width: 785px) {
-    .d .racing-main-wrap .header-wrap .banner .skill-desc {
-      left:6px!important;
-    }
     .d .racing-main-wrap .header-wrap .banner .skill {
-      left:6px!important;
-      font-size:0.75rem!important;
+      left:10px!important;
     }
     .d .racing-main-wrap .header-wrap .banner .lastgain {
       top:82px;
       left:87px;
       color:#00ff00;
       position:absolute;
-      font-size:0.75rem;
     }
     .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-      width:${335 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
+      width:${345 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
     }
   }
   @media screen and (max-width: 784px) {
-    .d .racing-main-wrap .header-wrap .banner .skill-desc {
-      left:10px!important;
-    }
     .d .racing-main-wrap .header-wrap .banner .skill {
-      left:125px!important;
-      font-size:0.75rem!important;
-      line-height:0.85rem;
+      left:130px!important;
     }
     .d .racing-main-wrap .header-wrap .banner .lastgain {
       top:10px;
-      left:200px;
+      left:195px;
       color:#00ff00;
       position:absolute;
-      font-size:0.75rem;
     }
     .d #racingdetails .pd-name {
       padding-right:1px;
@@ -531,7 +603,7 @@
         padding-left:1px;
     }
     .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-      width:${200 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
+      width:${210 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
     }
   }
 
@@ -541,13 +613,13 @@
     line-height:30px;
   }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.speed {
-    width:65px;
+    width:60px;
     line-height:30px;
     padding:0 5px;
     white-space:nowrap;
   }
   .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.skill {
-    width:45px;
+    width:40px;
     line-height:30px;
     padding:0 5px;
     white-space:nowrap;
