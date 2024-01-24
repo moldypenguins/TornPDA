@@ -6,12 +6,12 @@
 
 
 <h3>Screenshots</h3>
-<div valign="top">
+<div>
   <picture>
-    <img alt="options" src=".github/images/options.png" width="30%" />
+    <img alt="options" src=".github/images/options.png" width="30%" valign="top" />
   </picture>
   <picture>
-    <img alt="parts" src=".github/images/parts.png" width="30%" />
+    <img alt="parts" src=".github/images/parts.png" width="30%" valign="top" />
   </picture>
 </div>
 
