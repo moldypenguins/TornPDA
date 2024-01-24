@@ -8,13 +8,18 @@
 <h3>Screenshots</h3>
 <div>
   <picture>
-    <img alt="options" src=".github/images/options.png" width="30%" valign="top" />
+    <img alt="options" src=".github/images/options.png" width="33%" valign="top" />
   </picture>
   <picture>
-    <img alt="racing" src=".github/images/racing.png" width="30%" valign="top" />
+    <img alt="racing" src=".github/images/racing.png" width="33%" valign="top" />
   </picture>
   <picture>
-    <img alt="parts" src=".github/images/parts.png" width="30%" valign="top" />
+    <img alt="log" src=".github/images/log.png" width="33%" valign="top" />
+  </picture>
+</div>
+<div>
+  <picture>
+    <img alt="parts" src=".github/images/parts.png" width="50%" valign="top" />
   </picture>
 </div>
 
