@@ -2,7 +2,7 @@
 
 
 <h2>Screenshots</h2>
-<picture style="display:inline-block;width:45%;margin:0 auto;">
+<picture>
   <img alt="parts" src=".github/images/parts.png" />
 </picture>
 
