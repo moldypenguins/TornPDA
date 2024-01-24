@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing Enhancements
 // @namespace    TornPDA.racing_enhancements
-// @version      0.6.1
+// @version      0.6.2
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -20,7 +20,7 @@
 (function () {
   "use strict";
 
-  const API_KEY = "wlmVGR1VFCg2Ca5n";
+  const API_KEY = "VFg2CRGCawlm15Vn";
 
   const speedPeriod = 1000;
 
@@ -466,22 +466,26 @@
     if($('.pm-categories').length < 1) { return; }
 
     let categories = {};
+    let temp = [];
     $('.pm-categories li:not(.empty):not(.clear)').each((index, category) => {
       let categoryId = category.getAttribute('data-category');
       let categoryName = [...category.classList].filter(c => c != "unlock")[0];
 
       categories[categoryId] = { bought: {}, unbought: {} }
+      let temp_category = [];
       $(`.pm-items li.${categoryName}[data-part]:not([data-part=""])`).each((index, part) => {
         let groupName = part.getAttribute('data-part');
         let pGroup = [...part.classList].filter(c => !["tt-modified", "unlock"].includes(c));
         if(pGroup.length > 0) {
           if(pGroup.includes("bought")) {
-            categories[categoryId].bought[groupName] = pGroup.filter(g => g != "bought")[0];
+            categories[categoryId].bought[groupName] = pGroup.splice(pGroup.findIndex(c => ![categoryName, "bought"].includes(c)), 1);
           } else {
-            categories[categoryId].unbought[groupName] = pGroup[0];
+            categories[categoryId].unbought[groupName] = pGroup.splice(pGroup.findIndex(c => ![categoryName].includes(c)), 1);
           }
+          temp_category.push(groupName);
         }
       });
+      temp.push([...new Set(temp_category)]);
 
       let divParts = `<div class="parts">${Object.keys(categories[categoryId].bought).length} / ${Object.keys(categories[categoryId].bought).length + Object.keys(categories[categoryId].unbought).length}</div>`;
       $(category).find('a.link div.icons div.icon').after(divParts);
@@ -493,7 +497,7 @@
         if($('#groups-available').length > 0) {
           $('#groups-available').remove();
         }
-        $('.info-msg .msg').append(`<div id="groups-available"><strong>Parts Available:</strong> ${Object.keys(categories[cat[1]].unbought).sort().join(", ")}</div>`);
+        $('.info-msg .msg').append(`<div id="groups-available"><strong>Parts Available:</strong> ${Object.keys(categories[cat[1]].unbought).sort().map((c) => { return `<span data-part="${c}">${c}</span>`; }).join(", ")}</div>`);
       }
     });
      
@@ -512,149 +516,169 @@
 
   // Styles
   GM.addStyle(`
-  #racingEnhancements {
-    padding:5px 10px;
-    margin-bottom:2px;
-    background:repeating-linear-gradient(90deg,#242424,#242424 2px,#2e2e2e 0,#2e2e2e 4px);
-  }
-  #exportResults, #raceLink, #raceLinkPlaceholder {
-    display:inline-block;
-    float:right;
-    margin-left:5px;
-  }
-  @media screen and (max-width: 784px) {
-    #exportResults {
-      display:none;
+    #racingEnhancements {
+      padding:5px 10px;
+      margin-bottom:2px;
+      background:repeating-linear-gradient(90deg,#242424,#242424 2px,#2e2e2e 0,#2e2e2e 4px);
     }
-  }
-  #racingEnhancementsTitle {
-    text-decoration:none;
-    cursor:pointer;
-    display:block;
-  }
-  #racingEnhancementsContainer {
-    list-style-type:none;
-    margin:0;
-  }
-  #racingEnhancementsContainer li {
-    margin:5px 0;
-    padding:0;
-    font-size: 10px;
-    line-height: 10px;
-  }
-  #racingEnhancementsContainer li input[type='checkbox'] {
-    height:10px;
-    vertical-align:middle;
-    margin:0 5px;
-  }
-
-  #updating { 
-    background-image:url(/images/v2/main/ajax-loader.gif);
-    background-image:var(--default-preloader-url);
-    background-repeat:no-repeat;
-    width:80px;
-    height:10px;
-    display:inline-block;
-    float:right;
-    margin-right:10px;
-  }
-  #error { 
-    color:#FF6666; 
-    font-size:12px; 
-    text-align:center; 
-    display:block;
-  }
-
-  #groups-available {
-    margin-top: 10px;
-    font-size: 0.6rem;
-    line-height: 0.6rem;
-  }
-
-  .d .racing-main-wrap .pm-categories-wrap .pm-categories .parts {
-    position: absolute;
-    bottom: 10px;
-    left: 15px;
-    color: #00ff00;
-  }
-
-
-  .d .racing-main-wrap .header-wrap .banner .skill-desc {
-    left:10px!important;
-  }
-  .d .racing-main-wrap .header-wrap .banner .skill,
-  .d .racing-main-wrap .header-wrap .banner .lastgain {
-    font-size:0.8rem!important;
-    line-height:0.8rem;
-  }
-
-  .d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap>li .progress-bar {
-    width:69px;
-  }
-
-  @media screen and (min-width: 785px) {
-    .d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap>li .name {
-      width:103px;
+    #exportResults, #raceLink, #raceLinkPlaceholder {
+      display:inline-block;
+      float:right;
+      margin-left:5px;
     }
-    .d .racing-main-wrap .header-wrap .banner .skill {
+    @media screen and (max-width: 784px) {
+      #exportResults {
+        display:none;
+      }
+    }
+    #racingEnhancementsTitle {
+      text-decoration:none;
+      cursor:pointer;
+      display:block;
+    }
+    #racingEnhancementsContainer {
+      list-style-type:none;
+      margin:0;
+    }
+    #racingEnhancementsContainer li {
+      margin:5px 0;
+      padding:0;
+      font-size: 10px;
+      line-height: 10px;
+    }
+    #racingEnhancementsContainer li input[type='checkbox'] {
+      height:10px;
+      vertical-align:middle;
+      margin:0 5px;
+    }
+
+    #updating { 
+      background-image:url(/images/v2/main/ajax-loader.gif);
+      background-image:var(--default-preloader-url);
+      background-repeat:no-repeat;
+      width:80px;
+      height:10px;
+      display:inline-block;
+      float:right;
+      margin-right:10px;
+    }
+    #error { 
+      color:#FF6666; 
+      font-size:12px; 
+      text-align:center; 
+      display:block;
+    }
+
+    #groups-available {
+      margin-top: 10px;
+      font-size: 0.6rem;
+      line-height: 0.6rem;
+    }
+
+
+    .d .racing-main-wrap .pm-categories-wrap .pm-categories .parts {
+      position: absolute;
+      bottom: 10px;
+      left: 15px;
+      color: #00ff00;
+    }
+
+
+    .d .racing-main-wrap .header-wrap .banner .skill-desc {
       left:10px!important;
     }
+    .d .racing-main-wrap .header-wrap .banner .skill,
     .d .racing-main-wrap .header-wrap .banner .lastgain {
-      top:82px;
-      left:87px;
-      color:#00ff00;
-      position:absolute;
+      font-size:0.8rem!important;
+      line-height:0.8rem;
     }
-    .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-      width:${345 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
-    }
-  }
-  @media screen and (max-width: 784px) {
-    .d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap>li .name {
-      width:101px;
-    }
-    .d .racing-main-wrap .header-wrap .banner .skill {
-      left:130px!important;
-    }
-    .d .racing-main-wrap .header-wrap .banner .lastgain {
-      top:10px;
-      left:195px;
-      color:#00ff00;
-      position:absolute;
-    }
-    .d #racingdetails .pd-name {
-      padding-right:1px;
-    }
-    .d #racingdetails .pd-val:not(.pd-pilotname) {
-        padding-left:1px;
-    }
-    .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
-      width:${210 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
-    }
-  }
 
-  
-  .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.time {
-    width:50px!important;
-    line-height:30px;
-  }
-  .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.speed {
-    width:60px;
-    line-height:30px;
-    padding:0 5px;
-    white-space:nowrap;
-  }
-  .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.skill {
-    width:40px;
-    line-height:30px;
-    padding:0 5px;
-    white-space:nowrap;
-  }
-  .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li:hover .driver-item>li.speed, 
-  .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li.selected .driver-item>li.speed,
-  .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li:hover .driver-item>li.skill, 
-  .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li.selected .driver-item>li.skill {
-    background:url('/images/v2/racing/selected_driver.png') 0 0 repeat-x;
-  }
-`);
+    .d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap>li .progress-bar {
+      width:69px;
+    }
+
+    @media screen and (min-width: 785px) {
+      .d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap>li .name {
+        width:103px;
+      }
+      .d .racing-main-wrap .header-wrap .banner .skill {
+        left:10px!important;
+      }
+      .d .racing-main-wrap .header-wrap .banner .lastgain {
+        top:82px;
+        left:87px;
+        color:#00ff00;
+        position:absolute;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
+        width:${345 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
+      }
+    }
+    @media screen and (max-width: 784px) {
+      .r .racing-main-wrap .bar-tpl-wrap {
+          width:unset;
+          padding:unset;
+          margin:0;
+      }
+      .d .racing-main-wrap .pm-items-wrap .pm-items .properties-wrap>li .name {
+        width:101px;
+      }
+      .d .racing-main-wrap .header-wrap .banner .skill {
+        left:130px!important;
+      }
+      .d .racing-main-wrap .header-wrap .banner .lastgain {
+        top:10px;
+        left:195px;
+        color:#00ff00;
+        position:absolute;
+      }
+      .d #racingdetails .pd-name {
+        padding-right:1px;
+      }
+      .d #racingdetails .pd-val:not(.pd-pilotname) {
+          padding-left:1px;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name {
+        width:${210 - (SHOW_SPEED ? 65 : 0) - (SHOW_SKILL ? 50 : 0)}px!important;
+      }
+    }
+
+    
+    .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.time {
+      width:50px!important;
+      line-height:30px;
+    }
+    .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.speed {
+      width:60px;
+      line-height:30px;
+      padding:0 5px;
+      white-space:nowrap;
+    }
+    .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.skill {
+      width:40px;
+      line-height:30px;
+      padding:0 5px;
+      white-space:nowrap;
+    }
+    .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li:hover .driver-item>li.speed, 
+    .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li.selected .driver-item>li.speed,
+    .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li:hover .driver-item>li.skill, 
+    .d .racing-main-wrap .car-selected-wrap .drivers-list .overview>li.selected .driver-item>li.skill {
+      background:url('/images/v2/racing/selected_driver.png') 0 0 repeat-x;
+    }
+  `);
+
+  let colours = ["#74e800", "#ff2626", "#ffc926", "#00d9d9", "#0080ff", "#9933ff", "#ff26ff", "#4e9b00", "#0000b7"];
+  let categories = [["Spoiler","Engine Cooling","Brake Cooling","Front Diffuser","Rear Diffuser"],["Pads","Discs","Fluid","Brake Accessory","Brake Control","Callipers"],["Gasket","Engine Porting","Engine Cleaning","Fuel Pump","Camshaft","Turbo","Pistons","Computer","Intercooler"],["Exhaust","Air Filter","Manifold"],["Fuel"],["Overalls","Helmet","Fire Extinguisher","Safety Accessory","Roll cage","Cut-off","Seat"],["Springs","Front Bushes","Rear Bushes","Upper Front Brace","Lower Front Brace ","Rear Brace","Front Tie Rods","Rear Control Arms"],["Shifting","Differential","Clutch","Flywheel","Gearbox"],["Strip out","Steering wheel","Interior","Windows","Roof","Boot","Hood"],["Tyres","Wheels"]];
+  let partsCSS = "";
+  categories.forEach((groups) => {
+    groups.forEach((group, index) => {
+      partsCSS += `
+      #groups-available span[data-part="${group}"] { color: ${colours[index]}!important; }
+      .d .racing-main-wrap .pm-items-wrap .pm-items li[data-part="${group}"]:not(.bought) .status { background-color: ${colours[index]}!important; }
+      `;
+    });
+  });
+  GM.addStyle(partsCSS);
+
 })();
