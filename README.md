@@ -2,8 +2,8 @@
 
 
 <h2>Screenshots</h2>
-<picture>
-  <img style="max-width:49%;" alt="parts" src=".github/images/parts.png" />
+<picture style="display:inline-block;width:45%;margin:0 auto;">
+  <img alt="parts" src=".github/images/parts.png" />
 </picture>
 
 
