@@ -17,7 +17,7 @@
     <img alt="finished" src=".github/images/finished.png" width="32%" valign="top" />
   </picture>
 </div>  
-
+<br />
 <div>
   <picture>
     <img alt="parts" src=".github/images/parts.png" width="32%" valign="top" />
