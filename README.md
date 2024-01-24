@@ -3,7 +3,7 @@
 
 <h2>Screenshots</h2>
 <picture>
-  <img alt="parts" src=".github/images/parts.png" />
+  <img alt="parts" src=".github/images/parts.png" width="50%" />
 </picture>
 
 
