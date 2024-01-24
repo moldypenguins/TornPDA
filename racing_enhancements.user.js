@@ -466,13 +466,11 @@
     if($('.pm-categories').length < 1) { return; }
 
     let categories = {};
-    let temp = [];
     $('.pm-categories li:not(.empty):not(.clear)').each((index, category) => {
       let categoryId = category.getAttribute('data-category');
       let categoryName = [...category.classList].filter(c => c != "unlock")[0];
 
       categories[categoryId] = { bought: {}, unbought: {} }
-      let temp_category = [];
       $(`.pm-items li.${categoryName}[data-part]:not([data-part=""])`).each((index, part) => {
         let groupName = part.getAttribute('data-part');
         let pGroup = [...part.classList].filter(c => !["tt-modified", "unlock"].includes(c));
@@ -482,10 +480,8 @@
           } else {
             categories[categoryId].unbought[groupName] = pGroup.splice(pGroup.findIndex(c => ![categoryName].includes(c)), 1);
           }
-          temp_category.push(groupName);
         }
       });
-      temp.push([...new Set(temp_category)]);
 
       let divParts = `<div class="parts">${Object.keys(categories[categoryId].bought).length} / ${Object.keys(categories[categoryId].bought).length + Object.keys(categories[categoryId].unbought).length}</div>`;
       $(category).find('a.link div.icons div.icon').after(divParts);
