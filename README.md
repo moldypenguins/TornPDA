@@ -8,21 +8,21 @@
 <h3>Screenshots</h3>
 <div>
   <picture>
-    <img alt="options" src=".github/images/options.png" width="33%" valign="top" />
+    <img alt="options" src=".github/images/options.png" width="32%" valign="top" />
   </picture>
   <picture>
-    <img alt="racing" src=".github/images/racing.png" width="33%" valign="top" />
+    <img alt="racing" src=".github/images/racing.png" width="32%" valign="top" />
   </picture>
   <picture>
-    <img alt="finished" src=".github/images/finished.png" width="33%" valign="top" />
+    <img alt="finished" src=".github/images/finished.png" width="32%" valign="top" />
   </picture>
 </div>
 <div>
   <picture>
-    <img alt="parts" src=".github/images/parts.png" width="33%" valign="top" />
+    <img alt="parts" src=".github/images/parts.png" width="32%" valign="top" />
   </picture>
   <picture>
-    <img alt="desktop" src=".github/images/desktop.png" width="66%" valign="top" />
+    <img alt="desktop" src=".github/images/desktop.png" width="64%" valign="top" />
   </picture>
 </div>
 
