@@ -1,6 +1,6 @@
 <h1>TornPDA User Scripts</h1>
 
-<h2>Racing+ v0.1</h2>
+<h2>Execute v0.1</h2>
 <p>Show level when execute will be effective.</p>
 <a href="https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/Execute.user.js">Install Execute User Script</a>
 <h3>Screenshots</h3>
