@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Execute
 // @namespace    TornPDA.Execute
-// @version      0.1.0
+// @version      0.1
 // @description  Shows execute limit in health bar.
 // @author       moldypenguins [2881784]
 // @match        https://www.torn.com/loader.php?sid=attack*
@@ -16,10 +16,10 @@
   'use strict';
 
   let executeLevel = 15;
-  
+
   let healthBar = $('div [aria-label^="Progress:"]');
-  if(healthBar) {
-    let targetHealth = parseFloat(healthBar.attr("aria-label").replace(/Progress: (\d{1,3}\.?\d{0,2})%/, "$1"));
+  if (healthBar) {
+    let targetHealth = parseFloat(healthBar.attr('aria-label').replace(/Progress: (\d{1,3}\.?\d{0,2})%/, '$1'));
     if (targetHealth <= executeLevel) {
       GM_addStyle(`
         .progress___iG5el {
