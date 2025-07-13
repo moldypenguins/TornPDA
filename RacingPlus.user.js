@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.15
+// @version      0.16
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -148,6 +148,7 @@
 
   const initializeRacingPlus = async () => {
     console.log('Racing+: Initializing...');
+    let pagehr = await defer(document.querySelector('hr.page-head-delimiter'));
     // Add the Racing+ window to the DOM
     if (!document.querySelector('div.racing-plus-window')) {
       let rplus_window_html = `<div class="racing-plus-window">
@@ -183,7 +184,7 @@
             </div>
           </div>
         </div>`;
-      document.querySelector('hr.page-head-delimiter').insertAdjacentHTML('afterEnd', rplus_window_html);
+      pagehr.insertAdjacentHTML('afterEnd', rplus_window_html);
       console.log('Racing+: Settings window added.');
     }
 
@@ -1045,8 +1046,8 @@
     await restructureBanner();
 
     console.log('Racing+: Adding Page Observer...');
-    let page = await defer(document.querySelector('#racingAdditionalContainer'));
-    pageObserver.observe(page, { childList: true });
+    let innerpage = await defer(document.querySelector('#racingAdditionalContainer'));
+    pageObserver.observe(innerpage, { childList: true });
 
     // Load default page
     await officialEvents();
