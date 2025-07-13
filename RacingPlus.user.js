@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.17
+// @version      0.18
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -148,7 +148,7 @@
 
   const initializeRacingPlus = async () => {
     console.log('Racing+: Initializing...');
-    let title = await defer(document.querySelector('.content-title'));
+    let mainpage = await defer(document.querySelector('#racingMainContainer'));
     // Add the Racing+ window to the DOM
     if (!document.querySelector('div.racing-plus-window')) {
       let rplus_window_html = `<div class="racing-plus-window">
@@ -185,7 +185,7 @@
           </div>
           <div class="cont-black bottom-round"><div class="racing-plus-footer"></div></div>
         </div>`;
-      title.insertAdjacentHTML('beforeEnd', rplus_window_html);
+      mainpage.insertAdjacentHTML('beforeStart', rplus_window_html);
       console.log('Racing+: Settings window added.');
     }
 
@@ -991,7 +991,7 @@
 
   const restructureBanner = async () => {
     console.log('Racing+: Fixing top banner...');
-    const banner = await defer(document.querySelector('.banner.top-round'));
+    const banner = await defer(document.querySelector('.banner'));
     // update driver skill
     let savedSkill = GM_getValue('rplus_racingskill');
     if (savedSkill) {
