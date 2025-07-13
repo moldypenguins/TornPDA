@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.9
+// @version      0.10
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -10,7 +10,7 @@
 // @downloadURL  https://github.com/moldypenguins/TornPDA/raw/main/RacingPlus.user.js
 // @connect      api.torn.com
 // @grant        GM_log
-// @grant        GM.addStyle
+// @grant        GM_addStyle
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_deleteValue
@@ -93,6 +93,7 @@
         // Save API key
         if (save) {
           GM_setValue('rplus_apikey', document.querySelector('#rplus_apikey').value);
+          GM_log('Racing+: rplus_apikey saved.');
         }
         // Valid API key
         document.querySelector('#rplus_apikey_status').textContent = '';
@@ -233,6 +234,7 @@
       el.checked = GM_getValue(el.id) === 1;
       el.addEventListener('click', (ev) => {
         GM_setValue(ev.target.id, ev.target.checked ? 1 : 0);
+        GM_log(`Racing+: ${ev.target.id} saved.`);
       });
     });
     console.log('Racing+: Initialized.');
@@ -242,8 +244,8 @@
 
   const addRacingPlusStyles = async () => {
     console.log('Racing+: Adding styles...');
-    if (!GM.addStyle) {
-      GM.addStyle = function (s) {
+    if (!GM_addStyle) {
+      GM_addStyle = function (s) {
         let style = document.createElement('style');
         style.innerHTML = s;
         document.head.appendChild(style);
@@ -251,7 +253,7 @@
     }
 
     // Add styles
-    GM.addStyle(`
+    GM_addStyle(`
       div.racing-plus-window {
         display:none;
       }
@@ -520,7 +522,7 @@
         `;
         });
       });
-      GM.addStyle(partsCSS);
+      GM_addStyle(partsCSS);
     }
   };
 
@@ -550,6 +552,7 @@
           document.querySelector('.banner .skill').insertAdjacentHTML('afterEnd', `<div class="lastgain">+${lastInc}</div>`);
         }
         GM_setValue('rplus_racingskill', currSkill);
+        GM_log('Racing+: rplus_racingskill saved.');
         document.querySelector('.banner .skill').textContent = currSkill;
       }
 
