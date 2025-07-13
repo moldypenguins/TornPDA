@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.25
+// @version      0.26
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -107,7 +107,7 @@
   const validateKey = async (save = false) => {
     try {
       // Attempt to call the API to retrieve the server time
-      let validation = await torn_api(document.querySelector('#rplus_apikey').value, 'user/timestamp', { timestamp: Math.floor(Date.now() / 1000).toString() });
+      let validation = await torn_api(API_KEY.includes('###') ? document.querySelector('#rplus_apikey').value : API_KEY, 'user/timestamp', { timestamp: Math.floor(Date.now() / 1000).toString() });
       if (validation) {
         // Save API key
         if (save) {
@@ -242,20 +242,22 @@
       document.querySelector('#rplus_apikey').value = stored_apikey;
       validateKey(false);
     }
-    // Add the Racing+ API key save button click event handler
-    document.querySelector('#rplus_apikey_save').addEventListener('click', async (ev) => {
-      ev.preventDefault();
-      validateKey(true);
-    });
-    // Add the Racing+ API key reset button click event handler
-    document.querySelector('#rplus_apikey_reset').addEventListener('click', async (ev) => {
-      ev.preventDefault();
-      // Clear API key
-      RPS.deleteValue('rplus_apikey');
-      // Clear text input
-      document.querySelector('#rplus_apikey').value = '';
-      await setAPIKeyDisplay();
-    });
+    if (API_KEY.includes('###')) {
+      // Add the Racing+ API key save button click event handler
+      document.querySelector('#rplus_apikey_save').addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        validateKey(true);
+      });
+      // Add the Racing+ API key reset button click event handler
+      document.querySelector('#rplus_apikey_reset').addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        // Clear API key
+        RPS.deleteValue('rplus_apikey');
+        // Clear text input
+        document.querySelector('#rplus_apikey').value = '';
+        await setAPIKeyDisplay();
+      });
+    }
     await setAPIKeyDisplay();
     // Add checkbox stored values and click events.
     document.querySelectorAll('div.racing-plus-settings input[type=checkbox]').forEach((el) => {
@@ -826,7 +828,7 @@
       try {
         let driverId = driver.parentElement.id.substring(4);
         // Fetch racing skill data from the Torn API for the given driverId
-        let user = await torn_api(RPS.getValue('rplus_apikey'), `user/${driverId}/personalStats`, 'stat=racingskill');
+        let user = await torn_api(API_KEY.includes('###') ? RPS.getValue('rplus_apikey') : API_KEY, `user/${driverId}/personalStats`, 'stat=racingskill');
         if (user && !driver.querySelector('.skill')) {
           driver.querySelector('.name').insertAdjacentHTML('afterEnd', `<li class="skill">RS: ${user.personalstats.racing.skill}</li>`);
         }
