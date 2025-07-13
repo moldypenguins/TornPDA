@@ -449,7 +449,7 @@
         text-align:center;
       }
       .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.speed {
-        flex-basis:85px;
+        flex-basis:90px;
         line-height:30px;
         padding:0 5px;
         white-space:nowrap;
