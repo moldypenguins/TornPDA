@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.28
+// @version      0.29
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
