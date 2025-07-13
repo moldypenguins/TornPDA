@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.31
+// @version      0.32
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -17,8 +17,6 @@
 
   //TODO:
   // Export Link (csv)
-  // Last Lap
-  // Best Lap
   // Parts - Suspension (bushes)
 
   // TornPDA
@@ -655,7 +653,7 @@
       }
       lastTimeByDriverId.set(driverId, compl);
     } else {
-      driverUl.children('.speed').text('0.00mph');
+      driverUl.querySelector('.speed').textContent = '0.00mph';
     }
   };
 
@@ -678,10 +676,6 @@
         console.log('Racing+: rplus_racingskill saved.');
         skillBanner.textContent = currSkill;
       }
-
-      // Add race link copy button
-      await addRaceLinkCopyButton(data.raceID);
-
       // calc, sort & show race results
       if (raceResults.length <= 0 && RPS.getValue('rplus_showresults') === '1' && data.timeData.status >= 3) {
         // Populate results
@@ -783,12 +777,19 @@
       if (status === 'waiting') {
         r.querySelector('.status').classList.toggle('racing', false);
         r.querySelector('.status').classList.toggle('waiting', true);
+      } else {
+        r.querySelector('.status').classList.toggle('racing', true);
+        r.querySelector('.status').classList.toggle('waiting', false);
       }
       // fix completed
       if (r.querySelector('.time').textContent === '') {
         r.querySelector('.time').textContent = '0.00 %';
       }
     });
+
+    // Add race link copy button
+    await addRaceLinkCopyButton(drivers[0].id.replace('lbr-', ''));
+
     // Load selected options
     if (RPS.getValue('rplus_addlinks') === '1') {
       await addLinks(Array.from(drivers));
@@ -872,7 +873,8 @@
   };
 
   const addExportButton = async (results, driverId, raceId, timeEnded) => {
-    if ($('#exportResults').size() < 1) {
+    if (!document.querySelector('#rplus_exportlink')) {
+      let trackInfo = await defer('.track-info-wrap');
       let csv = 'position,id,name,status,time,best_lap,racing_skill\n';
       for (let i = 0; i < results.length; i++) {
         const timeStr = formatTime(results[i][3] * 1000);
@@ -884,11 +886,11 @@
       const fileName = `${timeE.getUTCFullYear()}${('00' + (timeE.getUTCMonth() + 1)).slice(-2)}${('00' + timeE.getUTCDate()).slice(-2)}-race_${raceId}.csv`;
       const myblob = new Blob([csv], { type: 'application/octet-stream' });
       const myurl = window.URL.createObjectURL(myblob);
-      const exportBtn =
+      const exportlink_html =
         `<a id="exportResults" title="Export CSV" href="${myurl}" download="${fileName}">` +
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" height="12" width="12"><path d="M17,2.25V18H2V2.25H5.5l-2,2.106V16.5h12V4.356L13.543,2.25H17Zm-2.734,3L11.781,2.573V2.266A2.266,2.266,0,0,0,7.25,2.25v.323L4.777,5.25ZM9.5,1.5a.75.75,0,1,1-.75.75A.75.75,0,0,1,9.5,1.5ZM5.75,12.75h7.5v.75H5.75Zm0-.75h7.5v-.75H5.75Zm0-1.5h7.5V9.75H5.75Zm0-1.5h7.5V8.25H5.75Z" fill="currentColor" stroke-width="0"></path></svg>' +
         '</a>';
-      document.querySelector('#rplus_exportlink').insertAdjacentHTML('afterEnd', exportBtn);
+      trackInfo.insertAdjacentHTML('afterEnd', exportlink_html);
     }
   };
 
@@ -942,7 +944,6 @@
       besttime.classList.toggle('pd-besttime', true);
       besttime.textContent = '--:--';
     }
-
     // Load leaderboard
     await updateLeaderboard();
     // Watch leaderboard for changes
@@ -971,14 +972,6 @@
       let totalRaces = ul.children[1].textContent.replace(/[\n\s]/g, '').replace('•Racesentered:', '');
       ul.children[0].textContent = `• Races won: ${wonRaces} / ${totalRaces}`;
       ul.children[1].textContent = `• Race win rate: ${totalRaces <= 0 ? 0 : Math.round((wonRaces / totalRaces) * 10000) / 100}%`;
-    });
-    document.querySelectorAll('ul.overview li.name').forEach((nameItem) => {
-      const parent = nameItem.parentElement?.parentElement;
-      if (parent && parent.id.startsWith('lbr-')) {
-        const username = nameItem.innerHTML.replace('<span>', '').replace('</span>', '');
-        const user_id = parent.id.replace('lbr-', '');
-        nameItem.innerHTML = `<a href="/profiles.php?XID=${user_id}">${username}</a>`;
-      }
     });
   };
 
