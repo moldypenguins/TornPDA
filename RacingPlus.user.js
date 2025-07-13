@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.32
+// @version      0.33
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -16,8 +16,8 @@
   'use strict';
 
   //TODO:
-  // Export Link (csv)
-  // Parts - Suspension (bushes)
+  // Fix waiting status
+  // &tab=log&raceID=15583362
 
   // TornPDA
   let API_KEY = '###PDA-APIKEY###';
@@ -201,6 +201,8 @@
                 <label for="rplus_showskill">Show racing skill</label><div><input type="checkbox" id="rplus_showskill" /></div>
                 <label for="rplus_showspeed">Show current speed</label><div><input type="checkbox" id="rplus_showspeed" /></div>
                 <label for="rplus_showresults">Show race results</label><div><input type="checkbox" id="rplus_showresults" /></div>
+                <label for="rplus_showracelink">Show race link</label><div><input type="checkbox" id="rplus_showracelink" /></div>
+                <label for="rplus_showexportlink">Show export link</label><div><input type="checkbox" id="rplus_showexportlink" /></div>
                 <label for="rplus_showwinrate">Show win rate for each car</label><div><input type="checkbox" id="rplus_showwinrate" /></div>
                 <label for="rplus_showparts">Show parts & modifications</label><div><input type="checkbox" id="rplus_showparts" /></div>
               </div>
@@ -544,7 +546,7 @@
         }
         .d .racing-main-wrap .header-wrap .banner .lastgain {
           top:10px!important;
-          left:185px;
+          left:190px;
         }
         .d .racing-main-wrap .header-wrap .banner .class-desc {
           top:10px !important;
@@ -677,7 +679,7 @@
         skillBanner.textContent = currSkill;
       }
       // calc, sort & show race results
-      if (raceResults.length <= 0 && RPS.getValue('rplus_showresults') === '1' && data.timeData.status >= 3) {
+      if (raceResults.length <= 0 && data.timeData.status >= 3) {
         // Populate results
         let carsData = data.raceData.cars;
         let carInfo = data.raceData.carInfo;
@@ -722,7 +724,9 @@
           });
         });
         // add export results
-        await addExportButton(raceResults, data.user.id, data.raceID, data.timeData.timeEnded);
+        if (RPS.getValue('rplus_showexportlink') === '1') {
+          await addExportButton(raceResults, data.user.id, data.raceID, data.timeData.timeEnded);
+        }
       }
     } catch (err) {
       // Exit the function if response is not valid JSON
@@ -754,7 +758,7 @@
   const updateLeaderboard = async () => {
     console.log('Racing+: Updating Leaderboard...');
     // Get race status
-    let status = 'waiting';
+    let status = 'unknown';
     let info = await defer('#infoSpot');
     switch (info.textContent.toLowerCase()) {
       case 'race started':
@@ -768,6 +772,7 @@
         if (info.querySelector('t-red')) {
           status = 'starting';
         }
+        status = 'waiting';
         break;
     }
     // Wait for racers to load then enumerate
@@ -788,8 +793,9 @@
     });
 
     // Add race link copy button
-    await addRaceLinkCopyButton(drivers[0].id.replace('lbr-', ''));
-
+    if (RPS.getValue('rplus_showracelink') === '1') {
+      await addRaceLinkCopyButton(drivers[0].id.replace('lbr-', ''));
+    }
     // Load selected options
     if (RPS.getValue('rplus_addlinks') === '1') {
       await addLinks(Array.from(drivers));
@@ -911,7 +917,6 @@
   };
 
   const officialEvents = async () => {
-    let showResults = RPS.getValue('rplus_showresults') === '1';
     // Update labels (save some space).
     document.querySelectorAll('#racingdetails li.pd-name').forEach((detail) => {
       if (detail.textContent === 'Name:') {
@@ -921,15 +926,11 @@
         detail.textContent = 'Pos:';
       }
       if (detail.textContent === 'Last Lap:') {
-        if (showResults) {
-          detail.textContent = 'Last:';
-        }
+        detail.textContent = 'Last:';
         detail.classList.toggle('t-hide', false);
       }
       if (detail.textContent === 'Completion:') {
-        if (showResults) {
-          detail.textContent = 'Best:';
-        }
+        detail.textContent = 'Best:';
         detail.classList.toggle('m-hide', false);
       }
     });
@@ -939,11 +940,10 @@
     // Update completion value
     let besttime = document.querySelector('#racingdetails li.pd-completion');
     besttime.classList.toggle('m-hide', false);
-    if (showResults) {
-      besttime.classList.toggle('pd-completion', false);
-      besttime.classList.toggle('pd-besttime', true);
-      besttime.textContent = '--:--';
-    }
+    besttime.classList.toggle('pd-completion', false);
+    besttime.classList.toggle('pd-besttime', true);
+    besttime.textContent = '--:--';
+
     // Load leaderboard
     await updateLeaderboard();
     // Watch leaderboard for changes
@@ -977,60 +977,51 @@
 
   const partsModifications = async () => {
     // Exit early if the .pm-categories element is not found
-    if (!document.querySelector('.pm-categories')) {
-      return;
-    }
+    let container = await defer('.pm-categories');
     let categories = {};
     // Select all category list items except those with .empty or .clear
-    document.querySelectorAll('.pm-categories li:not(.empty):not(.clear)').forEach((category) => {
+    let elems = container.querySelectorAll('li:not(.empty):not(.clear)');
+    elems.forEach((category) => {
       // Get the category id
       const cat = category.getAttribute('data-category');
       // Get the category name from classList (excluding 'unlock')
       let categoryName = [...category.classList].find((c) => c !== 'unlock');
       // Initialize bought and unbought arrays for this category
-      categories[cat] = { bought: {}, unbought: {} };
+      categories[cat] = { bought: [], unbought: [] };
       // Select all parts that belong to this category and have a valid data-part attribute
       const parts = document.querySelectorAll(`.pm-items li.${categoryName}[data-part]:not([data-part=""])`);
       parts.forEach((part) => {
         let groupName = part.getAttribute('data-part');
-        // Filter out irrelevant classes: categoryName, 'tt-modified', and 'unlock'
-        let partGroup = [...part.classList].filter((c) => !['tt-modified', 'unlock'].includes(c));
-        // Remove category name if not the same as group name
-        if (categoryName.toLowerCase() !== groupName.toLowerCase()) {
-          partGroup = partGroup.filter((c) => c !== categoryName);
-        }
-        if (partGroup.length > 0) {
-          if (partGroup.includes('bought')) {
-            // Remove 'bought' from the group
-            partGroup = partGroup.filter((c) => c !== 'bought');
-            // Add to bought if not already included
-            if (!(partGroup[0] in categories[cat].bought)) {
-              categories[cat].bought[partGroup[0]] = groupName;
-            }
-            // Replace 'bought' with 'active' on the control.
-            part.classList.toggle('bought', false);
-            part.classList.toggle('active', true);
-          } else {
-            // Add to unbought if not already included
-            if (!(partGroup[0] in categories[cat].unbought)) {
-              categories[cat].unbought[partGroup[0]] = groupName;
-            }
+
+        if (part.classList.contains('bought')) {
+          // Add to bought if not already included
+          if (!categories[cat].bought.includes(groupName)) {
+            categories[cat].bought.push(groupName);
+          }
+          // Replace 'bought' with 'active' on the control.
+          part.classList.toggle('bought', false);
+          part.classList.toggle('active', true);
+        } else {
+          // Add to unbought if not already included
+          if (!categories[cat].unbought.includes(groupName)) {
+            categories[cat].unbought.push(groupName);
           }
         }
       });
 
       // Remove any group from unbought that exists in bought
-      for (const groupKey in categories[cat].bought) {
-        if (groupKey in categories[cat].unbought) {
-          const bought = document.querySelectorAll(`.pm-items li.${categoryName}[data-part="${categories[cat].unbought[groupKey]}"]`);
-          bought.forEach((b) => {
-            if (!b.classList.contains('active')) {
-              b.classList.toggle('bought', true);
+      categories[cat].bought.forEach((b) => {
+        if (categories[cat].unbought.includes(b)) {
+          let bought = document.querySelectorAll(`.pm-items li.${categoryName}[data-part="${b}"]`);
+          bought.forEach((el) => {
+            if (!el.classList.contains('active')) {
+              el.classList.toggle('bought', true);
             }
           });
-          delete categories[cat].unbought[groupKey];
+          // Remove from unbought
+          categories[cat].unbought.splice(categories[cat].unbought.indexOf(b), 1);
         }
-      }
+      });
 
       // Create a div showing the count of bought/unbought parts
       const divParts = document.createElement('div');
@@ -1045,14 +1036,14 @@
       }
     });
     // Add click event listeners to each category link
-    const links = document.querySelectorAll('.pm-categories li a.link');
+    const links = container.querySelectorAll('li a.link');
     links.forEach((link) => {
       link.addEventListener('click', (event) => {
         // Get the category id
         const cat = event.currentTarget.parentElement?.getAttribute('data-category');
         if (cat) {
           // Remove existing parts info if present
-          const existing = document.getElementById('rplus_part_groups');
+          const existing = document.querySelector('#rplus_part_groups');
           if (existing) {
             existing.remove();
           }
