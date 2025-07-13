@@ -508,7 +508,7 @@
         left:75px;
         color:#00ff00;
         position:absolute;
-        font-size:0.8rem!important;
+        font-size:0.6rem!important;
       }
       .right-banner {
         height:57px;
