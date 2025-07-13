@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.30
+// @version      0.31
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -711,6 +711,22 @@
         raceResults.sort((a, b) => {
           return b[2].toLocaleLowerCase().localeCompare(a[2].toLocaleLowerCase()) || a[3] - b[3];
         });
+        // set best lap for selected driver
+        let thisDriverId = document.querySelector('script[uid]').getAttribute('uid');
+        let selectedDriver = document.querySelector('#leaderBoard li.selected[id^=lbr-]');
+        if (!selectedDriver) {
+          selectedDriver = document.querySelector(`#leaderBoard #lbr-${thisDriverId}`);
+        }
+        //userId, playername, status, raceTime, bestLap
+        await setBestLap(selectedDriver.id.substring(4));
+        // Add click event handlers
+        let drivers = document.querySelectorAll('#leaderBoard li[id^=lbr-]');
+        drivers.forEach((d) => {
+          d.addEventListener('click', async (event) => {
+            event.preventDefault();
+            await setBestLap(Number(event.currentTarget.id.substring(4)));
+          });
+        });
         // add export results
         await addExportButton(raceResults, data.user.id, data.raceID, data.timeData.timeEnded);
       }
@@ -728,6 +744,18 @@
     let mseconds = Math.floor(msec % 1000);
     return ('00' + minutes).toString().slice(-2) + ':' + ('00' + seconds).toString().slice(-2) + '.' + ('000' + mseconds).toString().slice(3);
   };
+
+  async function setBestLap(driverId) {
+    let driverResult = raceResults.find((r) => {
+      return Number(r[0]) === driverId;
+    });
+    let bestLap = driverResult[4] ? formatTime(driverResult[4] * 1000) : null;
+    if (bestLap) {
+      $('li.pd-besttime').text(bestLap);
+    } else {
+      $('li.pd-besttime').text('--:--');
+    }
+  }
 
   const updateLeaderboard = async () => {
     console.log('Racing+: Updating Leaderboard...');
@@ -881,7 +909,8 @@
   };
 
   const officialEvents = async () => {
-    // save some space
+    let showResults = RPS.getValue('rplus_showresults') === '1';
+    // Update labels (save some space).
     document.querySelectorAll('#racingdetails li.pd-name').forEach((detail) => {
       if (detail.textContent === 'Name:') {
         detail.remove();
@@ -890,22 +919,29 @@
         detail.textContent = 'Pos:';
       }
       if (detail.textContent === 'Last Lap:') {
-        detail.textContent = 'Last:';
+        if (showResults) {
+          detail.textContent = 'Last:';
+        }
         detail.classList.toggle('t-hide', false);
       }
       if (detail.textContent === 'Completion:') {
-        detail.textContent = 'Best:';
+        if (showResults) {
+          detail.textContent = 'Best:';
+        }
         detail.classList.toggle('m-hide', false);
       }
     });
+    // Update laptime value
     let laptime = document.querySelector('#racingdetails li.pd-laptime');
     laptime.classList.toggle('t-hide', false);
-
+    // Update completion value
     let besttime = document.querySelector('#racingdetails li.pd-completion');
     besttime.classList.toggle('m-hide', false);
-    besttime.classList.toggle('pd-completion', false);
-    besttime.classList.toggle('pd-besttime', true);
-    besttime.textContent = '--:--';
+    if (showResults) {
+      besttime.classList.toggle('pd-completion', false);
+      besttime.classList.toggle('pd-besttime', true);
+      besttime.textContent = '--:--';
+    }
 
     // Load leaderboard
     await updateLeaderboard();
