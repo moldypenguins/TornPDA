@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.10
+// @version      0.11
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -243,14 +243,12 @@
   // ##############################################################################################
 
   const addRacingPlusStyles = async () => {
+    let GM_addStyle = function (s) {
+      let style = document.createElement('style');
+      style.innerHTML = s;
+      document.head.appendChild(style);
+    };
     console.log('Racing+: Adding styles...');
-    if (!GM_addStyle) {
-      GM_addStyle = function (s) {
-        let style = document.createElement('style');
-        style.innerHTML = s;
-        document.head.appendChild(style);
-      };
-    }
 
     // Add styles
     GM_addStyle(`
