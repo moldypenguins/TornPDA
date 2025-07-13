@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.20
+// @version      0.21
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -25,11 +25,37 @@
   // Last Lap
   // Best Lap
 
+  // TornPDA
+  let API_KEY = '###PDA-APIKEY###';
+
   //const SPEED_INTERVAL = 1000; // Amount of time in milliseconds between speed updates.
   const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
 
-  // TornPDA
-  // let API_KEY = '###PDA-APIKEY###';
+  window.RPS = {
+    getValue(key) {
+      return localStorage.getItem(key);
+    },
+    setValue(key, value) {
+      localStorage.setItem(key, value);
+    },
+    deleteValue(key) {
+      localStorage.removeItem(key);
+    },
+    addStyle(style) {
+      if (!style) {
+        return;
+      }
+      const s = document.createElement('style');
+      s.innerHTML = style;
+      document.head.appendChild(s);
+    },
+    setClipboard(text) {
+      if (!document.hasFocus()) {
+        throw new DOMException('Document is not focused');
+      }
+      navigator.clipboard.writeText(text);
+    },
+  };
 
   // Torn API wrapper with validation, fetch, object args, and caching
   // see: https://www.torn.com/swagger.php
@@ -860,7 +886,7 @@
     XMLHttpRequest.prototype.open = function (...args) {
       this.addEventListener('load', async (ev) => {
         if (ev.target && ev.target.responseURL && ev.target.responseURL.startsWith(`${window.location.origin}${window.location.pathname}`) && ev.target.response) {
-          console.log('Racing+: XMLHttpRequest caught.');
+          //console.log('Racing+: XMLHttpRequest caught.');
           await parseRaceData(ev.target.response);
         }
       });
@@ -1030,6 +1056,12 @@
       }
     }
   });
+
+  if (API_KEY.includes('###')) {
+    console.log('DESKTOP');
+  } else {
+    console.log(`PDA: ${API_KEY}`);
+  }
 
   // Add Racing+ styles to DOM
   await addRacingPlusStyles();
