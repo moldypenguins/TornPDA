@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.13
+// @version      0.14
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -454,27 +454,7 @@
       .d .racing-main-wrap .car-selected-wrap .drivers-list .overview > li.selected .driver-item > li.speed {
         background: url(/images/v2/racing/selected_driver.png) 0 0 repeat-x;
       }
-      .d .racing-main-wrap .header-wrap .banner .skill,
-      .d .racing-main-wrap .header-wrap .banner .skill-desc {
-        left:10px!important;
-      }
-      .d .racing-main-wrap .header-wrap .banner .skill-desc,
-      .d .racing-main-wrap .header-wrap .banner .class-desc {
-        font-size:0.8rem!important;
-      }
-      .d .racing-main-wrap .header-wrap .banner .class-letter {
-        font-size:1.5rem!important;
-      }
-      .d .racing-main-wrap .header-wrap .banner .skill,
-      .d .racing-main-wrap .header-wrap .banner .lastgain {
-        font-size:0.7rem!important;
-      }
-      .d .racing-main-wrap .header-wrap .banner .lastgain {
-        top:82px;
-        left:87px;
-        color:#00ff00;
-        position:absolute;
-      }
+
       @media screen and (max-width: 784px) {
         .d .racing-main-wrap .header-wrap .banner .skill {
           left:125px!important;
@@ -486,6 +466,62 @@
         .d .racing-main-wrap .header-wrap .banner .class-letter {
           font-size:1.25rem!important;
         }
+      }
+      .left-banner {
+        height:57px;
+        width:150px;
+        top:44px;
+        left:0;
+        position:absolute;
+        border-top:1px solid #424242;
+        border-bottom:1px solid #424242;
+        border-right:1px solid #424242;
+        border-top-right-radius:5px;
+        border-bottom-right-radius:5px;
+        background:url(/images/v2/racing/header/stripy_bg.png) 0 0 repeat;
+        box-shadow:5px 0 10px -2px rgba(0, 0, 0, 0.5), 0 5px 10px -2px rgba(0, 0, 0, 0.5);
+      }
+      .d .racing-main-wrap .header-wrap .banner .skill-desc {
+        width:130px!important;
+        top:15px!important;
+        left:8px!important;
+        font-size:1rem!important;
+      }
+      .d .racing-main-wrap .header-wrap .banner .skill {
+        top:33px!important;
+        left:10px!important;
+        font-size:0.8rem!important;
+      }
+      .d .racing-main-wrap .header-wrap .banner .lastgain {
+        top:33px;
+        left:66px;
+        color:#00ff00;
+        position:absolute;
+        font-size:0.8rem!important;
+      }
+      .right-banner {
+        height:57px;
+        width:115px;
+        top:44px;
+        right:0;
+        position:absolute;
+        border-top:1px solid #424242;
+        border-bottom:1px solid #424242;
+        border-left:1px solid #424242;
+        border-top-left-radius:5px;
+        border-bottom-left-radius:5px;
+        background:url(/images/v2/racing/header/stripy_bg.png) 0 0 repeat;
+        box-shadow:-5px 0 10px -2px rgba(0, 0, 0, 0.5), 0 5px 10px -2px rgba(0, 0, 0, 0.5);
+      }
+      .d .racing-main-wrap .header-wrap .banner .class-desc {
+        right:40px!important;
+        top:23px!important;
+        font-size:1rem!important;
+      }
+      .d .racing-main-wrap .header-wrap .banner .class-letter {
+        right:12px!important;
+        top:22px!important;
+        font-size:1.5rem!important;
       }
     `);
     if (GM_getValue('rplus_showparts') === 1) {
@@ -528,6 +564,21 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   };
 
+  const defer = (condition, interval = 100) => {
+    return new Promise((resolve) => {
+      const check = () => {
+        const result = condition;
+        if (result) {
+          resolve(result);
+        } else {
+          console.log('Racing+: Deferring...');
+          setTimeout(check, interval);
+        }
+      };
+      check();
+    });
+  };
+
   // ##############################################################################################
 
   // Cache racing skill and interval object
@@ -541,10 +592,10 @@
       console.log('Racing+: Parsing Race Data...');
       let data = JSON.parse(response);
       // update driver skill
-      let racingSkill = GM_getValue('rplus_racingskill');
+      let lastSkill = GM_getValue('rplus_racingskill');
       let currSkill = Number(data.user.racinglevel).toFixed(5);
-      if (currSkill > racingSkill) {
-        let lastInc = Number(currSkill - racingSkill).toFixed(5);
+      if (currSkill > lastSkill) {
+        let lastInc = Number(currSkill - lastSkill).toFixed(5);
         if (lastInc) {
           document.querySelector('.banner .skill').insertAdjacentHTML('afterEnd', `<div class="lastgain">+${lastInc}</div>`);
         }
@@ -552,6 +603,9 @@
         console.log('Racing+: rplus_racingskill saved.');
         document.querySelector('.banner .skill').textContent = currSkill;
       }
+
+      // Add race link copy button
+      await addRaceLinkCopyButton(data.raceID);
 
       // calc, sort & show race results
       if (raceResults.length <= 0 && GM_getValue('rplus_showresults') === 1 && data.timeData.status >= 3) {
@@ -617,66 +671,29 @@
   };
 
   const updateLeaderboard = async () => {
-    let leaderboard = document.querySelector('.drivers-list #leaderBoard');
-    while (!leaderboard || leaderboard.children.length <= 0) {
-      console.log('Racing+: Waiting to find leaderboard...');
+    console.log('Racing+: Updating Leaderboard...');
+    let leaderboard = await defer(document.querySelector('.drivers-list ul#leaderBoard'));
+    // Wait for racers to load
+    while (!leaderboard.children || leaderboard.children.length <= 0) {
       await sleep(100);
     }
-    console.log('Racing+: Updating Leaderboard...');
-
-    // fix waiting icons
-    if ((await raceStatus()) === 'waiting') {
-      let driverStatus = document.querySelectorAll('.drivers-list #leaderBoard .driver-item .status');
-      driverStatus.forEach((status) => {
-        status.classList.toggle('racing', false);
-        status.classList.toggle('waiting', true);
-      });
-    }
-
-    // Check if the race link already exists
-    if (!document.querySelector('#rplus_racelink')) {
-      let raceId = leaderboard.children[0].getAttribute('data-id').split('-')[0];
-      let racelink_html =
-        `<div id="rplus_racelink"><a title="Copy link" href="https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}">` +
-        '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><g><path d="M3.09,4.36c1.25-1.25,3.28-1.26,4.54,0,.15.15.29.32.41.5l-1.12,1.12c-.32-.74-1.13-1.15-1.92-.97-.31.07-.59.22-.82.45l-2.15,2.15c-.65.66-.63,1.72.03,2.37.65.63,1.69.63,2.34,0l.66-.66c.6.24,1.25.34,1.89.29l-1.47,1.47c-1.26,1.26-3.29,1.26-4.55,0-1.26-1.26-1.26-3.29,0-4.55h0l2.15-2.15ZM6.51.94l-1.47,1.46c.64-.05,1.29.05,1.89.29l.66-.66c.65-.65,1.72-.65,2.37,0,.65.65.65,1.72,0,2.37h0l-2.15,2.15c-.66.65-1.71.65-2.37,0-.15-.15-.28-.33-.36-.53l-1.12,1.12c.12.18.25.34.4.49,1.25,1.26,3.29,1.26,4.54,0,0,0,0,0,0,0l2.15-2.15c1.26-1.26,1.25-3.29,0-4.55-1.26-1.26-3.29-1.25-4.55,0Z" fill="currentColor" stroke-width="0"></path></g></svg>' +
-        '</a></div>';
-      // Append the link to the info container
-      document.querySelector('.track-info-wrap').insertAdjacentHTML('afterEnd', racelink_html);
-
-      // Add click event listener to the race link
-      document.querySelector('#rplus_racelink a').addEventListener('click', function (event) {
-        event.preventDefault();
-        // Copy the race link to clipboard using GM_setClipboard
-        GM_setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}`);
-        // Try to find the tooltip and update its content
-        const tooltipId = document.querySelector('#rplus_racelink a').getAttribute('aria-describedby');
-        if (tooltipId) {
-          const tooltip = document.querySelector(`#${tooltipId} .ui-tooltip-content`);
-          if (tooltip && tooltip.firstChild) {
-            tooltip.firstChild.nodeValue = 'Copied';
-            const tooltipDiv = tooltip.closest('div');
-            if (tooltipDiv) {
-              const currentLeft = parseFloat(tooltipDiv.style.left || '0');
-              tooltipDiv.style.left = `${currentLeft + 6}px`;
-            }
-          }
-        }
-      });
-    }
-
-    // fix completed
-    let completePercent = leaderboard.querySelectorAll('.driver-item .time');
-    completePercent.forEach((perc) => {
-      if (perc.textContent === '') {
-        perc.textContent = '0.00 %';
+    // Enumerate racers
+    let status = await raceStatus();
+    Array.from(leaderboard.children).forEach((r) => {
+      // fix waiting icons
+      if (status === 'waiting') {
+        r.querySelector('.status').classList.toggle('racing', false);
+        r.querySelector('.status').classList.toggle('waiting', true);
+      }
+      // fix completed
+      if (r.querySelector('.time').textContent === '') {
+        r.querySelector('.time').textContent = '0.00 %';
       }
     });
-
     // Load selected options
     if (GM_getValue('rplus_addlinks') === 1) {
       await addLinks();
     }
-    //TODO: finish
     if (GM_getValue('rplus_showskill') === 1) {
       await loadRacerSkill();
     }
@@ -702,6 +719,38 @@
           statusLi.innerHTML = '<div class="status bronze"></div>';
         } else {
           statusLi.innerHTML = `<div class="finished-${place} finished">${place}</div>`;
+        }
+      });
+    }
+  };
+
+  const addRaceLinkCopyButton = async (raceId) => {
+    // Check if the race link already exists
+    if (!document.querySelector('#rplus_racelink')) {
+      let racelink_html =
+        `<div id="rplus_racelink"><a title="Copy link" href="https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}">` +
+        '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><g><path d="M3.09,4.36c1.25-1.25,3.28-1.26,4.54,0,.15.15.29.32.41.5l-1.12,1.12c-.32-.74-1.13-1.15-1.92-.97-.31.07-.59.22-.82.45l-2.15,2.15c-.65.66-.63,1.72.03,2.37.65.63,1.69.63,2.34,0l.66-.66c.6.24,1.25.34,1.89.29l-1.47,1.47c-1.26,1.26-3.29,1.26-4.55,0-1.26-1.26-1.26-3.29,0-4.55h0l2.15-2.15ZM6.51.94l-1.47,1.46c.64-.05,1.29.05,1.89.29l.66-.66c.65-.65,1.72-.65,2.37,0,.65.65.65,1.72,0,2.37h0l-2.15,2.15c-.66.65-1.71.65-2.37,0-.15-.15-.28-.33-.36-.53l-1.12,1.12c.12.18.25.34.4.49,1.25,1.26,3.29,1.26,4.54,0,0,0,0,0,0,0l2.15-2.15c1.26-1.26,1.25-3.29,0-4.55-1.26-1.26-3.29-1.25-4.55,0Z" fill="currentColor" stroke-width="0"></path></g></svg>' +
+        '</a></div>';
+      // Append the link to the info container
+      document.querySelector('.track-info-wrap').insertAdjacentHTML('afterEnd', racelink_html);
+
+      // Add click event listener to the race link
+      document.querySelector('#rplus_racelink a').addEventListener('click', function (event) {
+        event.preventDefault();
+        // Copy the race link to clipboard using GM_setClipboard
+        GM_setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}`);
+        // Try to find the tooltip and update its content
+        const tooltipId = document.querySelector('#rplus_racelink a').getAttribute('aria-describedby');
+        if (tooltipId) {
+          const tooltip = document.querySelector(`#${tooltipId} .ui-tooltip-content`);
+          if (tooltip && tooltip.firstChild) {
+            tooltip.firstChild.nodeValue = 'Copied';
+            const tooltipDiv = tooltip.closest('div');
+            if (tooltipDiv) {
+              const currentLeft = parseFloat(tooltipDiv.style.left || '0');
+              tooltipDiv.style.left = `${currentLeft + 6}px`;
+            }
+          }
         }
       });
     }
@@ -919,33 +968,65 @@
     });
   };
 
+  const restructureBanner = async () => {
+    console.log('Racing+: Fixing top banner...');
+    const banner = await defer(document.querySelector('.banner.top-round'));
+    // update driver skill
+    let savedSkill = GM_getValue('rplus_racingskill');
+    if (savedSkill) {
+      document.querySelector('.banner .skill').textContent = savedSkill;
+    }
+    // Create new containers
+    const leftBanner = document.createElement('div');
+    leftBanner.className = 'left-banner';
+    const rightBanner = document.createElement('div');
+    rightBanner.className = 'right-banner';
+    // Move elements into the new containers
+    const elements = Array.from(banner.children);
+    elements.forEach((el) => {
+      if (el.classList.contains('skill-desc') || el.classList.contains('skill') || el.classList.contains('lastgain')) {
+        leftBanner.appendChild(el);
+      } else if (el.classList.contains('class-desc') || el.classList.contains('class-letter')) {
+        rightBanner.appendChild(el);
+      }
+    });
+    // Clear original banner and append new structure
+    banner.innerHTML = '';
+    banner.appendChild(leftBanner);
+    banner.appendChild(rightBanner);
+  };
+
+  let pageObserver = new MutationObserver(async (mutations) => {
+    // Get added nodes
+    let addedNodes;
+    if (mutations[0] && mutations[0].addedNodes.length > 0) {
+      addedNodes = mutations[0].addedNodes;
+    } else if (mutations[1] && mutations[1].addedNodes.length > 0) {
+      addedNodes = mutations[1].addedNodes;
+    }
+    // Verify nodes have been added and they do not include the loader
+    if (addedNodes.length > 0 && !Array.from(addedNodes).some((node) => node.classList?.contains('ajax-preloader'))) {
+      if (Array.from(addedNodes).some((node) => node.id === 'racingupdates')) {
+        await officialEvents();
+      } else if (Array.from(addedNodes).some((node) => node.classList?.contains('enlist-wrap')) && GM_getValue('rplus_showwinrate') === 1) {
+        await enlistedCars();
+      } else if (Array.from(addedNodes).some((node) => node.classList?.contains('pm-categories-wrap')) && GM_getValue('rplus_showparts') === 1) {
+        await partsModifications();
+      }
+    }
+  });
+
   document.addEventListener('DOMContentLoaded', async () => {
     // Add Racing+ styles to DOM
     await addRacingPlusStyles();
     // Add Racing+ elements to DOM
     await initializeRacingPlus();
+    // Fix top banner
+    await restructureBanner();
 
     console.log('Racing+: Adding Page Observer...');
-    let racingAdditionalContainerObserver = new MutationObserver(async (mutations) => {
-      // Get added nodes
-      let addedNodes;
-      if (mutations[0] && mutations[0].addedNodes.length > 0) {
-        addedNodes = mutations[0].addedNodes;
-      } else if (mutations[1] && mutations[1].addedNodes.length > 0) {
-        addedNodes = mutations[1].addedNodes;
-      }
-      // Verify nodes have been added and they do not include the loader
-      if (addedNodes.length > 0 && !Array.from(addedNodes).some((node) => node.classList?.contains('ajax-preloader'))) {
-        if (Array.from(addedNodes).some((node) => node.id === 'racingupdates')) {
-          await officialEvents();
-        } else if (Array.from(addedNodes).some((node) => node.classList?.contains('enlist-wrap')) && GM_getValue('rplus_showwinrate') === 1) {
-          await enlistedCars();
-        } else if (Array.from(addedNodes).some((node) => node.classList?.contains('pm-categories-wrap')) && GM_getValue('rplus_showparts') === 1) {
-          await partsModifications();
-        }
-      }
-    });
-    racingAdditionalContainerObserver.observe(document.querySelector('#racingAdditionalContainer'), { childList: true });
+    let page = await defer(document.querySelector('#racingAdditionalContainer'));
+    pageObserver.observe(page, { childList: true });
 
     // Load default page
     await officialEvents();
