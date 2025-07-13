@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.33
+// @version      0.35
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -18,7 +18,6 @@
   //TODO:
   // test export link
   // test fix for waiting status
-  // fix speed width (bigger)
 
   // TornPDA
   let API_KEY = '###PDA-APIKEY###';
@@ -449,14 +448,14 @@
         text-align:center;
       }
       .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.speed {
-        flex-basis:90px;
+        flex-basis:100px;
         line-height:30px;
         padding:0 5px;
         white-space:nowrap;
         text-align:right;
       }
       .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.time {
-        flex-basis:80px;
+        flex-basis:70px;
         line-height:30px;
         padding:0 5px;
         white-space:nowrap;
@@ -477,8 +476,6 @@
       .d .racing-main-wrap .car-selected-wrap .drivers-list .overview > li.selected .driver-item > li.speed {
         background: url(/images/v2/racing/selected_driver.png) 0 0 repeat-x;
       }
-
-
       .left-banner {
         height:57px;
         width:150px;
@@ -537,6 +534,9 @@
       }
 
       @media screen and (max-width: 784px) {
+        .r .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name {
+          width:160px!important;
+        }
         .d .racing-main-wrap .header-wrap .banner .skill-desc {
           font-size:0.8rem!important;
           top:10px!important;
@@ -709,15 +709,16 @@
           return b[2].toLocaleLowerCase().localeCompare(a[2].toLocaleLowerCase()) || a[3] - b[3];
         });
         // set best lap for selected driver
-        let thisDriverId = document.querySelector('script[uid]').getAttribute('uid');
+        let scriptData = await defer('#torn-user');
+        let thisDriverId = JSON.parse(scriptData.value).id;
         let selectedDriver = document.querySelector('#leaderBoard li.selected[id^=lbr-]');
         if (!selectedDriver) {
-          selectedDriver = document.querySelector(`#leaderBoard #lbr-${thisDriverId}`);
+          selectedDriver = await defer(`#leaderBoard #lbr-${thisDriverId}`);
         }
         //userId, playername, status, raceTime, bestLap
         await setBestLap(selectedDriver.id.substring(4));
         // Add click event handlers
-        let drivers = document.querySelectorAll('#leaderBoard li[id^=lbr-]');
+        let drivers = await deferAll('#leaderBoard li[id^=lbr-]');
         drivers.forEach((d) => {
           d.addEventListener('click', async (event) => {
             event.preventDefault();
@@ -770,7 +771,7 @@
         status = 'finished';
         break;
       default:
-        if (info.querySelector('t-red')) {
+        if (info.textContent.includes('Starts:')) {
           status = 'starting';
         }
         status = 'waiting';
@@ -780,13 +781,13 @@
     let drivers = await deferAll('.drivers-list ul#leaderBoard li[id^=lbr]');
     Array.from(drivers).forEach((r) => {
       // fix waiting icons
-      if (status === 'waiting') {
-        r.querySelector('.status').classList.toggle('racing', false);
-        r.querySelector('.status').classList.toggle('waiting', true);
-      } else {
-        r.querySelector('.status').classList.toggle('racing', true);
-        r.querySelector('.status').classList.toggle('waiting', false);
-      }
+      // if (status === 'waiting') {
+      //   r.querySelector('.status').classList.toggle('racing', false);
+      //   r.querySelector('.status').classList.toggle('waiting', true);
+      // } else {
+      //   r.querySelector('.status').classList.toggle('racing', true);
+      //   r.querySelector('.status').classList.toggle('waiting', false);
+      // }
       // fix completed
       if (r.querySelector('.time').textContent === '') {
         r.querySelector('.time').textContent = '0.00 %';
@@ -818,7 +819,7 @@
           if (!driver.querySelector('.speed')) {
             driver.querySelector('.time').insertAdjacentHTML('beforeBegin', `<li class="speed">0.00mph</li>`);
           }
-          if (status === 'racing' && !speedIntervalByDriverId.has(driverId)) {
+          if (status !== 'waiting' && !speedIntervalByDriverId.has(driverId)) {
             speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId));
           }
         });
