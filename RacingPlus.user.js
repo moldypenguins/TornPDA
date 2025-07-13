@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.23
+// @version      0.24
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -16,7 +16,6 @@
   'use strict';
 
   //TODO:
-  // Racing Skill (5 decimal positions)
   // Export Link (csv)
   // Last Lap
   // Best Lap
@@ -139,15 +138,22 @@
   };
 
   const setAPIKeyDisplay = async () => {
-    if (document.querySelector('#rplus_apikey').value.length > 0) {
+    if (API_KEY.includes('###')) {
+      if (document.querySelector('#rplus_apikey').value.length > 0) {
+        document.querySelector('#rplus_apikey').disabled = true;
+        document.querySelector('#rplus_apikey').readonly = true;
+        document.querySelector('#rplus_apikey_save').classList.toggle('show', false);
+        document.querySelector('#rplus_apikey_reset').classList.toggle('show', true);
+      } else {
+        document.querySelector('#rplus_apikey').disabled = false;
+        document.querySelector('#rplus_apikey').readonly = false;
+        document.querySelector('#rplus_apikey_save').classList.toggle('show', true);
+        document.querySelector('#rplus_apikey_reset').classList.toggle('show', false);
+      }
+    } else {
       document.querySelector('#rplus_apikey').disabled = true;
       document.querySelector('#rplus_apikey').readonly = true;
       document.querySelector('#rplus_apikey_save').classList.toggle('show', false);
-      document.querySelector('#rplus_apikey_reset').classList.toggle('show', true);
-    } else {
-      document.querySelector('#rplus_apikey').disabled = false;
-      document.querySelector('#rplus_apikey').readonly = false;
-      document.querySelector('#rplus_apikey_save').classList.toggle('show', true);
       document.querySelector('#rplus_apikey_reset').classList.toggle('show', false);
     }
   };
@@ -231,7 +237,7 @@
       document.querySelector('div.racing-plus-window').classList.toggle('show');
     });
     // Add the Racing+ API key stored value
-    let stored_apikey = RPS.getValue('rplus_apikey');
+    let stored_apikey = API_KEY.includes('###') ? RPS.getValue('rplus_apikey') : API_KEY;
     if (stored_apikey) {
       document.querySelector('#rplus_apikey').value = stored_apikey;
       validateKey(false);
@@ -1052,12 +1058,6 @@
       }
     }
   });
-
-  if (API_KEY.includes('###')) {
-    console.log('DESKTOP');
-  } else {
-    console.log(`PDA: ${API_KEY}`);
-  }
 
   // Add Racing+ styles to DOM
   await addRacingPlusStyles();
