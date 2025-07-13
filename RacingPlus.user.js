@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.12
+// @version      0.13
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -9,8 +9,6 @@
 // @updateURL    https://github.com/moldypenguins/TornPDA/raw/main/RacingPlus.user.js
 // @downloadURL  https://github.com/moldypenguins/TornPDA/raw/main/RacingPlus.user.js
 // @connect      api.torn.com
-// @grant        GM_log
-// @grant        GM_addStyle
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_deleteValue
@@ -93,7 +91,7 @@
         // Save API key
         if (save) {
           GM_setValue('rplus_apikey', document.querySelector('#rplus_apikey').value);
-          GM_log('Racing+: rplus_apikey saved.');
+          console.log('Racing+: rplus_apikey saved.');
         }
         // Valid API key
         document.querySelector('#rplus_apikey_status').textContent = '';
@@ -234,7 +232,7 @@
       el.checked = GM_getValue(el.id) === 1;
       el.addEventListener('click', (ev) => {
         GM_setValue(ev.target.id, ev.target.checked ? 1 : 0);
-        GM_log(`Racing+: ${ev.target.id} saved.`);
+        console.log(`Racing+: ${ev.target.id} saved.`);
       });
     });
     console.log('Racing+: Initialized.');
@@ -242,16 +240,17 @@
 
   // ##############################################################################################
 
+  const addStyle = async (s) => {
+    let style = document.createElement('style');
+    style.innerHTML = s;
+    document.head.appendChild(style);
+  };
+
   const addRacingPlusStyles = async () => {
-    let GM_addStyle = function (s) {
-      let style = document.createElement('style');
-      style.innerHTML = s;
-      document.head.appendChild(style);
-    };
     console.log('Racing+: Adding styles...');
 
     // Add styles
-    GM_addStyle(`
+    await addStyle(`
       div.racing-plus-window {
         display:none;
       }
@@ -520,7 +519,7 @@
         `;
         });
       });
-      GM_addStyle(partsCSS);
+      await addStyle(partsCSS);
     }
   };
 
@@ -550,7 +549,7 @@
           document.querySelector('.banner .skill').insertAdjacentHTML('afterEnd', `<div class="lastgain">+${lastInc}</div>`);
         }
         GM_setValue('rplus_racingskill', currSkill);
-        GM_log('Racing+: rplus_racingskill saved.');
+        console.log('Racing+: rplus_racingskill saved.');
         document.querySelector('.banner .skill').textContent = currSkill;
       }
 
@@ -792,10 +791,12 @@
     });
     leaderboardObserver.observe(document.querySelector('.drivers-list #leaderBoard'), { childList: true });
 
+    console.log('Racing+: Adding XMLHttpRequest Monkey...');
     const originalOpen = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function (...args) {
       this.addEventListener('load', async (ev) => {
-        if (ev.target && ev.target.responseURL && ev.target.responseURL.startsWith(`${window.location.origin}${window.location.pathname}`)) {
+        if (ev.target && ev.target.responseURL && ev.target.responseURL.startsWith(`${window.location.origin}${window.location.pathname}`) && ev.target.response) {
+          console.log('Racing+: XMLHttpRequest caught.');
           await parseRaceData(ev.target.response);
         }
       });
