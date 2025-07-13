@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.14
+// @version      0.15
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -455,18 +455,7 @@
         background: url(/images/v2/racing/selected_driver.png) 0 0 repeat-x;
       }
 
-      @media screen and (max-width: 784px) {
-        .d .racing-main-wrap .header-wrap .banner .skill {
-          left:125px!important;
-        }
-        .d .racing-main-wrap .header-wrap .banner .lastgain {
-          top:10px;
-          left:195px;
-        }
-        .d .racing-main-wrap .header-wrap .banner .class-letter {
-          font-size:1.25rem!important;
-        }
-      }
+
       .left-banner {
         height:57px;
         width:150px;
@@ -522,6 +511,36 @@
         right:12px!important;
         top:22px!important;
         font-size:1.5rem!important;
+      }
+
+      @media screen and (max-width: 784px) {
+        .d .racing-main-wrap .header-wrap .banner .skill-desc {
+          font-size:0.8rem!important;
+          top:10px!important;
+        }
+        .d .racing-main-wrap .header-wrap .banner .skill {
+          top:10px!important;
+          left:125px!important;
+        }
+        .d .racing-main-wrap .header-wrap .banner .lastgain {
+          top:10px!important;
+          left:185px;
+        }
+        .d .racing-main-wrap .header-wrap .banner .class-desc {
+          top:10px !important;
+          font-size: 0.8rem !important;
+        }
+        .d .racing-main-wrap .header-wrap .banner .class-letter {
+          top:10px!important;
+          font-size:1.25rem!important;
+        }
+        .left-banner,
+        .right-banner {
+          top:0;
+          background-image:none!important;
+          border:none!important;
+          box-shadow:none!important;
+        }
       }
     `);
     if (GM_getValue('rplus_showparts') === 1) {
@@ -595,13 +614,14 @@
       let lastSkill = GM_getValue('rplus_racingskill');
       let currSkill = Number(data.user.racinglevel).toFixed(5);
       if (currSkill > lastSkill) {
+        let skillBanner = await defer(document.querySelector('.banner .skill'));
         let lastInc = Number(currSkill - lastSkill).toFixed(5);
         if (lastInc) {
-          document.querySelector('.banner .skill').insertAdjacentHTML('afterEnd', `<div class="lastgain">+${lastInc}</div>`);
+          skillBanner.insertAdjacentHTML('afterEnd', `<div class="lastgain">+${lastInc}</div>`);
         }
         GM_setValue('rplus_racingskill', currSkill);
         console.log('Racing+: rplus_racingskill saved.');
-        document.querySelector('.banner .skill').textContent = currSkill;
+        skillBanner.textContent = currSkill;
       }
 
       // Add race link copy button
