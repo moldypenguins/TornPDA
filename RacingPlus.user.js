@@ -19,12 +19,12 @@
   // Export Link (csv)
   // Last Lap
   // Best Lap
-  // Speed
+  // Parts - Suspension (bushes)
 
   // TornPDA
   let API_KEY = '###PDA-APIKEY###';
 
-  //const SPEED_INTERVAL = 1000; // Amount of time in milliseconds between speed updates.
+  const SPEED_INTERVAL = 1000; // Amount of time in milliseconds between speed updates.
   const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
 
   const RPS = {
@@ -641,11 +641,25 @@
 
   // ##############################################################################################
 
-  // Cache racing skill and interval object
-  let racingSkillCacheByDriverId = new Map();
+  // Cache last times and interval objects
   let lastTimeByDriverId = new Map();
   let speedIntervalByDriverId = new Map();
 
+  const updateSpeed = async (trackData, driverId) => {
+    let driverUl = await defer(`#lbr-${driverId} ul`);
+    if (driverUl.children('.time').text().indexOf('%') >= 0) {
+      let compl = driverUl.children('.time').text().replace('%', '');
+      if (lastTimeByDriverId.has(driverId)) {
+        let speed = (((compl - lastTimeByDriverId.get(driverId)) / 100) * trackData.laps * trackData.distance * 60 * 60 * 1000) / SPEED_INTERVAL;
+        driverUl.children('.speed').text(speed.toFixed(2) + 'mph');
+      }
+      lastTimeByDriverId.set(driverId, compl);
+    } else {
+      driverUl.children('.speed').text('0.00mph');
+    }
+  };
+
+  // Cache race results
   let raceResults = [];
   const parseRaceData = async (response) => {
     try {
@@ -715,28 +729,24 @@
     return ('00' + minutes).toString().slice(-2) + ':' + ('00' + seconds).toString().slice(-2) + '.' + ('000' + mseconds).toString().slice(3);
   };
 
-  const raceStatus = async () => {
+  const updateLeaderboard = async () => {
+    console.log('Racing+: Updating Leaderboard...');
+    // Get race status
+    let status = 'waiting';
     let info = await defer('#infoSpot');
     switch (info.textContent.toLowerCase()) {
       case 'race started':
       case 'race in progress':
-        return 'racing';
+        status = 'racing';
       case 'race finished':
-        return 'finished';
+        status = 'finished';
       default:
         if (info.querySelector('t-red')) {
-          return 'starting';
+          status = 'starting';
         }
-        return 'waiting';
     }
-  };
-
-  const updateLeaderboard = async () => {
-    console.log('Racing+: Updating Leaderboard...');
-    // Wait for racers to load
+    // Wait for racers to load then enumerate
     let drivers = await deferAll('.drivers-list ul#leaderBoard li[id^=lbr]');
-    // Enumerate racers
-    let status = await raceStatus();
     Array.from(drivers).forEach((r) => {
       // fix waiting icons
       if (status === 'waiting') {
@@ -756,7 +766,24 @@
       await loadRacerSkill(Array.from(drivers));
     }
     if (RPS.getValue('rplus_showspeed') === '1') {
-      await loadRacerSpeed(Array.from(drivers));
+      // Get track data
+      let racingupdates = await defer('#racingupdates .drivers-list .title-black');
+      let trackData = {
+        laps: racingupdates.textContent.split(' - ')[1].split(' ')[0],
+        distance: racingupdates.querySelector('.track-info').getAttribute('data-length').replace('mi', ''),
+      };
+      if (status !== 'finished') {
+        console.log('Racing+: Loading Speed');
+        drivers.forEach((driver) => {
+          let driverId = driver.id.substring(4);
+          if (!driver.querySelector('.speed')) {
+            driver.querySelector('.time').insertAdjacentHTML('beforeBegin', `<li class="speed">0.00mph</li>`);
+          }
+          if (['race started', 'race in progress'].includes(status) && !speedIntervalByDriverId.has(driverId)) {
+            speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId));
+          }
+        });
+      }
     }
     if (RPS.getValue('rplus_showresults') === '1' && raceResults.length > 0) {
       // set result for each driver
@@ -846,16 +873,6 @@
       } catch (err) {
         //TODO: more better error handling
         console.log(err);
-      }
-    });
-  };
-
-  const loadRacerSpeed = async (drivers) => {
-    drivers.forEach((driver) => {
-      let driverId = driver.id.substring(4);
-
-      if (!driver.querySelector('.speed')) {
-        driver.querySelector('.time').insertAdjacentHTML('beforeBegin', `<li class="speed">0.00mph</li>`);
       }
     });
   };

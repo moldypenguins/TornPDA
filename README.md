@@ -9,5 +9,9 @@
 <p>Show racing skill, current speed, race results, precise skill, upgrade parts.</p>
 <a href="https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/RacingPlus.user.js">Install RacingPlus User Script</a>
 <h3>Screenshots</h3>
+<img src=".github/images/options.png" alt="options" />
+<img src=".github/images/enlisted.png" alt="enlisted" />
+<img src=".github/images/parts.png" alt="parts" />
+<img src=".github/images/parts2.png" alt="parts" />
 <h4>Desktop</h4>
 <img src=".github/images/desktop.png" alt="desktop" />
