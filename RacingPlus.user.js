@@ -18,6 +18,7 @@
   //TODO:
   // test export link
   // test fix for waiting status
+  // fix speed width (bigger)
 
   // TornPDA
   let API_KEY = '###PDA-APIKEY###';
