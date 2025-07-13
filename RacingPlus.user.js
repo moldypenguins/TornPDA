@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.26
+// @version      0.27
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -19,6 +19,7 @@
   // Export Link (csv)
   // Last Lap
   // Best Lap
+  // Speed
 
   // TornPDA
   let API_KEY = '###PDA-APIKEY###';
@@ -624,6 +625,21 @@
     });
   };
 
+  const deferAll = (selector, interval = 100) => {
+    return new Promise((resolve) => {
+      const check = () => {
+        const result = document.querySelectorAll(selector);
+        if (result && result.length > 0) {
+          resolve(result);
+        } else {
+          console.log('Racing+: Deferring...');
+          setTimeout(check, interval);
+        }
+      };
+      check();
+    });
+  };
+
   // ##############################################################################################
 
   // Cache racing skill and interval object
@@ -718,14 +734,11 @@
 
   const updateLeaderboard = async () => {
     console.log('Racing+: Updating Leaderboard...');
-    let leaderboard = await defer('.drivers-list ul#leaderBoard');
     // Wait for racers to load
-    while (!leaderboard.children || leaderboard.children.length <= 0) {
-      await sleep(100);
-    }
+    let drivers = await deferAll('.drivers-list ul#leaderBoard li[id^=lbr]');
     // Enumerate racers
     let status = await raceStatus();
-    Array.from(leaderboard.children).forEach((r) => {
+    Array.from(drivers).forEach((r) => {
       // fix waiting icons
       if (status === 'waiting') {
         r.querySelector('.status').classList.toggle('racing', false);
