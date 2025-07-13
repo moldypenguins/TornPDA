@@ -16,8 +16,8 @@
   'use strict';
 
   //TODO:
-  // Fix waiting status
-  // &tab=log&raceID=15583362
+  // test export link
+  // test fix for waiting status
 
   // TornPDA
   let API_KEY = '###PDA-APIKEY###';
