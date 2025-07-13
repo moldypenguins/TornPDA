@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.29
+// @version      0.30
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -647,11 +647,11 @@
 
   const updateSpeed = async (trackData, driverId) => {
     let driverUl = await defer(`#lbr-${driverId} ul`);
-    if (driverUl.children('.time').text().indexOf('%') >= 0) {
-      let compl = driverUl.children('.time').text().replace('%', '');
+    if (driverUl.querySelector('.time').textContent.indexOf('%') >= 0) {
+      let compl = driverUl.querySelector('.time').textContent.replace('%', '');
       if (lastTimeByDriverId.has(driverId)) {
         let speed = (((compl - lastTimeByDriverId.get(driverId)) / 100) * trackData.laps * trackData.distance * 60 * 60 * 1000) / SPEED_INTERVAL;
-        driverUl.children('.speed').text(speed.toFixed(2) + 'mph');
+        driverUl.querySelector('.speed').textContent = speed.toFixed(2) + 'mph';
       }
       lastTimeByDriverId.set(driverId, compl);
     } else {
@@ -738,12 +738,15 @@
       case 'race started':
       case 'race in progress':
         status = 'racing';
+        break;
       case 'race finished':
         status = 'finished';
+        break;
       default:
         if (info.querySelector('t-red')) {
           status = 'starting';
         }
+        break;
     }
     // Wait for racers to load then enumerate
     let drivers = await deferAll('.drivers-list ul#leaderBoard li[id^=lbr]');
@@ -779,7 +782,7 @@
           if (!driver.querySelector('.speed')) {
             driver.querySelector('.time').insertAdjacentHTML('beforeBegin', `<li class="speed">0.00mph</li>`);
           }
-          if (['race started', 'race in progress'].includes(status) && !speedIntervalByDriverId.has(driverId)) {
+          if (status === 'racing' && !speedIntervalByDriverId.has(driverId)) {
             speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId));
           }
         });
@@ -813,18 +816,18 @@
       let racelink_html =
         `<div id="rplus_racelink"><a title="Copy link" href="https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}">` +
         '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><g><path d="M3.09,4.36c1.25-1.25,3.28-1.26,4.54,0,.15.15.29.32.41.5l-1.12,1.12c-.32-.74-1.13-1.15-1.92-.97-.31.07-.59.22-.82.45l-2.15,2.15c-.65.66-.63,1.72.03,2.37.65.63,1.69.63,2.34,0l.66-.66c.6.24,1.25.34,1.89.29l-1.47,1.47c-1.26,1.26-3.29,1.26-4.55,0-1.26-1.26-1.26-3.29,0-4.55h0l2.15-2.15ZM6.51.94l-1.47,1.46c.64-.05,1.29.05,1.89.29l.66-.66c.65-.65,1.72-.65,2.37,0,.65.65.65,1.72,0,2.37h0l-2.15,2.15c-.66.65-1.71.65-2.37,0-.15-.15-.28-.33-.36-.53l-1.12,1.12c.12.18.25.34.4.49,1.25,1.26,3.29,1.26,4.54,0,0,0,0,0,0,0l2.15-2.15c1.26-1.26,1.25-3.29,0-4.55-1.26-1.26-3.29-1.25-4.55,0Z" fill="currentColor" stroke-width="0"></path></g></svg>' +
-        '</a></div>';
+        `</a></div>`;
       // Append the link to the info container
       trackInfo.insertAdjacentHTML('afterEnd', racelink_html);
 
       // Add click event listener to the race link
       let raceLink = await defer('#rplus_racelink a');
-      raceLink.addEventListener('click', function (event) {
+      raceLink.addEventListener('click', async (event) => {
         event.preventDefault();
         // Copy the race link to clipboard using RPS.setClipboard
         RPS.setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}`);
         // Try to find the tooltip and update its content
-        const tooltipId = event.target.getAttribute('aria-describedby');
+        const tooltipId = event.currentTarget.getAttribute('aria-describedby');
         if (tooltipId) {
           const tooltip = document.querySelector(`#${tooltipId} .ui-tooltip-content`);
           if (tooltip && tooltip.firstChild) {
