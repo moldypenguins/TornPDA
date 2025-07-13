@@ -18,6 +18,7 @@
   //TODO:
   // test export link
   // test fix for waiting status
+  // add light mode
 
   // TornPDA
   let API_KEY = '###PDA-APIKEY###';
