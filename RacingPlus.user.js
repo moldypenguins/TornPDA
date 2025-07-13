@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.27
+// @version      0.28
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -162,14 +162,10 @@
   // ##############################################################################################
 
   // Add profile links to driver names
-  const addLinks = async () => {
-    document.querySelectorAll('ul.overview li.name').forEach((nameItem) => {
-      const parent = nameItem.parentElement?.parentElement;
-      if (parent && parent.id.startsWith('lbr-')) {
-        const username = nameItem.innerHTML.replace('<span>', '').replace('</span>', '');
-        const user_id = parent.id.replace('lbr-', '');
-        nameItem.innerHTML = `<a href="/profiles.php?XID=${user_id}">${username}</a>`;
-      }
+  const addLinks = async (drivers) => {
+    drivers.forEach((driver) => {
+      let username = driver.querySelector('li.name').innerHTML.replace('<span>', '').replace('</span>', '');
+      driver.querySelector('li.name').innerHTML = `<a href="/profiles.php?XID=${driver.id.substring(4)}">${username}</a>`;
     });
   };
 
@@ -605,38 +601,41 @@
     console.log('Racing+: Styles added.');
   };
 
-  // Sleep for given milliseconds.
-  const sleep = async (ms) => {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  };
-
   const defer = (selector, interval = 100) => {
-    return new Promise((resolve) => {
-      const check = () => {
-        const result = document.querySelector(selector);
-        if (result) {
-          resolve(result);
-        } else {
-          console.log('Racing+: Deferring...');
-          setTimeout(check, interval);
-        }
-      };
-      check();
+    return new Promise((resolve, reject) => {
+      try {
+        const check = () => {
+          const result = document.querySelector(selector);
+          if (result) {
+            resolve(result);
+          } else {
+            console.log('Racing+: Deferring...');
+            setTimeout(check, interval);
+          }
+        };
+        check();
+      } catch (err) {
+        reject(err);
+      }
     });
   };
 
   const deferAll = (selector, interval = 100) => {
-    return new Promise((resolve) => {
-      const check = () => {
-        const result = document.querySelectorAll(selector);
-        if (result && result.length > 0) {
-          resolve(result);
-        } else {
-          console.log('Racing+: Deferring...');
-          setTimeout(check, interval);
-        }
-      };
-      check();
+    return new Promise((resolve, reject) => {
+      try {
+        const check = () => {
+          const result = document.querySelectorAll(selector);
+          if (result && result.length > 0) {
+            resolve(result);
+          } else {
+            console.log('Racing+: Deferring...');
+            setTimeout(check, interval);
+          }
+        };
+        check();
+      } catch (err) {
+        reject(err);
+      }
     });
   };
 
@@ -751,13 +750,13 @@
     });
     // Load selected options
     if (RPS.getValue('rplus_addlinks') === '1') {
-      await addLinks();
+      await addLinks(Array.from(drivers));
     }
     if (RPS.getValue('rplus_showskill') === '1') {
-      await loadRacerSkill();
+      await loadRacerSkill(Array.from(drivers));
     }
     if (RPS.getValue('rplus_showspeed') === '1') {
-      await loadRacerSpeed();
+      await loadRacerSpeed(Array.from(drivers));
     }
     if (RPS.getValue('rplus_showresults') === '1' && raceResults.length > 0) {
       // set result for each driver
@@ -835,11 +834,10 @@
     }
   };
 
-  const loadRacerSkill = async () => {
-    let drivers = document.querySelectorAll('.drivers-list #leaderBoard .driver-item');
+  const loadRacerSkill = async (drivers) => {
     drivers.forEach(async (driver) => {
       try {
-        let driverId = driver.parentElement.id.substring(4);
+        let driverId = driver.id.substring(4);
         // Fetch racing skill data from the Torn API for the given driverId
         let user = await torn_api(API_KEY.includes('###') ? RPS.getValue('rplus_apikey') : API_KEY, `user/${driverId}/personalStats`, 'stat=racingskill');
         if (user && !driver.querySelector('.skill')) {
@@ -852,9 +850,9 @@
     });
   };
 
-  const loadRacerSpeed = async () => {
-    document.querySelectorAll('.drivers-list #leaderBoard .driver-item').forEach((driver) => {
-      let driverId = driver.parentElement.id.substring(4);
+  const loadRacerSpeed = async (drivers) => {
+    drivers.forEach((driver) => {
+      let driverId = driver.id.substring(4);
 
       if (!driver.querySelector('.speed')) {
         driver.querySelector('.time').insertAdjacentHTML('beforeBegin', `<li class="speed">0.00mph</li>`);
