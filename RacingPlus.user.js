@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.16
+// @version      0.17
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -148,12 +148,12 @@
 
   const initializeRacingPlus = async () => {
     console.log('Racing+: Initializing...');
-    let pagehr = await defer(document.querySelector('hr.page-head-delimiter'));
+    let title = await defer(document.querySelector('.content-title'));
     // Add the Racing+ window to the DOM
     if (!document.querySelector('div.racing-plus-window')) {
       let rplus_window_html = `<div class="racing-plus-window">
           <div class="title-black top-round m-top10">Racing+ Settings</div>
-          <div class="cont-black bottom-round">
+          <div class="cont-black">
             <div class="model-wrap">
               <div class="racing-plus-settings">
                 <label for="rplus_apikey">API Key</label>
@@ -183,8 +183,9 @@
               </div>
             </div>
           </div>
+          <div class="cont-black bottom-round"><div class="racing-plus-footer"></div></div>
         </div>`;
-      pagehr.insertAdjacentHTML('afterEnd', rplus_window_html);
+      title.insertAdjacentHTML('beforeEnd', rplus_window_html);
       console.log('Racing+: Settings window added.');
     }
 
@@ -260,7 +261,7 @@
       }
       div.racing-plus-window .model-wrap {
         background: url(/images/v2/racing/header/stripy_bg.png) 0 0 repeat;
-        padding: 10px 10px 5px 10px;
+        padding: 5px 10px 0px 10px;
       }
       div.racing-plus-settings {
         display:grid;
@@ -281,12 +282,7 @@
       }
       div.racing-plus-settings label,
       div.racing-plus-settings div {
-        border-bottom:1px solid #000;
-        border-top:1px solid #444;
-      }
-      div.racing-plus-settings div:first-of-type,
-      div.racing-plus-settings label:first-of-type {
-        border-top:0px none;
+        border-bottom: 2px groove #424242;
       }
       div.racing-plus-settings div:last-of-type,
       div.racing-plus-settings label:last-of-type {
@@ -296,6 +292,10 @@
         vertical-align:middle;
         height:11px;
         margin:5px 0;
+      }
+      .racing-plus-footer {
+        height: 10px;
+        border-top:2px groove #424242;
       }
       #rplus_apikey {
         text-align:right;
@@ -577,6 +577,7 @@
       });
       await addStyle(partsCSS);
     }
+    console.log('Racing+: Styles added.');
   };
 
   // Sleep for given milliseconds.
@@ -676,7 +677,7 @@
   };
 
   const raceStatus = async () => {
-    let info = document.querySelector('#infoSpot');
+    let info = await defer(document.querySelector('#infoSpot'));
     switch (info.textContent.toLowerCase()) {
       case 'race started':
       case 'race in progress':
@@ -723,11 +724,8 @@
     }
     if (GM_getValue('rplus_showresults') === 1 && raceResults.length > 0) {
       // set result for each driver
-      raceResults.forEach((result, index) => {
-        let driverUl = document.querySelector(`#lbr-${result[0]} ul`);
-        if (driverUl.length < 1) {
-          return;
-        }
+      raceResults.forEach(async (result, index) => {
+        let driverUl = await defer(document.querySelector(`#lbr-${result[0]} ul`));
         let place = index + 1;
         let statusLi = driverUl.querySelector('.status-wrap');
         if (result[2] === 'crashed') {
@@ -748,20 +746,22 @@
   const addRaceLinkCopyButton = async (raceId) => {
     // Check if the race link already exists
     if (!document.querySelector('#rplus_racelink')) {
+      let trackInfo = await defer(document.querySelector('.track-info-wrap'));
       let racelink_html =
         `<div id="rplus_racelink"><a title="Copy link" href="https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}">` +
         '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><g><path d="M3.09,4.36c1.25-1.25,3.28-1.26,4.54,0,.15.15.29.32.41.5l-1.12,1.12c-.32-.74-1.13-1.15-1.92-.97-.31.07-.59.22-.82.45l-2.15,2.15c-.65.66-.63,1.72.03,2.37.65.63,1.69.63,2.34,0l.66-.66c.6.24,1.25.34,1.89.29l-1.47,1.47c-1.26,1.26-3.29,1.26-4.55,0-1.26-1.26-1.26-3.29,0-4.55h0l2.15-2.15ZM6.51.94l-1.47,1.46c.64-.05,1.29.05,1.89.29l.66-.66c.65-.65,1.72-.65,2.37,0,.65.65.65,1.72,0,2.37h0l-2.15,2.15c-.66.65-1.71.65-2.37,0-.15-.15-.28-.33-.36-.53l-1.12,1.12c.12.18.25.34.4.49,1.25,1.26,3.29,1.26,4.54,0,0,0,0,0,0,0l2.15-2.15c1.26-1.26,1.25-3.29,0-4.55-1.26-1.26-3.29-1.25-4.55,0Z" fill="currentColor" stroke-width="0"></path></g></svg>' +
         '</a></div>';
       // Append the link to the info container
-      document.querySelector('.track-info-wrap').insertAdjacentHTML('afterEnd', racelink_html);
+      trackInfo.insertAdjacentHTML('afterEnd', racelink_html);
 
       // Add click event listener to the race link
-      document.querySelector('#rplus_racelink a').addEventListener('click', function (event) {
+      let raceLink = await defer(document.querySelector('#rplus_racelink a'));
+      raceLink.addEventListener('click', function (event) {
         event.preventDefault();
         // Copy the race link to clipboard using GM_setClipboard
         GM_setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}`);
         // Try to find the tooltip and update its content
-        const tooltipId = document.querySelector('#rplus_racelink a').getAttribute('aria-describedby');
+        const tooltipId = event.target.getAttribute('aria-describedby');
         if (tooltipId) {
           const tooltip = document.querySelector(`#${tooltipId} .ui-tooltip-content`);
           if (tooltip && tooltip.firstChild) {
