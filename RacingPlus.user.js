@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.11
+// @version      0.12
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -525,9 +525,9 @@
   };
 
   // Sleep for given milliseconds.
-  // const sleep = async (ms) => {
-  //   return new Promise((resolve) => setTimeout(resolve, ms));
-  // };
+  const sleep = async (ms) => {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  };
 
   // ##############################################################################################
 
@@ -619,9 +619,9 @@
 
   const updateLeaderboard = async () => {
     let leaderboard = document.querySelector('.drivers-list #leaderBoard');
-    if (!leaderboard || leaderboard.children.length <= 0) {
-      console.log('Racing+: Cannot find leaderboard...');
-      return;
+    while (!leaderboard || leaderboard.children.length <= 0) {
+      console.log('Racing+: Waiting to find leaderboard...');
+      await sleep(100);
     }
     console.log('Racing+: Updating Leaderboard...');
 
