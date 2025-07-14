@@ -9,7 +9,7 @@ Show level when execute will be effective.
 
 [ coming soon ]
 
-## Racing+ v0.35
+## Racing+ v0.36
 
 Show racing skill, current speed, race results, precise skill, upgrade parts.
 [Install RacingPlus User Script](https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/RacingPlus.user.js)

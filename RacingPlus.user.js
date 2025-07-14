@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.35
+// @version      0.36
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -18,7 +18,7 @@
   //TODO:
   // test export link
   // test fix for waiting status
-  // add light mode
+  // fix light mode colours (goto: 639)
 
   // TornPDA
   let API_KEY = '###PDA-APIKEY###';
@@ -176,40 +176,38 @@
     // Add the Racing+ window to the DOM
     if (!document.querySelector('div.racing-plus-window')) {
       let rplus_window_html = `<div class="racing-plus-window">
-          <div class="title-black top-round m-top10">Racing+ Settings</div>
-          <div class="cont-black">
-            <div class="model-wrap">
-              <div class="racing-plus-settings">
-                <label for="rplus_apikey">API Key</label>
-                <div class="nowrap">
-                  <span id="rplus_apikey_actions">
-                    <span id="rplus_apikey_status"></span>
-                    <button type="button" id="rplus_apikey_save" aria-label="Save">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" version="1.1">
-                        <path fill-rule="evenodd" clip-rule="evenodd" d="M7 2C4.23858 2 2 4.23858 2 7V17C2 19.7614 4.23858 22 7 22H17C19.7614 22 22 19.7614 22 17V8.82843C22 8.03278 21.6839 7.26972 21.1213 6.70711L17.2929 2.87868C16.7303 2.31607 15.9672 2 15.1716 2H7ZM7 4C6.44772 4 6 4.44772 6 5V7C6 7.55228 6.44772 8 7 8H15C15.5523 8 16 7.55228 16 7V5C16 4.44772 15.5523 4 15 4H7ZM12 17C13.6569 17 15 15.6569 15 14C15 12.3431 13.6569 11 12 11C10.3431 11 9 12.3431 9 14C9 15.6569 10.3431 17 12 17Z" />
-                      </svg>
-                    </button>
-                    <button type="button" id="rplus_apikey_reset" aria-label="Reset">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" version="1.1">
-                        <path d="M790.2 590.67l105.978 32.29C847.364 783.876 697.86 901 521 901c-216.496 0-392-175.504-392-392s175.504-392 392-392c108.502 0 206.708 44.083 277.685 115.315l-76.64 76.64C670.99 257.13 599.997 225 521.5 225 366.032 225 240 351.032 240 506.5 240 661.968 366.032 788 521.5 788c126.148 0 232.916-82.978 268.7-197.33z"/>
-                        <path d="M855.58 173.003L650.426 363.491l228.569 32.285z"/>
-                      </svg>
-                    </button>
-                  </span>
-                  <input type="text" id="rplus_apikey" maxlength="16" />
-                </div>
-                <label for="rplus_addlinks">Add profile links</label><div><input type="checkbox" id="rplus_addlinks" /></div>
-                <label for="rplus_showskill">Show racing skill</label><div><input type="checkbox" id="rplus_showskill" /></div>
-                <label for="rplus_showspeed">Show current speed</label><div><input type="checkbox" id="rplus_showspeed" /></div>
-                <label for="rplus_showresults">Show race results</label><div><input type="checkbox" id="rplus_showresults" /></div>
-                <label for="rplus_showracelink">Show race link</label><div><input type="checkbox" id="rplus_showracelink" /></div>
-                <label for="rplus_showexportlink">Show export link</label><div><input type="checkbox" id="rplus_showexportlink" /></div>
-                <label for="rplus_showwinrate">Show win rate for each car</label><div><input type="checkbox" id="rplus_showwinrate" /></div>
-                <label for="rplus_showparts">Show parts & modifications</label><div><input type="checkbox" id="rplus_showparts" /></div>
+          <div class="racing-plus-header">Racing+</div>
+          <div class="racing-plus-main">
+            <div class="racing-plus-settings">
+              <label for="rplus_apikey">API Key</label>
+              <div class="nowrap">
+                <span id="rplus_apikey_actions">
+                  <span id="rplus_apikey_status"></span>
+                  <button type="button" id="rplus_apikey_save" aria-label="Save">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" version="1.1">
+                      <path fill-rule="evenodd" clip-rule="evenodd" d="M7 2C4.23858 2 2 4.23858 2 7V17C2 19.7614 4.23858 22 7 22H17C19.7614 22 22 19.7614 22 17V8.82843C22 8.03278 21.6839 7.26972 21.1213 6.70711L17.2929 2.87868C16.7303 2.31607 15.9672 2 15.1716 2H7ZM7 4C6.44772 4 6 4.44772 6 5V7C6 7.55228 6.44772 8 7 8H15C15.5523 8 16 7.55228 16 7V5C16 4.44772 15.5523 4 15 4H7ZM12 17C13.6569 17 15 15.6569 15 14C15 12.3431 13.6569 11 12 11C10.3431 11 9 12.3431 9 14C9 15.6569 10.3431 17 12 17Z" />
+                    </svg>
+                  </button>
+                  <button type="button" id="rplus_apikey_reset" aria-label="Reset">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" version="1.1">
+                      <path d="M790.2 590.67l105.978 32.29C847.364 783.876 697.86 901 521 901c-216.496 0-392-175.504-392-392s175.504-392 392-392c108.502 0 206.708 44.083 277.685 115.315l-76.64 76.64C670.99 257.13 599.997 225 521.5 225 366.032 225 240 351.032 240 506.5 240 661.968 366.032 788 521.5 788c126.148 0 232.916-82.978 268.7-197.33z"/>
+                      <path d="M855.58 173.003L650.426 363.491l228.569 32.285z"/>
+                    </svg>
+                  </button>
+                </span>
+                <input type="text" id="rplus_apikey" maxlength="16" />
               </div>
+              <label for="rplus_addlinks">Add profile links</label><div><input type="checkbox" id="rplus_addlinks" /></div>
+              <label for="rplus_showskill">Show racing skill</label><div><input type="checkbox" id="rplus_showskill" /></div>
+              <label for="rplus_showspeed">Show current speed</label><div><input type="checkbox" id="rplus_showspeed" /></div>
+              <label for="rplus_showresults">Show race results</label><div><input type="checkbox" id="rplus_showresults" /></div>
+              <label for="rplus_showracelink">Show race link</label><div><input type="checkbox" id="rplus_showracelink" /></div>
+              <label for="rplus_showexportlink">Show export link</label><div><input type="checkbox" id="rplus_showexportlink" /></div>
+              <label for="rplus_showwinrate">Show win rate for each car</label><div><input type="checkbox" id="rplus_showwinrate" /></div>
+              <label for="rplus_showparts">Show parts & modifications</label><div><input type="checkbox" id="rplus_showparts" /></div>
             </div>
           </div>
-          <div class="cont-black bottom-round"><div class="racing-plus-footer"></div></div>
+          <div class="racing-plus-footer"></div>
         </div>`;
       mainpage.insertAdjacentHTML('beforeBegin', rplus_window_html);
       console.log('Racing+: Settings window added.');
@@ -274,51 +272,121 @@
     console.log('Racing+: Adding styles...');
 
     // Add styles
-    await RPS.addStyle(`
+    RPS.addStyle(`
       div.racing-plus-window {
+        margin:10px 0;
+        padding:0;
         display:none;
       }
       div.racing-plus-window.show {
         display:block;
       }
-      div.racing-plus-window .model-wrap {
-        background: url(/images/v2/racing/header/stripy_bg.png) 0 0 repeat;
-        padding: 5px 10px 0px 10px;
+      .d .racing-plus-header {
+        position:relative;
+        padding-left:10px;
+        height:30px;
+        line-height:30px;
+        font-size:12px;
+        font-weight:bold;
+        letter-spacing:0;
+        text-shadow:0 0 2px #00000080;
+        text-shadow:var(--tutorial-title-shadow);
+        color:#ffffff;
+        color:var(--tutorial-title-color);
+        border:0 none!important;
+        border-radius:5px 5px 0 0;
+        background: linear-gradient(180deg, #888888 0%, #444444 100%);
       }
-      div.racing-plus-settings {
+      .d.dark-mode .racing-plus-header {
+        background:linear-gradient(180deg, #555555 0%, #333333 100%);
+      }
+      .d .racing-plus-header:after {
+        position:absolute;
+        left:0;
+        bottom:-1px;
+        content:'';
+        display:block;
+        height:0;
+        width:100%;
+        border-top:1px solid #999999;
+        border-bottom:1px solid #EBEBEB;
+      }
+      .d.dark-mode .racing-plus-header:after {
+        border-bottom:1px solid #222222;
+        border-top:1px solid #444444;
+      }
+      .d .racing-plus-footer {
+        position:relative;
+        margin:0;
+        padding:0;
+        height:10px;
+        border:0 none!important;
+        border-radius:0 0 5px 5px;
+        background: linear-gradient(0deg, #888888 0%, #444444 100%);
+      }
+      .d.dark-mode .racing-plus-footer {
+        background:linear-gradient(0deg, #555555 0%, #333333 100%);
+      }
+      .d .racing-plus-footer:before {
+        position:absolute;
+        left:0;
+        top:-1px;
+        content:'';
+        display:block;
+        height:0;
+        width:100%;
+        border-bottom:1px solid #999999;
+        border-top:1px solid #EBEBEB;
+      }
+      .d.dark-mode .racing-plus-footer:before {
+        border-top:1px solid #222222;
+        border-bottom:1px solid #444444;
+      }
+      .d .racing-plus-main {
+        margin:0;
+        padding:5px 10px 0px 10px;
+        background-color: #F2F2F2;
+      }
+      .d.dark-mode .racing-plus-main {
+        background-color: #2E2E2E;
+      }
+
+      .d .racing-plus-settings {
         display:grid;
         grid-template-columns:auto min-content;
         grid-template-rows:repeat(6, min-content);
         grid-gap:0;
       }
-      div.racing-plus-settings label {
+      .d .racing-plus-settings label {
         padding:6px 5px;
         font-size:10px;
         white-space:nowrap;
       }
-      div.racing-plus-settings div {
+      .d .racing-plus-settings div {
         padding:0 5px;
         font-size:10px;
         text-align:right;
         position:relative;
       }
-      div.racing-plus-settings label,
-      div.racing-plus-settings div {
-        border-bottom: 2px groove #424242;
+      .d .racing-plus-settings label,
+      .d .racing-plus-settings div {
+        border-bottom: 2px groove #EBEBEB;
       }
-      div.racing-plus-settings div:last-of-type,
-      div.racing-plus-settings label:last-of-type {
+      .d.dark-mode .racing-plus-settings label,
+      .d.dark-mode .racing-plus-settings div {
+        border-bottom: 2px groove #444444;
+      }
+      .d .racing-plus-settings div:last-of-type,
+      .d .racing-plus-settings label:last-of-type {
         border-bottom:0px none;
       }
-      div.racing-plus-settings div input[type=checkbox] {
+      .d .racing-plus-settings div input[type=checkbox] {
         vertical-align:middle;
         height:11px;
         margin:5px 0;
       }
-      .racing-plus-footer {
-        height: 10px;
-        border-top:2px groove #424242;
-      }
+
+
       #rplus_apikey {
         text-align:right;
         vertical-align:middle;
