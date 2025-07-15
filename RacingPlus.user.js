@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.51
+// @version      0.52
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -51,6 +51,12 @@
         throw new DOMException('Document is not focused');
       }
       navigator.clipboard.writeText(text);
+    },
+    isTornPDA: (key) => {
+      if (key && !key.includes('###') && typeof window.flutter_inappwebview !== 'undefined' && typeof window.flutter_inappwebview.callHandler === 'function') {
+        return key;
+      }
+      return null;
     },
   };
 
@@ -108,7 +114,7 @@
   const validateKey = async (save) => {
     try {
       let apiinput = await defer('#rplus_apikey');
-      let apikey = API_KEY.includes('###') ? apiinput.value : API_KEY;
+      let apikey = PDA.isTornPDA(API_KEY) ?? apiinput.value;
       if (apikey) {
         // Attempt to call the API to retrieve the server time
         let servertime = await torn_api(apikey, 'user/timestamp', { timestamp: Math.floor(Date.now() / 1000).toString() });
@@ -156,7 +162,13 @@
       document.querySelector('#rplus_apikey').classList.toggle('invalid', false);
       document.querySelector('#rplus_apikey').classList.toggle('valid', false);
     }
-    if (API_KEY.includes('###')) {
+    if (PDA.isTornPDA(API_KEY)) {
+      document.querySelector('.racing-plus-apikey-status').textContent = 'Edit in TornPDA settings.';
+      apiinput.disabled = true;
+      apiinput.readonly = true;
+      apisave.classList.toggle('show', false);
+      apireset.classList.toggle('show', false);
+    } else {
       if (apiinput.classList.contains('valid')) {
         apiinput.disabled = true;
         apiinput.readonly = true;
@@ -168,12 +180,6 @@
         apisave.classList.toggle('show', true);
         apireset.classList.toggle('show', false);
       }
-    } else {
-      document.querySelector('.racing-plus-apikey-status').textContent = 'Edit in TornPDA settings.';
-      apiinput.disabled = true;
-      apiinput.readonly = true;
-      apisave.classList.toggle('show', false);
-      apireset.classList.toggle('show', false);
     }
   };
 
@@ -248,14 +254,14 @@
       document.querySelector('div.racing-plus-window').classList.toggle('show');
     });
     // Add the Racing+ API key stored value
-    let stored_apikey = API_KEY.includes('###') ? PDA.getValue('rplus_apikey') : API_KEY;
+    let stored_apikey = PDA.isTornPDA(API_KEY) ?? PDA.getValue('rplus_apikey');
     if (stored_apikey) {
       document.querySelector('#rplus_apikey').value = stored_apikey;
       await validateKey(false);
     } else {
       await setAPIKeyDisplay();
     }
-    if (API_KEY.includes('###')) {
+    if (PDA.isTornPDA(API_KEY)) {
       // Add the Racing+ API key save button click event handler
       document.querySelector('.racing-plus-apikey-save').addEventListener('click', async (ev) => {
         ev.preventDefault();
@@ -558,12 +564,18 @@
         float:right;
         filter:drop-shadow(0px 0px 1px #11111194);
       }
+      .d .racing-plus-link-wrap .race-link:hover {
+        filter:drop-shadow(1px 1px 1px #11111194);
+      }
       .d .racing-plus-link-wrap .export-link {
         margin:5px;
         height:20px;
         width:20px;
         float:right;
         filter:drop-shadow(0px 0px 1px #11111194);
+      }
+      .d .racing-plus-link-wrap .export-link:hover {
+        filter:drop-shadow(1px 1px 1px #11111194);
       }
       .d .racing-main-wrap .car-selected-wrap .driver-item > li.status-wrap .status {
         margin:5px!important;
@@ -580,6 +592,91 @@
         align-items:center;
         flex-grow:1;
         border-right:0 none;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name a {
+        flex-basis:fit-content;
+        width:unset!important;
+        padding:0;
+        margin:0;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span {
+        flex-basis:fit-content;
+        line-height:22px;
+        height:22px;
+        width:unset!important;
+        padding:4px 5px;
+        margin:0;
+        border-radius:5px;
+        white-space:nowrap;
+        color:#fff;
+        background:rgba(0,0,0,0.25);
+        border:1px solid rgba(0,0,0,0.5);
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-1 {
+        background: #74e80080!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-2 {
+        background: #ff262680!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-3 {
+        background: #ffc92680!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-4 {
+        background: #00d9d980!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-5 {
+        background: #0080ff80!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-6 {
+        background: #9933ff80!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-7 {
+        background: #ff26ff80!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-8 {
+        background: #55555580!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-9 {
+        background: #f28d8d80!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-10 {
+        background: #e1c91980!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-11 {
+        background: #a0cf1780!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-12 {
+        background: #18d9d980!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-13 {
+        background: #6fafee80!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-14 {
+        background: #b072ef80!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-15 {
+        background: #f080f080!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-16 {
+        background: #61616180!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-17 {
+        background: #b2000080!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-18 {
+        background: #cc990080!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-19 {
+        background: #4e9b0080!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-20 {
+        background: #009d9d80!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-21 {
+        background: #0000b780!important;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-22 {
+        background: #8c008c80!important;
       }
       .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name div.statistics {
         display:flex;
@@ -662,9 +759,6 @@
         font-size:1.5rem!important;
       }
       @media screen and (max-width: 784px) {
-        .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name {
-          width:160px!important;
-        }
         .d .racing-main-wrap .header-wrap .banner .skill-desc {
           font-size:0.8rem!important;
           top:10px!important;
@@ -925,7 +1019,7 @@
     if (DEBUG_MODE) {
       console.log('Racing+: Updating Leaderboard...');
     }
-    let apikey = API_KEY.includes('###') ? PDA.getValue('rplus_apikey') : API_KEY;
+    let apikey = PDA.isTornPDA(API_KEY) ?? PDA.getValue('rplus_apikey');
     // Get race status
     let racestatus = await getStatus();
     console.log(`Racing+: Race Status -> ${racestatus}`);
@@ -983,11 +1077,20 @@
             }
         }
       }
+      // Fix driver colours
+      let drvrColour = drvr.querySelector('li.color');
+      drvrColour.classList.remove('color');
+      drvr.querySelector('li.name span').className = drvrColour.className;
       // Add driver profile links
       if (PDA.getValue('rplus_addlinks') === '1') {
+        // Add links
         if (!drvr.querySelector('li.name a')) {
-          let username = drvr.querySelector('li.name').innerHTML.replace('<span>', '').replace('</span>', '');
-          drvr.querySelector('li.name').innerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${username}</a>`;
+          drvr.querySelector('li.name span').outerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${drvr.querySelector('li.name span').outerHTML}</a>`;
+        }
+      } else {
+        // Remove links
+        if (drvr.querySelector('li.name a')) {
+          drvr.querySelector('li.name').innerHTML = `${drvr.querySelector('li.name a').innerHTML}`;
         }
       }
       // Fix driver race stats
@@ -1002,7 +1105,7 @@
         if (timeLi.textContent === '') {
           timeLi.textContent = '0.00 %';
         }
-        stats.insertAdjacentElement('afterEnd', timeLi);
+        stats.insertAdjacentHTML('afterEnd', `<ul>${timeLi.outerHTML}</ul>`);
       }
       // Show driver speed
       if (PDA.getValue('rplus_showspeed') === '1') {
