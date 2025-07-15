@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.43
+// @version      0.44
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -728,7 +728,7 @@
       try {
         const check = () => {
           if (count > DEFERRAL_LIMIT) {
-            throw new Error('Racing+: Deferral timed out.');
+            throw new Error('Deferral timed out.');
           }
           const result = document.querySelector(selector);
           if (result) {
@@ -742,8 +742,8 @@
         };
         check();
       } catch (err) {
-        console.error(`Racing+ Error: ${err.error ?? err}`);
-        reject(err.error ?? err);
+        console.error(`Racing+ Error: ${err}`);
+        reject(err);
       }
     });
   };
@@ -754,7 +754,7 @@
       try {
         const check = () => {
           if (count > DEFERRAL_LIMIT) {
-            throw new Error('Racing+: Deferral timed out.');
+            throw new Error('Deferral timed out.');
           }
           const result = document.querySelectorAll(selector);
           if (result && result.length > 0) {
@@ -768,8 +768,8 @@
         };
         check();
       } catch (err) {
-        console.error(`Racing+ Error: ${err.error ?? err}`);
-        reject(err.error ?? err);
+        console.error(`Racing+ Error: ${err}`);
+        reject(err);
       }
     });
   };
@@ -877,8 +877,10 @@
         }
       }
     } catch (err) {
-      // Exit the function if response is unparsable.
-      console.error(`Racing+ Error: ${err.error ?? err}`);
+      if (err) {
+        // Exit the function if response is unparsable.
+        console.error(`Racing+ Error: ${err.error ?? err}`);
+      }
       return;
     }
   };
@@ -1025,7 +1027,9 @@
               skill.textContent = `RS: ${user.personalstats.racing.skill}`;
             }
           } catch (err) {
-            console.error(`Racing+ Error: ${err.error ?? err}`);
+            if (err) {
+              console.error(`Racing+ Error: ${err.error ?? err}`);
+            }
           }
         }
       }
