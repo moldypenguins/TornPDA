@@ -1,6 +1,6 @@
 # TornPDA User Scripts
 
-## Execute+ v0.2
+## Execute+ v0.3
 
 Show level when execute will be effective.
 [Install Execute+ User Script](https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/ExecutePlus.user.js)
@@ -9,7 +9,7 @@ Show level when execute will be effective.
 
 ![execute](.github/images/execute.png)
 
-## Racing+ v0.36
+## Racing+ v0.51
 
 Show racing skill, current speed, race results, precise skill, upgrade parts.
 [Install RacingPlus User Script](https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/RacingPlus.user.js)
