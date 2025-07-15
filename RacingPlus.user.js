@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.44
+// @version      0.45
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -986,8 +986,10 @@
       }
       // Add driver profile links
       if (RPS.getValue('rplus_addlinks') === '1') {
-        let username = drvr.querySelector('li.name').innerHTML.replace('<span>', '').replace('</span>', '');
-        drvr.querySelector('li.name').innerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${username}</a>`;
+        if (!drvr.querySelector('li.name a')) {
+          let username = drvr.querySelector('li.name').innerHTML.replace('<span>', '').replace('</span>', '');
+          drvr.querySelector('li.name').innerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${username}</a>`;
+        }
       }
       // Fix driver race stats
       if (!drvr.querySelector('.statistics')) {
