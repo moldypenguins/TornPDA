@@ -7,8 +7,8 @@
 // @author       moldypenguins [2881784]
 // @match        https://www.torn.com/loader.php?sid=attack*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
-// @updateURL    https://github.com/moldypenguins/TornPDA/raw/main/execute.user.js
-// @downloadURL  https://github.com/moldypenguins/TornPDA/raw/main/execute.user.js
+// @updateURL    https://github.com/moldypenguins/TornPDA/raw/main/Execute.user.js
+// @downloadURL  https://github.com/moldypenguins/TornPDA/raw/main/Execute.user.js
 // @run-at       document-end
 // ==/UserScript==
 
