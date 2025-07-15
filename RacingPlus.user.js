@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.39
+// @version      0.41
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -16,12 +16,12 @@
   'use strict';
 
   //TODO:
-  // test export link
-  // test fix waiting status
-  // add amounts to part progress + / -
+  // fix export link
+  // fix best lap
+  // change completion in leaderboard to total time
 
   // TornPDA
-  let API_KEY = '###PDA-APIKEY###';
+  const API_KEY = '###PDA-APIKEY###';
   const DEFERRAL_LIMIT = 250; // Maximum amount of times the script will defer.
   const DEFERRAL_INTERVAL = 100; // Amount of time in milliseconds deferrals will last.
   const SPEED_INTERVAL = 1000; // Amount of time in milliseconds between speed updates.
@@ -58,7 +58,6 @@
   // see: https://www.torn.com/swagger.php
   const torn_api = (() => {
     const cache = new Map(); // In-memory cache with timestamps
-
     return async (key, path, args = {}) => {
       // Validate API key (16 alphanumeric characters)
       if (!/^[a-zA-Z0-9]{16}$/.test(key)) {
@@ -109,69 +108,72 @@
   const validateKey = async (save) => {
     try {
       // Attempt to call the API to retrieve the server time
-      let validation = await torn_api(API_KEY.includes('###') ? document.querySelector('#rplus_apikey').value : API_KEY, 'user/timestamp', { timestamp: Math.floor(Date.now() / 1000).toString() });
-      if (validation) {
-        // Save API key
-        if (save) {
-          RPS.setValue('rplus_apikey', `${document.querySelector('#rplus_apikey').value}`);
-          if (DEBUG_MODE) {
-            console.log('Racing+: rplus_apikey saved.');
+      let apikey = API_KEY.includes('###') ? document.querySelector('#rplus_apikey').value : API_KEY;
+      if (apikey) {
+        let validation = await torn_api(apikey, 'user/timestamp', { timestamp: Math.floor(Date.now() / 1000).toString() });
+        if (validation) {
+          // Save API key
+          if (save) {
+            RPS.setValue('rplus_apikey', `${document.querySelector('#rplus_apikey').value}`);
+            if (DEBUG_MODE) {
+              console.log('Racing+: rplus_apikey saved.');
+            }
           }
+          // Lock text input
+          await setAPIKeyDisplay({ valid: true });
+        } else {
+          throw new Error(validation.toString());
         }
-        // Valid API key
-        document.querySelector('.racing-plus-apikey-status').textContent = '';
-        document.querySelector('#rplus_apikey').classList.toggle('invalid', false);
-        document.querySelector('#rplus_apikey').classList.toggle('valid', true);
-        // Lock text input
-        await setAPIKeyDisplay();
-      } else {
-        throw new Error(validation);
       }
     } catch (err) {
-      // Invalid API key or other error
-      document.querySelector('.racing-plus-apikey-status').textContent = err;
-      document.querySelector('#rplus_apikey').classList.toggle('invalid', true);
-      document.querySelector('#rplus_apikey').classList.toggle('valid', false);
       // Unlock text input
-      await setAPIKeyDisplay();
+      await setAPIKeyDisplay({ error: err.error });
       // Return error
-      console.error(`Racing+ Error: ${err}`);
+      console.error(`Racing+ Error: ${err.error}`);
       return;
     }
   };
 
-  const setAPIKeyDisplay = async () => {
+  const setAPIKeyDisplay = async (result = null) => {
+    let apiinput = await defer('#rplus_apikey');
+    let apisave = await defer('.racing-plus-apikey-save');
+    let apireset = await defer('.racing-plus-apikey-reset');
+    if (result && result.valid) {
+      // Valid API key
+      document.querySelector('.racing-plus-apikey-status').textContent = '';
+      document.querySelector('#rplus_apikey').classList.toggle('invalid', false);
+      document.querySelector('#rplus_apikey').classList.toggle('valid', true);
+    } else if (result && result.error) {
+      // Invalid API key or other error
+      document.querySelector('.racing-plus-apikey-status').textContent = err.error;
+      document.querySelector('#rplus_apikey').classList.toggle('invalid', true);
+      document.querySelector('#rplus_apikey').classList.toggle('valid', false);
+    } else {
+      // Reset API key
+      document.querySelector('.racing-plus-apikey-status').textContent = '';
+      document.querySelector('#rplus_apikey').classList.toggle('invalid', false);
+      document.querySelector('#rplus_apikey').classList.toggle('valid', false);
+    }
     if (API_KEY.includes('###')) {
-      if (document.querySelector('#rplus_apikey').value.length > 0) {
-        document.querySelector('#rplus_apikey').disabled = true;
-        document.querySelector('#rplus_apikey').readonly = true;
-        document.querySelector('.racing-plus-apikey-save').classList.toggle('show', false);
-        document.querySelector('.racing-plus-apikey-reset').classList.toggle('show', true);
+      if (apiinput.classList.contains('valid')) {
+        apiinput.disabled = true;
+        apiinput.readonly = true;
+        apisave.classList.toggle('show', false);
+        apireset.classList.toggle('show', true);
       } else {
-        document.querySelector('#rplus_apikey').disabled = false;
-        document.querySelector('#rplus_apikey').readonly = false;
-        document.querySelector('.racing-plus-apikey-save').classList.toggle('show', true);
-        document.querySelector('.racing-plus-apikey-reset').classList.toggle('show', false);
+        apiinput.disabled = false;
+        apiinput.readonly = false;
+        apisave.classList.toggle('show', true);
+        apireset.classList.toggle('show', false);
       }
     } else {
-      document.querySelector('#rplus_apikey').disabled = true;
-      document.querySelector('#rplus_apikey').readonly = true;
-      document.querySelector('.racing-plus-apikey-save').classList.toggle('show', false);
-      document.querySelector('.racing-plus-apikey-reset').classList.toggle('show', false);
+      document.querySelector('.racing-plus-apikey-status').textContent = 'Edit in TornPDA settings.';
+      apiinput.disabled = true;
+      apiinput.readonly = true;
+      apisave.classList.toggle('show', false);
+      apireset.classList.toggle('show', false);
     }
   };
-
-  // ##############################################################################################
-
-  // Add profile links to driver names
-  const addLinks = async (drivers) => {
-    drivers.forEach((driver) => {
-      let username = driver.querySelector('li.name').innerHTML.replace('<span>', '').replace('</span>', '');
-      driver.querySelector('li.name').innerHTML = `<a href="/profiles.php?XID=${driver.id.substring(4)}">${username}</a>`;
-    });
-  };
-
-  // ##############################################################################################
 
   const initializeRacingPlus = async () => {
     if (DEBUG_MODE) {
@@ -245,13 +247,15 @@
     let stored_apikey = API_KEY.includes('###') ? RPS.getValue('rplus_apikey') : API_KEY;
     if (stored_apikey) {
       document.querySelector('#rplus_apikey').value = stored_apikey;
-      validateKey(false);
+      await validateKey(false);
+    } else {
+      await setAPIKeyDisplay();
     }
     if (API_KEY.includes('###')) {
       // Add the Racing+ API key save button click event handler
       document.querySelector('.racing-plus-apikey-save').addEventListener('click', async (ev) => {
         ev.preventDefault();
-        validateKey(true);
+        await validateKey(true);
       });
       // Add the Racing+ API key reset button click event handler
       document.querySelector('.racing-plus-apikey-reset').addEventListener('click', async (ev) => {
@@ -263,7 +267,6 @@
         await setAPIKeyDisplay();
       });
     }
-    await setAPIKeyDisplay();
     // Add checkbox stored values and click events.
     let chkbxs = await deferAll('.d .racing-plus-settings input[type=checkbox]');
     Array.from(chkbxs).forEach((el) => {
@@ -471,7 +474,7 @@
         flex-direction:row;
         gap:10px;
         font-style:italic;
-        padding:10px 5px;
+        padding:10px;
         font-size:0.7rem;
         background:#2E2E2E url("/images/v2/racing/header/stripy_bg.png") repeat 0 0;
       }
@@ -512,7 +515,19 @@
         background:rgba(0, 191, 255, 0.07);
       }
       .d .racing-main-wrap .pm-items-wrap .pm-items .active .info {
-        color:#00bfff;
+        color:#00BFFF;
+      }
+      .d .racing-main-wrap .pm-items-wrap .pm-items .name .positive {
+        color: #99CC00;
+      }
+      .d .racing-main-wrap .pm-items-wrap .pm-items .active .name .positive {
+        color: #00A9F9;
+      }
+      .d .racing-main-wrap .pm-items-wrap .pm-items .name .negative {
+        color: #E54C19;
+      }
+      .d .racing-main-wrap .pm-items-wrap .pm-items .active .name .negative {
+        color: #CA9800;
       }
       .d .racing-main-wrap .pm-items-wrap .pm-items .bought,
       .d .racing-main-wrap .pm-items-wrap .pm-items .bought .title {
@@ -542,44 +557,39 @@
       .d .racing-main-wrap .car-selected-wrap .driver-item > li.status-wrap .status {
         margin:5px!important;
       }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item {
+        font-size:0.7rem!important;
+      }
       .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.car {
         padding: 0 5px;
       }
-      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.skill {
-        flex-basis:65px;
-        line-height:30px;
-        padding:0 5px;
-        white-space:nowrap;
-        text-align:center;
-      }
-      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.speed {
-        flex-basis:100px;
-        line-height:30px;
-        padding:0 5px;
-        white-space:nowrap;
-        text-align:right;
-      }
-      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.time {
-        flex-basis:70px;
-        line-height:30px;
-        padding:0 5px;
-        white-space:nowrap;
-        text-align:right;
-      }
-      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item.driver-item_NEXT {
-        font-size:0.7rem!important;
-      }
-      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item.driver-item_NEXT > li.skill,
-      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item.driver-item_NEXT > li.speed,
-      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item.driver-item_NEXT > li.time {
-        width:unset;
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name {
+        width:unset!important;
+        display:flex;
+        align-items:center;
         flex-grow:1;
+        border-right:0 none;
       }
-      .d .racing-main-wrap .car-selected-wrap .drivers-list .overview > li:hover .driver-item > li.skill,
-      .d .racing-main-wrap .car-selected-wrap .drivers-list .overview > li.selected .driver-item > li.skill,
-      .d .racing-main-wrap .car-selected-wrap .drivers-list .overview > li:hover .driver-item > li.speed,
-      .d .racing-main-wrap .car-selected-wrap .drivers-list .overview > li.selected .driver-item > li.speed {
-        background: url(/images/v2/racing/selected_driver.png) 0 0 repeat-x;
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name div.statistics {
+        display:flex;
+        flex-grow:1;
+        list-style:none;
+        align-items:center;
+        justify-content:space-between;
+        padding:0 10px;
+        margin:0;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name div.statistics div,
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name div.time {
+        flex-basis:fit-content;
+        line-height:22px;
+        height:22px;
+        width:unset!important;
+        padding:0 5px;
+        margin:0;
+        border-radius:3px;
+        white-space:nowrap;
+        background-color:rgba(0,0,0,0.25);
       }
       .d .left-banner {
         height:57px;
@@ -726,7 +736,7 @@
         };
         check();
       } catch (err) {
-        console.error(`Racing+ Error: ${err}`);
+        console.error(`Racing+ Error: ${err.error}`);
         reject(err);
       }
     });
@@ -752,7 +762,7 @@
         };
         check();
       } catch (err) {
-        console.error(`Racing+ Error: ${err}`);
+        console.error(`Racing+ Error: ${err.error}`);
         reject(err);
       }
     });
@@ -862,7 +872,7 @@
       }
     } catch (err) {
       // Exit the function if response is unparsable.
-      console.error(`Racing+ Error: ${err}`);
+      console.error(`Racing+ Error: ${err.error}`);
       return;
     }
   };
@@ -898,9 +908,9 @@
         return 'finished';
       default:
         if (info.textContent.includes('Starts:')) {
-          return 'starting';
+          return 'waiting';
         }
-        return 'waiting';
+        return 'joined';
     }
   };
 
@@ -908,27 +918,36 @@
     if (DEBUG_MODE) {
       console.log('Racing+: Updating Leaderboard...');
     }
-    // Wait for racers to load then enumerate
+    let apikey = API_KEY.includes('###') ? RPS.getValue('rplus_apikey') : API_KEY;
+    // Get race status
     let racestatus = await getStatus();
     console.log(`Racing+: Race Status -> ${racestatus}`);
+    // Get track data
+    let racingupdates = await defer('#racingupdates .drivers-list .title-black');
+    let trackData = {
+      laps: racingupdates.textContent.split(' - ')[1].split(' ')[0],
+      distance: racingupdates.querySelector('.track-info').getAttribute('data-length').replace('mi', ''),
+    };
+    // Wait for racers to load then enumerate
     let drivers = await deferAll('.drivers-list ul#leaderBoard li[id^=lbr]');
-    Array.from(drivers).forEach((drvr) => {
-      let driverstatus = drvr.querySelector('.status');
-      if (driverstatus) {
+    Array.from(drivers).forEach(async (drvr) => {
+      let driverId = drvr.id.substring(4);
+      let driverStatus = drvr.querySelector('.status');
+      if (driverStatus) {
         // fix status icon
         switch (racestatus) {
-          case 'waiting':
-            driverstatus.className = 'status waiting';
-            driverstatus.textContent = '';
+          case 'joined':
+            driverStatus.className = 'status success';
+            driverStatus.textContent = '';
             break;
-          case 'starting':
-            driverstatus.className = 'status success';
-            driverstatus.textContent = '';
+          case 'waiting':
+            driverStatus.className = 'status waiting';
+            driverStatus.textContent = '';
             break;
           case 'finished':
           case 'racing':
           default:
-            if (driverstatus === 'finished' || (driverstatus === 'racing' && RPS.getValue('rplus_showresults') === '1' && raceResults.length > 0)) {
+            if (racestatus === 'finished' || (racestatus === 'racing' && RPS.getValue('rplus_showresults') === '1' && raceResults.length > 0)) {
               // set race result
               let ind = raceResults.findIndex((res) => {
                 res[0] === drvr.id;
@@ -936,66 +955,76 @@
               let place = ind + 1;
               let result = raceResults[ind];
               if (result[2] === 'crashed') {
-                driverstatus.className = 'status crash';
-                driverstatus.textContent = '';
+                driverStatus.className = 'status crash';
+                driverStatus.textContent = '';
               } else if (place == 1) {
-                driverstatus.className = 'status gold';
-                driverstatus.textContent = '';
+                driverStatus.className = 'status gold';
+                driverStatus.textContent = '';
               } else if (place == 2) {
-                driverstatus.className = 'status silver';
-                driverstatus.textContent = '';
+                driverStatus.className = 'status silver';
+                driverStatus.textContent = '';
               } else if (place == 3) {
-                driverstatus.className = 'status bronze';
-                driverstatus.textContent = '';
+                driverStatus.className = 'status bronze';
+                driverStatus.textContent = '';
               } else {
-                driverstatus.className = `finished-${place} finished`;
-                driverstatus.textContent = `${place}`;
+                driverStatus.className = `finished-${place} finished`;
+                driverStatus.textContent = `${place}`;
               }
-            } else if (driverstatus === 'racing') {
-              driverstatus.className = 'status racing';
-              driverstatus.textContent = '';
+            } else if (racestatus === 'racing') {
+              driverStatus.className = 'status racing';
+              driverStatus.textContent = '';
             }
         }
       }
-      // fix completed
-      if (drvr.querySelector('.time').textContent === '') {
-        drvr.querySelector('.time').textContent = '0.00 %';
+      // Add driver profile links
+      if (RPS.getValue('rplus_addlinks') === '1') {
+        let username = drvr.querySelector('li.name').innerHTML.replace('<span>', '').replace('</span>', '');
+        drvr.querySelector('li.name').innerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${username}</a>`;
+      }
+      // Fix driver race stats
+      if (!drvr.querySelector('.statistics')) {
+        // Add stats container
+        drvr.querySelector('.name').insertAdjacentHTML('beforeEnd', `<div class="statistics"></div>`);
+      }
+      let stats = drvr.querySelector('.statistics');
+      // Adjust time
+      let timeLi = drvr.querySelector('li.time');
+      if (timeLi) {
+        timeLi.remove();
+        stats.insertAdjacentHTML('afterEnd', `<div class="time">0.00 %</div>`);
+      }
+      // Show driver speed
+      if (RPS.getValue('rplus_showspeed') === '1') {
+        if (!drvr.querySelector('.speed')) {
+          stats.insertAdjacentHTML('beforeEnd', '<div class="speed">0.00mph</div>');
+        }
+        if (!['joined', 'finished'].includes(racestatus) && !speedIntervalByDriverId.has(driverId)) {
+          if (DEBUG_MODE) {
+            console.log(`Racing+: Adding speed interval for driver ${driverId}.`);
+          }
+          speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId));
+        }
+      }
+      // Show driver skill
+      if (RPS.getValue('rplus_showskill') === '1') {
+        if (!drvr.querySelector('.skill')) {
+          stats.insertAdjacentHTML('afterBegin', '<div class="skill">RS: ?</div>');
+        }
+        if (apikey) {
+          // Fetch racing skill data from the Torn API for the given driver id
+          try {
+            let user = await torn_api(apikey, `user/${driverId}/personalStats`, 'stat=racingskill');
+            if (user) {
+              let skill = stats.querySelector('.skill');
+              skill.textContent = `RS: ${user.personalstats.racing.skill}`;
+            }
+          } catch (err) {
+            console.error(`Racing+ Error: ${err}`);
+          }
+        }
       }
     });
-
-    // Add race link copy button
-    if (RPS.getValue('rplus_showracelink') === '1') {
-      await addRaceLinkCopyButton(drivers[0].id.replace('lbr-', ''));
-    }
-    // Load selected options
-    if (RPS.getValue('rplus_addlinks') === '1') {
-      await addLinks(Array.from(drivers));
-    }
-    if (RPS.getValue('rplus_showskill') === '1') {
-      await loadRacerSkill(Array.from(drivers));
-    }
-    if (RPS.getValue('rplus_showspeed') === '1') {
-      // Get track data
-      let racingupdates = await defer('#racingupdates .drivers-list .title-black');
-      let trackData = {
-        laps: racingupdates.textContent.split(' - ')[1].split(' ')[0],
-        distance: racingupdates.querySelector('.track-info').getAttribute('data-length').replace('mi', ''),
-      };
-      if (racestatus !== 'finished') {
-        drivers.forEach((driver) => {
-          let driverId = driver.id.substring(4);
-          if (!driver.querySelector('.speed')) {
-            driver.querySelector('.time').insertAdjacentHTML('beforeBegin', `<li class="speed">0.00mph</li>`);
-          }
-          if (racestatus !== 'waiting' && !speedIntervalByDriverId.has(driverId)) {
-            if (DEBUG_MODE) {
-              console.log(`Racing+: Adding speed interval for driver ${driverId}.`);
-            }
-            speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId));
-          }
-        });
-      }
-    }
+    // #################################################
   };
 
   const addRaceLinkCopyButton = async (raceId) => {
@@ -1060,24 +1089,14 @@
     }
   };
 
-  const loadRacerSkill = async (drivers) => {
-    drivers.forEach(async (driver) => {
-      try {
-        let driverId = driver.id.substring(4);
-        // Fetch racing skill data from the Torn API for the given driverId
-        let user = await torn_api(API_KEY.includes('###') ? RPS.getValue('rplus_apikey') : API_KEY, `user/${driverId}/personalStats`, 'stat=racingskill');
-        if (user && !driver.querySelector('.skill')) {
-          driver.querySelector('.name').insertAdjacentHTML('afterEnd', `<li class="skill">RS: ${user.personalstats.racing.skill}</li>`);
-        }
-      } catch (err) {
-        //TODO: more better error handling
-        console.error(`Racing+ Error: ${err}`);
-        return;
-      }
-    });
-  };
-
   const officialEvents = async () => {
+    let scriptData = await defer('#torn-user');
+    let ldrboard = await defer('.drivers-list #leaderBoard');
+    let thisDriver = await defer(`.drivers-list #leaderBoard #lbr-${JSON.parse(scriptData.value).id}`);
+    // Add race link copy button
+    if (RPS.getValue('rplus_showracelink') === '1') {
+      await addRaceLinkCopyButton(thisDriver.getAttribute('data-id').split('-')[0]);
+    }
     // Update labels (save some space).
     document.querySelectorAll('#racingdetails li.pd-name').forEach((detail) => {
       if (detail.textContent === 'Name:') {
@@ -1113,7 +1132,7 @@
     let leaderboardObserver = new MutationObserver(async (mutations) => {
       await updateLeaderboard();
     });
-    leaderboardObserver.observe(document.querySelector('.drivers-list #leaderBoard'), { childList: true });
+    leaderboardObserver.observe(ldrboard, { childList: true });
   };
 
   let originalOpen;
@@ -1168,7 +1187,6 @@
       const parts = document.querySelectorAll(`.pm-items li.${categoryName}[data-part]:not([data-part=""])`);
       parts.forEach((part) => {
         let groupName = part.getAttribute('data-part');
-
         if (part.classList.contains('bought')) {
           // Add to bought if not already included
           if (!categories[cat].bought.includes(groupName)) {
@@ -1184,7 +1202,6 @@
           }
         }
       });
-
       // Remove any group from unbought that exists in bought
       categories[cat].bought.forEach((b) => {
         if (categories[cat].unbought.includes(b)) {
@@ -1198,7 +1215,6 @@
           categories[cat].unbought.splice(categories[cat].unbought.indexOf(b), 1);
         }
       });
-
       // Create a div showing the count of bought/unbought parts
       const divParts = document.createElement('div');
       let boughtParts = Object.keys(categories[cat].bought).length;
@@ -1211,10 +1227,9 @@
         iconContainer.insertAdjacentElement('afterend', divParts);
       }
     });
-    // Add click event listeners to each category link
+    // Add available parts sections
     const links = await deferAll('.pm-categories li a.link');
     Array.from(links).forEach(async (link) => {
-      // Append a new div showing available parts
       let catId = link.parentElement?.getAttribute('data-category');
       let partscat = await defer(`.pm-items-wrap[category="${catId}"]`);
       // Remove existing parts available section.
@@ -1232,6 +1247,20 @@
       div.innerHTML = `<span class="bold nowrap">Parts Available:</span><span>${content.length > 0 ? content : 'None'}</span>`;
       let titlediv = partscat.querySelector('.title-black');
       titlediv.insertAdjacentHTML('afterEnd', div.outerHTML);
+    });
+
+    let props = await deferAll('.properties-wrap .properties');
+    Array.from(props).forEach((prop) => {
+      let propName = prop.querySelector('.name');
+      let propVal = prop
+        .querySelector('.progress-bar .progressbar-wrap[title]')
+        .getAttribute('title')
+        .replace(/\s/g, '')
+        .match(/[+-]\d+/);
+      if (propVal) {
+        let propNum = parseInt(propVal[0]);
+        propName.insertAdjacentHTML('afterBegin', `<span class="${propNum > 0 ? 'positive' : propNum < 0 ? 'negative' : ''}">${propVal[0]}%</span> `);
+      }
     });
   };
 
@@ -1264,6 +1293,7 @@
     banner.appendChild(leftBanner);
     banner.appendChild(rightBanner);
   };
+
   let pageObserver = new MutationObserver(async (mutations) => {
     // Get added nodes
     let addedNodes;
