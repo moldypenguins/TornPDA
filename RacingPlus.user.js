@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.49
+// @version      0.50
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -127,10 +127,6 @@
         }
       }
     } catch (err) {
-      if (!err) {
-        console.error(`Racing+ Error: Undefined.`);
-        return;
-      }
       // Unlock text input
       await setAPIKeyDisplay({ error: err });
       // Return error
@@ -150,7 +146,7 @@
       document.querySelector('#rplus_apikey').classList.toggle('valid', true);
     } else if (result && result.error) {
       // Invalid API key or other error
-      document.querySelector('.racing-plus-apikey-status').textContent = err.error;
+      document.querySelector('.racing-plus-apikey-status').textContent = result.error;
       document.querySelector('#rplus_apikey').classList.toggle('invalid', true);
       document.querySelector('#rplus_apikey').classList.toggle('valid', false);
     } else {
@@ -744,10 +740,6 @@
         };
         check();
       } catch (err) {
-        if (!err) {
-          console.error(`Racing+ Error: Undefined.`);
-          return;
-        }
         console.error(`Racing+ Error: ${err}`);
         reject(err);
       }
@@ -774,10 +766,6 @@
         };
         check();
       } catch (err) {
-        if (!err) {
-          console.error(`Racing+ Error: Undefined.`);
-          return;
-        }
         console.error(`Racing+ Error: ${err}`);
         reject(err);
       }
@@ -879,10 +867,6 @@
         }
       }
     } catch (err) {
-      if (!err) {
-        console.error(`Racing+ Error: Undefined.`);
-        return;
-      }
       // Exit the function if response is unparsable.
       console.error(`Racing+ Error: ${err.error ?? err}`);
       return;
@@ -1036,10 +1020,6 @@
               skill.textContent = `RS: ${user.personalstats.racing.skill}`;
             }
           } catch (err) {
-            if (!err) {
-              console.error(`Racing+ Error: Undefined.`);
-              return;
-            }
             console.error(`Racing+ Error: ${err.error ?? err}`);
           }
         }
