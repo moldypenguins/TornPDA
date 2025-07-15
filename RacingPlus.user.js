@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.45
+// @version      0.46
+// @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
-// @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
+// @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flovours of TheProgrammer [2782979]
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
 // @updateURL    https://github.com/moldypenguins/TornPDA/raw/main/RacingPlus.user.js
@@ -586,7 +587,7 @@
         display:none;
       }
       .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name div.statistics div,
-      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name div.time {
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name li.time {
         flex-basis:fit-content;
         line-height:22px;
         height:22px;
@@ -863,14 +864,6 @@
         }
         //userId, playername, status, raceTime, bestLap
         await setBestLap(selectedDriver.id.substring(4));
-        // Add click event handlers
-        let drivers = await deferAll('#leaderBoard li[id^=lbr-]');
-        drivers.forEach((d) => {
-          d.addEventListener('click', async (event) => {
-            event.preventDefault();
-            await setBestLap(Number(event.currentTarget.id.substring(4)));
-          });
-        });
         // add export results
         if (RPS.getValue('rplus_showexportlink') === '1') {
           await addExportButton(raceResults, data.user.id, data.raceID, data.timeData.timeEnded);
@@ -893,17 +886,18 @@
     return ('00' + minutes).toString().slice(-2) + ':' + ('00' + seconds).toString().slice(-2) + '.' + ('000' + mseconds).toString().slice(3);
   };
 
-  async function setBestLap(driverId) {
-    let driverResult = raceResults.find((r) => {
-      return Number(r[0]) === driverId;
-    });
-    let bestLap = driverResult[4] ? formatTime(driverResult[4] * 1000) : null;
-    if (bestLap) {
-      document.querySelector('li.pd-besttime').textContent = bestLap;
-    } else {
-      document.querySelector('li.pd-besttime').textContent = '--:--';
+  const setBestLap = async (driverId) => {
+    document.querySelector('li.pd-besttime').textContent = '--:--';
+    if (raceResults.length > 0) {
+      let driverResult = raceResults.find((r) => {
+        return Number(r[0]) === driverId;
+      });
+      let bestLap = driverResult[4] ? formatTime(driverResult[4] * 1000) : null;
+      if (bestLap) {
+        document.querySelector('li.pd-besttime').textContent = bestLap;
+      }
     }
-  }
+  };
 
   const getStatus = async () => {
     // Get race status
@@ -1000,8 +994,7 @@
       // Adjust time
       let timeLi = drvr.querySelector('li.time');
       if (timeLi) {
-        timeLi.remove();
-        stats.insertAdjacentHTML('afterEnd', `<div class="time">0.00 %</div>`);
+        stats.insertAdjacentElement('afterEnd', timeLi);
       }
       // Show driver speed
       if (RPS.getValue('rplus_showspeed') === '1') {
@@ -1105,6 +1098,7 @@
     let scriptData = await defer('#torn-user');
     let ldrboard = await defer('.drivers-list #leaderBoard');
     let thisDriver = await defer(`.drivers-list #leaderBoard #lbr-${JSON.parse(scriptData.value).id}`);
+
     // Add race link copy button
     if (RPS.getValue('rplus_showracelink') === '1') {
       await addRaceLinkCopyButton(thisDriver.getAttribute('data-id').split('-')[0]);
@@ -1135,6 +1129,14 @@
     besttime.classList.toggle('pd-completion', false);
     besttime.classList.toggle('pd-besttime', true);
     besttime.textContent = '--:--';
+    // Add driver click event handlers
+    let drivers = await deferAll('#leaderBoard li[id^=lbr-]');
+    drivers.forEach((d) => {
+      d.addEventListener('click', async (event) => {
+        event.preventDefault();
+        await setBestLap(event.currentTarget.id.substring(4));
+      });
+    });
     // Load leaderboard
     await updateLeaderboard();
     // Watch leaderboard for changes
