@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.38
+// @version      0.39
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -18,8 +18,7 @@
   //TODO:
   // test export link
   // test fix waiting status
-  // check part.active style
-  // XMLHTTPRequest - ensure only 1 instance
+  // add amounts to part progress + / -
 
   // TornPDA
   let API_KEY = '###PDA-APIKEY###';
@@ -474,7 +473,7 @@
         font-style:italic;
         padding:10px 5px;
         font-size:0.7rem;
-        background-color:#2E2E2E;
+        background:#2E2E2E url("/images/v2/racing/header/stripy_bg.png") repeat 0 0;
       }
       .d .racing-plus-parts-available:after {
         position:absolute;
@@ -512,9 +511,15 @@
       .d .racing-main-wrap .pm-items-wrap .pm-items .active .title {
         background:rgba(0, 191, 255, 0.07);
       }
+      .d .racing-main-wrap .pm-items-wrap .pm-items .active .info {
+        color:#00bfff;
+      }
       .d .racing-main-wrap .pm-items-wrap .pm-items .bought,
       .d .racing-main-wrap .pm-items-wrap .pm-items .bought .title {
         background:rgba(133, 178, 0, 0.07);
+      }
+      .d .racing-main-wrap .pm-items-wrap .pm-items .bought .desc {
+        color:#85b200;
       }
       .d .racing-plus-link-wrap {
         cursor:pointer;
@@ -760,16 +765,17 @@
   let speedIntervalByDriverId = new Map();
 
   const updateSpeed = async (trackData, driverId) => {
-    let driverUl = await defer(`#lbr-${driverId} ul`);
-    if (driverUl.querySelector('.time').textContent.indexOf('%') >= 0) {
-      let compl = driverUl.querySelector('.time').textContent.replace('%', '');
+    let timeLi = await defer(`#lbr-${driverId} ul .time`);
+    let speedLi = await defer(`#lbr-${driverId} ul .speed`);
+    if (timeLi.textContent.indexOf('%') >= 0) {
+      let compl = timeLi.textContent.replace('%', '');
       if (lastTimeByDriverId.has(driverId)) {
         let speed = (((compl - lastTimeByDriverId.get(driverId)) / 100) * trackData.laps * trackData.distance * 60 * 60 * 1000) / SPEED_INTERVAL;
-        driverUl.querySelector('.speed').textContent = speed.toFixed(2) + 'mph';
+        speedLi.textContent = speed.toFixed(2) + 'mph';
       }
       lastTimeByDriverId.set(driverId, compl);
     } else {
-      driverUl.querySelector('.speed').textContent = '0.00mph';
+      speedLi.textContent = '0.00mph';
     }
   };
 
@@ -906,26 +912,54 @@
     let racestatus = await getStatus();
     console.log(`Racing+: Race Status -> ${racestatus}`);
     let drivers = await deferAll('.drivers-list ul#leaderBoard li[id^=lbr]');
-    Array.from(drivers).forEach((r) => {
-      let driverstatus = r.querySelector('.status').classList;
-      if (driverstatus.contains('racing') && racestatus !== 'racing') {
+    Array.from(drivers).forEach((drvr) => {
+      let driverstatus = drvr.querySelector('.status');
+      if (driverstatus) {
         // fix status icon
         switch (racestatus) {
           case 'waiting':
-            driverstatus.toggle('racing', false);
-            driverstatus.toggle('starting', false);
-            driverstatus.toggle('waiting', true);
+            driverstatus.className = 'status waiting';
+            driverstatus.textContent = '';
             break;
           case 'starting':
-            driverstatus.toggle('racing', false);
-            driverstatus.toggle('starting', true);
-            driverstatus.toggle('waiting', false);
+            driverstatus.className = 'status success';
+            driverstatus.textContent = '';
             break;
+          case 'finished':
+          case 'racing':
+          default:
+            if (driverstatus === 'finished' || (driverstatus === 'racing' && RPS.getValue('rplus_showresults') === '1' && raceResults.length > 0)) {
+              // set race result
+              let ind = raceResults.findIndex((res) => {
+                res[0] === drvr.id;
+              });
+              let place = ind + 1;
+              let result = raceResults[ind];
+              if (result[2] === 'crashed') {
+                driverstatus.className = 'status crash';
+                driverstatus.textContent = '';
+              } else if (place == 1) {
+                driverstatus.className = 'status gold';
+                driverstatus.textContent = '';
+              } else if (place == 2) {
+                driverstatus.className = 'status silver';
+                driverstatus.textContent = '';
+              } else if (place == 3) {
+                driverstatus.className = 'status bronze';
+                driverstatus.textContent = '';
+              } else {
+                driverstatus.className = `finished-${place} finished`;
+                driverstatus.textContent = `${place}`;
+              }
+            } else if (driverstatus === 'racing') {
+              driverstatus.className = 'status racing';
+              driverstatus.textContent = '';
+            }
         }
       }
       // fix completed
-      if (r.querySelector('.time').textContent === '') {
-        r.querySelector('.time').textContent = '0.00 %';
+      if (drvr.querySelector('.time').textContent === '') {
+        drvr.querySelector('.time').textContent = '0.00 %';
       }
     });
 
@@ -961,25 +995,6 @@
           }
         });
       }
-    }
-    if (RPS.getValue('rplus_showresults') === '1' && raceResults.length > 0) {
-      // set result for each driver
-      raceResults.forEach(async (result, index) => {
-        let driverUl = await defer(`#lbr-${result[0]} ul`);
-        let place = index + 1;
-        let statusLi = driverUl.querySelector('.status-wrap');
-        if (result[2] === 'crashed') {
-          statusLi.innerHTML = `<div class="status crash"></div>`;
-        } else if (place == 1) {
-          statusLi.innerHTML = '<div class="status gold"></div>';
-        } else if (place == 2) {
-          statusLi.innerHTML = '<div class="status silver"></div>';
-        } else if (place == 3) {
-          statusLi.innerHTML = '<div class="status bronze"></div>';
-        } else {
-          statusLi.innerHTML = `<div class="finished-${place} finished">${place}</div>`;
-        }
-      });
     }
   };
 
@@ -1089,7 +1104,6 @@
     besttime.classList.toggle('pd-completion', false);
     besttime.classList.toggle('pd-besttime', true);
     besttime.textContent = '--:--';
-
     // Load leaderboard
     await updateLeaderboard();
     // Watch leaderboard for changes
@@ -1100,19 +1114,34 @@
       await updateLeaderboard();
     });
     leaderboardObserver.observe(document.querySelector('.drivers-list #leaderBoard'), { childList: true });
+  };
 
-    if (DEBUG_MODE) {
-      console.log('Racing+: Adding XMLHttpRequest Monkey...');
+  let originalOpen;
+  const loadXMLHttpRequestMonkey = async () => {
+    if (!originalOpen) {
+      if (DEBUG_MODE) {
+        console.log('Racing+: Adding XMLHttpRequest Monkey...');
+      }
+      originalOpen = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function (...args) {
+        this.addEventListener('load', async (ev) => {
+          if (ev.target && ev.target.responseURL && ev.target.responseURL.startsWith(`${window.location.origin}${window.location.pathname}`) && ev.target.response) {
+            await parseRaceData(ev.target.response);
+          }
+        });
+        originalOpen.apply(this, args);
+      };
     }
-    const originalOpen = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.open = function (...args) {
-      this.addEventListener('load', async (ev) => {
-        if (ev.target && ev.target.responseURL && ev.target.responseURL.startsWith(`${window.location.origin}${window.location.pathname}`) && ev.target.response) {
-          await parseRaceData(ev.target.response);
-        }
-      });
-      originalOpen.apply(this, args);
-    };
+  };
+
+  const unloadXMLHttpRequestMonkey = async () => {
+    if (originalOpen) {
+      if (DEBUG_MODE) {
+        console.log('Racing+: Removing XMLHttpRequest Monkey...');
+      }
+      XMLHttpRequest.prototype.open = originalOpen;
+      originalOpen = null;
+    }
   };
 
   const enlistedCars = async () => {
@@ -1125,12 +1154,10 @@
   };
 
   const partsModifications = async () => {
-    // Exit early if the .pm-categories element is not found
-    let container = await defer('.pm-categories');
     let categories = {};
     // Select all category list items except those with .empty or .clear
-    let elems = container.querySelectorAll('li:not(.empty):not(.clear)');
-    elems.forEach((category) => {
+    let elems = await deferAll('.pm-categories li:not(.empty):not(.clear)');
+    Array.from(elems).forEach((category) => {
       // Get the category id
       const cat = category.getAttribute('data-category');
       // Get the category name from classList (excluding 'unlock')
@@ -1185,8 +1212,8 @@
       }
     });
     // Add click event listeners to each category link
-    const links = container.querySelectorAll('li a.link');
-    links.forEach(async (link) => {
+    const links = await deferAll('.pm-categories li a.link');
+    Array.from(links).forEach(async (link) => {
       // Append a new div showing available parts
       let catId = link.parentElement?.getAttribute('data-category');
       let partscat = await defer(`.pm-items-wrap[category="${catId}"]`);
@@ -1237,7 +1264,6 @@
     banner.appendChild(leftBanner);
     banner.appendChild(rightBanner);
   };
-
   let pageObserver = new MutationObserver(async (mutations) => {
     // Get added nodes
     let addedNodes;
@@ -1250,27 +1276,28 @@
     if (addedNodes.length > 0 && !Array.from(addedNodes).some((node) => node.classList?.contains('ajax-preloader'))) {
       if (Array.from(addedNodes).some((node) => node.id === 'racingupdates')) {
         await officialEvents();
+        await loadXMLHttpRequestMonkey();
       } else if (Array.from(addedNodes).some((node) => node.classList?.contains('enlist-wrap')) && RPS.getValue('rplus_showwinrate') === '1') {
         await enlistedCars();
+        await unloadXMLHttpRequestMonkey();
       } else if (Array.from(addedNodes).some((node) => node.classList?.contains('pm-categories-wrap')) && RPS.getValue('rplus_showparts') === '1') {
         await partsModifications();
+        await unloadXMLHttpRequestMonkey();
       }
     }
   });
-
   // Add Racing+ styles to DOM
   await addRacingPlusStyles();
   // Add Racing+ elements to DOM
   await initializeRacingPlus();
   // Fix top banner
   await restructureBanner();
-
   if (DEBUG_MODE) {
     console.log('Racing+: Adding Page Observer...');
   }
   let innerpage = await defer('#racingAdditionalContainer');
   pageObserver.observe(innerpage, { childList: true });
-
   // Load default page
   await officialEvents();
+  await loadXMLHttpRequestMonkey();
 })();
