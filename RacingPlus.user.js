@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.41
+// @version      0.42
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -122,14 +122,14 @@
           // Lock text input
           await setAPIKeyDisplay({ valid: true });
         } else {
-          throw new Error(validation.toString());
+          throw new Error('Validation failed.');
         }
       }
     } catch (err) {
       // Unlock text input
-      await setAPIKeyDisplay({ error: err.error });
+      await setAPIKeyDisplay({ error: err.error ?? err });
       // Return error
-      console.error(`Racing+ Error: ${err.error}`);
+      console.error(`Racing+ Error: ${err.error ?? err}`);
       return;
     }
   };
@@ -579,6 +579,9 @@
         padding:0 10px;
         margin:0;
       }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.time {
+        display:none;
+      }
       .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name div.statistics div,
       .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name div.time {
         flex-basis:fit-content;
@@ -736,8 +739,8 @@
         };
         check();
       } catch (err) {
-        console.error(`Racing+ Error: ${err.error}`);
-        reject(err);
+        console.error(`Racing+ Error: ${err.error ?? err}`);
+        reject(err.error ?? err);
       }
     });
   };
@@ -762,8 +765,8 @@
         };
         check();
       } catch (err) {
-        console.error(`Racing+ Error: ${err.error}`);
-        reject(err);
+        console.error(`Racing+ Error: ${err.error ?? err}`);
+        reject(err.error ?? err);
       }
     });
   };
@@ -872,7 +875,7 @@
       }
     } catch (err) {
       // Exit the function if response is unparsable.
-      console.error(`Racing+ Error: ${err.error}`);
+      console.error(`Racing+ Error: ${err.error ?? err}`);
       return;
     }
   };
@@ -1019,7 +1022,7 @@
               skill.textContent = `RS: ${user.personalstats.racing.skill}`;
             }
           } catch (err) {
-            console.error(`Racing+ Error: ${err}`);
+            console.error(`Racing+ Error: ${err.error ?? err}`);
           }
         }
       }
