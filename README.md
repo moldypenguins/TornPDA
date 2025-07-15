@@ -1,9 +1,9 @@
 # TornPDA User Scripts
 
-## Execute v0.1
+## Execute+ v0.2
 
 Show level when execute will be effective.
-[Install Execute User Script](https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/Execute.user.js)
+[Install Execute+ User Script](https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/ExecutePlus.user.js)
 
 ### Screenshots
 
