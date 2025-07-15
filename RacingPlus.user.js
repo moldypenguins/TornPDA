@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.42
+// @version      0.43
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297]
 // @match        https://www.torn.com/loader.php?sid=racing*
@@ -107,9 +107,10 @@
 
   const validateKey = async (save) => {
     try {
-      // Attempt to call the API to retrieve the server time
-      let apikey = API_KEY.includes('###') ? document.querySelector('#rplus_apikey').value : API_KEY;
+      let apiinput = await defer('#rplus_apikey');
+      let apikey = API_KEY.includes('###') ? apiinput.value : API_KEY;
       if (apikey) {
+        // Attempt to call the API to retrieve the server time
         let validation = await torn_api(apikey, 'user/timestamp', { timestamp: Math.floor(Date.now() / 1000).toString() });
         if (validation) {
           // Save API key
@@ -126,10 +127,12 @@
         }
       }
     } catch (err) {
-      // Unlock text input
-      await setAPIKeyDisplay({ error: err.error ?? err });
-      // Return error
-      console.error(`Racing+ Error: ${err.error ?? err}`);
+      if (err) {
+        // Unlock text input
+        await setAPIKeyDisplay({ error: err.error ?? err });
+        // Return error
+        console.error(`Racing+ Error: ${err.error ?? err}`);
+      }
       return;
     }
   };
