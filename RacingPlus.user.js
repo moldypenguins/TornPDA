@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.52
+// @version      0.53
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -610,7 +610,6 @@
         white-space:nowrap;
         color:#fff;
         background:rgba(0,0,0,0.25);
-        border:1px solid rgba(0,0,0,0.5);
       }
       .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-1 {
         background: #74e80080!important;
@@ -1079,8 +1078,10 @@
       }
       // Fix driver colours
       let drvrColour = drvr.querySelector('li.color');
-      drvrColour.classList.remove('color');
-      drvr.querySelector('li.name span').className = drvrColour.className;
+      if (drvrColour) {
+        drvrColour.classList.remove('color');
+        drvr.querySelector('li.name span').className = drvrColour.className;
+      }
       // Add driver profile links
       if (PDA.getValue('rplus_addlinks') === '1') {
         // Add links
@@ -1105,7 +1106,9 @@
         if (timeLi.textContent === '') {
           timeLi.textContent = '0.00 %';
         }
-        stats.insertAdjacentHTML('afterEnd', `<ul>${timeLi.outerHTML}</ul>`);
+        let timeContainer = document.createElement('ul');
+        timeContainer.appendChild(timeLi);
+        stats.insertAdjacentElement('afterEnd', timeContainer);
       }
       // Show driver speed
       if (PDA.getValue('rplus_showspeed') === '1') {
