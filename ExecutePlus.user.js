@@ -1,14 +1,14 @@
 // ==UserScript==
-// @name         Execute
-// @namespace    TornPDA.Execute
+// @name         TornPDA - Execute+
+// @namespace    TornPDA.ExecutePlus
 // @version      0.2
 // @license      MIT
 // @description  Shows execute limit in health bar.
 // @author       moldypenguins [2881784]
 // @match        https://www.torn.com/loader.php?sid=attack*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
-// @updateURL    https://github.com/moldypenguins/TornPDA/raw/main/Execute.user.js
-// @downloadURL  https://github.com/moldypenguins/TornPDA/raw/main/Execute.user.js
+// @updateURL    https://github.com/moldypenguins/TornPDA/raw/main/ExecutePlus.user.js
+// @downloadURL  https://github.com/moldypenguins/TornPDA/raw/main/ExecutePlus.user.js
 // @run-at       document-end
 // ==/UserScript==
 

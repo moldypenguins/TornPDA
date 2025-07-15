@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Torn PDA - Racing+
+// @name         TornPDA - Racing+
 // @namespace    TornPDA.RacingPlus
 // @version      0.48
 // @license      MIT
