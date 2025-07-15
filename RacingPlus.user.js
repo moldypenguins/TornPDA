@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.46
+// @version      0.47
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
-// @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flovours of TheProgrammer [2782979]
+// @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
 // @updateURL    https://github.com/moldypenguins/TornPDA/raw/main/RacingPlus.user.js
@@ -19,7 +19,6 @@
   //TODO:
   // fix export link
   // fix best lap
-  // change completion in leaderboard to total time
 
   // TornPDA
   const API_KEY = '###PDA-APIKEY###';
@@ -112,8 +111,8 @@
       let apikey = API_KEY.includes('###') ? apiinput.value : API_KEY;
       if (apikey) {
         // Attempt to call the API to retrieve the server time
-        let validation = await torn_api(apikey, 'user/timestamp', { timestamp: Math.floor(Date.now() / 1000).toString() });
-        if (validation) {
+        let servertime = await torn_api(apikey, 'user/timestamp', { timestamp: Math.floor(Date.now() / 1000).toString() });
+        if (servertime) {
           // Save API key
           if (save) {
             RPS.setValue('rplus_apikey', `${document.querySelector('#rplus_apikey').value}`);
@@ -130,9 +129,9 @@
     } catch (err) {
       if (err) {
         // Unlock text input
-        await setAPIKeyDisplay({ error: err.error ?? err });
+        await setAPIKeyDisplay({ error: err });
         // Return error
-        console.error(`Racing+ Error: ${err.error ?? err}`);
+        console.error(`Racing+ Error: ${err}`);
       }
       return;
     }
@@ -743,6 +742,10 @@
         };
         check();
       } catch (err) {
+        if (!err) {
+          console.error(`Racing+ Error: UNKNOWN`);
+          return;
+        }
         console.error(`Racing+ Error: ${err}`);
         reject(err);
       }
@@ -769,6 +772,10 @@
         };
         check();
       } catch (err) {
+        if (!err) {
+          console.error(`Racing+ Error: UNKNOWN`);
+          return;
+        }
         console.error(`Racing+ Error: ${err}`);
         reject(err);
       }
@@ -994,6 +1001,9 @@
       // Adjust time
       let timeLi = drvr.querySelector('li.time');
       if (timeLi) {
+        if (timeLi.textContent === '') {
+          timeLi.textContent = '0.00 %';
+        }
         stats.insertAdjacentElement('afterEnd', timeLi);
       }
       // Show driver speed
