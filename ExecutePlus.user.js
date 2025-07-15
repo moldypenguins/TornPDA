@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - Execute+
 // @namespace    TornPDA.ExecutePlus
-// @version      0.2
+// @version      0.3
 // @license      MIT
 // @description  Shows execute limit in health bar.
 // @author       moldypenguins [2881784]
@@ -57,12 +57,16 @@
       }
     });
   };
-  const checkExecute = async () => {
+  const checkExecute = async (progress) => {
     if (DEBUG_MODE) {
       console.log('Execute+: Checking HealthBar...');
     }
-    let progress = healthBar.querySelector('[aria-label^="Progress:"]');
-    let targetHealth = parseFloat(progress.getAttribute('aria-label').replace(/Progress: (\d{1,3}\.?\d{0,2})%/, '$1'));
+    if (!progress) {
+      console.log('Execute+ Error: Invalid progress.');
+      return;
+    }
+    //let progress = healthBar.querySelector('[aria-label^="Progress:"]');
+    let targetHealth = parseFloat(progress.replace(/Progress: (\d{1,3}\.?\d{0,2})%/, '$1'));
     if (targetHealth <= EXECUTE_LEVEL) {
       progress.classList.toggle('execute', true);
     } else {
@@ -78,10 +82,17 @@
       console.log('Execute+: Adding HealthBar Observer...');
     }
     let healthBarObserver = new MutationObserver(async (mutations) => {
-      await checkExecute();
+      for (const mutation of mutations) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'aria-label') {
+          await checkExecute(mutation.target.getAttribute('aria-label'));
+        }
+      }
     });
-    healthBarObserver.observe(healthBar, { attributes: true, attributeFilter: ['aria-label'], classList: true });
-    await checkExecute();
+    healthBarObserver.observe(healthBar.parentElement, {
+      subtree: true,
+      attributes: true,
+    });
+    await checkExecute(healthBar.querySelector('[aria-label^="Progress:"]')?.getAttribute('aria-label'));
   }
   PDA.addStyle(`
     .execute {
