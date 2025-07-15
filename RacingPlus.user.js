@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn PDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.47
+// @version      0.48
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -28,17 +28,17 @@
   const CACHE_TTL = 60 * 60 * 1000; // Amount of time in milliseconds to cache API responses. Default = 1 hour.
   const DEBUG_MODE = true; // Turn on to log to console.
 
-  const RPS = {
-    getValue(key) {
+  const PDA = {
+    getValue: (key) => {
       return localStorage.getItem(key);
     },
-    setValue(key, value) {
+    setValue: (key, value) => {
       localStorage.setItem(key, value);
     },
-    deleteValue(key) {
+    deleteValue: (key) => {
       localStorage.removeItem(key);
     },
-    addStyle(style) {
+    addStyle: (style) => {
       if (!style) {
         return;
       }
@@ -46,7 +46,7 @@
       s.innerHTML = style;
       document.head.appendChild(s);
     },
-    setClipboard(text) {
+    setClipboard: (text) => {
       if (!document.hasFocus()) {
         throw new DOMException('Document is not focused');
       }
@@ -115,7 +115,7 @@
         if (servertime) {
           // Save API key
           if (save) {
-            RPS.setValue('rplus_apikey', `${document.querySelector('#rplus_apikey').value}`);
+            PDA.setValue('rplus_apikey', `${document.querySelector('#rplus_apikey').value}`);
             if (DEBUG_MODE) {
               console.log('Racing+: rplus_apikey saved.');
             }
@@ -247,7 +247,7 @@
       document.querySelector('div.racing-plus-window').classList.toggle('show');
     });
     // Add the Racing+ API key stored value
-    let stored_apikey = API_KEY.includes('###') ? RPS.getValue('rplus_apikey') : API_KEY;
+    let stored_apikey = API_KEY.includes('###') ? PDA.getValue('rplus_apikey') : API_KEY;
     if (stored_apikey) {
       document.querySelector('#rplus_apikey').value = stored_apikey;
       await validateKey(false);
@@ -264,7 +264,7 @@
       document.querySelector('.racing-plus-apikey-reset').addEventListener('click', async (ev) => {
         ev.preventDefault();
         // Clear API key
-        RPS.deleteValue('rplus_apikey');
+        PDA.deleteValue('rplus_apikey');
         // Clear text input
         document.querySelector('#rplus_apikey').value = '';
         await setAPIKeyDisplay();
@@ -273,9 +273,9 @@
     // Add checkbox stored values and click events.
     let chkbxs = await deferAll('.d .racing-plus-settings input[type=checkbox]');
     Array.from(chkbxs).forEach((el) => {
-      el.checked = RPS.getValue(el.id) === '1';
+      el.checked = PDA.getValue(el.id) === '1';
       el.addEventListener('click', (ev) => {
-        RPS.setValue(ev.target.id, ev.target.checked ? '1' : '0');
+        PDA.setValue(ev.target.id, ev.target.checked ? '1' : '0');
         if (DEBUG_MODE) {
           console.log(`Racing+: ${ev.target.id} saved.`);
         }
@@ -294,7 +294,7 @@
     }
 
     // Add styles
-    RPS.addStyle(`
+    PDA.addStyle(`
       .d .racing-plus-window {
         margin:10px 0;
         padding:0;
@@ -686,7 +686,7 @@
         }
       }
     `);
-    if (RPS.getValue('rplus_showparts') === '1') {
+    if (PDA.getValue('rplus_showparts') === '1') {
       let colours = ['#5D9CEC', '#48CFAD', '#FFCE54', '#ED5565', '#EC87C0', '#AC92EC', '#FC6E51', '#A0D468', '#4FC1E9'];
       let categories = [
         ['Spoiler', 'Engine Cooling', 'Brake Cooling', 'Front Diffuser', 'Rear Diffuser'],
@@ -715,7 +715,7 @@
         `;
         });
       });
-      RPS.addStyle(partsCSS);
+      PDA.addStyle(partsCSS);
     }
     if (DEBUG_MODE) {
       console.log('Racing+: Styles added.');
@@ -816,7 +816,7 @@
       }
       let data = JSON.parse(response);
       // update driver skill
-      let lastSkill = RPS.getValue('rplus_racingskill');
+      let lastSkill = PDA.getValue('rplus_racingskill');
       let currSkill = Number(data.user.racinglevel).toFixed(5);
       if (currSkill > lastSkill) {
         let skillBanner = await defer('.banner .skill');
@@ -824,7 +824,7 @@
         if (lastInc) {
           skillBanner.insertAdjacentHTML('afterEnd', `<div class="lastgain">+${lastInc}</div>`);
         }
-        RPS.setValue('rplus_racingskill', `${currSkill}`);
+        PDA.setValue('rplus_racingskill', `${currSkill}`);
         if (DEBUG_MODE) {
           console.log('Racing+: rplus_racingskill saved.');
         }
@@ -872,7 +872,7 @@
         //userId, playername, status, raceTime, bestLap
         await setBestLap(selectedDriver.id.substring(4));
         // add export results
-        if (RPS.getValue('rplus_showexportlink') === '1') {
+        if (PDA.getValue('rplus_showexportlink') === '1') {
           await addExportButton(raceResults, data.user.id, data.raceID, data.timeData.timeEnded);
         }
       }
@@ -927,7 +927,7 @@
     if (DEBUG_MODE) {
       console.log('Racing+: Updating Leaderboard...');
     }
-    let apikey = API_KEY.includes('###') ? RPS.getValue('rplus_apikey') : API_KEY;
+    let apikey = API_KEY.includes('###') ? PDA.getValue('rplus_apikey') : API_KEY;
     // Get race status
     let racestatus = await getStatus();
     console.log(`Racing+: Race Status -> ${racestatus}`);
@@ -956,7 +956,7 @@
           case 'finished':
           case 'racing':
           default:
-            if (racestatus === 'finished' || (racestatus === 'racing' && RPS.getValue('rplus_showresults') === '1' && raceResults.length > 0)) {
+            if (racestatus === 'finished' || (racestatus === 'racing' && PDA.getValue('rplus_showresults') === '1' && raceResults.length > 0)) {
               // set race result
               let ind = raceResults.findIndex((res) => {
                 res[0] === drvr.id;
@@ -986,7 +986,7 @@
         }
       }
       // Add driver profile links
-      if (RPS.getValue('rplus_addlinks') === '1') {
+      if (PDA.getValue('rplus_addlinks') === '1') {
         if (!drvr.querySelector('li.name a')) {
           let username = drvr.querySelector('li.name').innerHTML.replace('<span>', '').replace('</span>', '');
           drvr.querySelector('li.name').innerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${username}</a>`;
@@ -1007,7 +1007,7 @@
         stats.insertAdjacentElement('afterEnd', timeLi);
       }
       // Show driver speed
-      if (RPS.getValue('rplus_showspeed') === '1') {
+      if (PDA.getValue('rplus_showspeed') === '1') {
         if (!drvr.querySelector('.speed')) {
           stats.insertAdjacentHTML('beforeEnd', '<div class="speed">0.00mph</div>');
         }
@@ -1019,7 +1019,7 @@
         }
       }
       // Show driver skill
-      if (RPS.getValue('rplus_showskill') === '1') {
+      if (PDA.getValue('rplus_showskill') === '1') {
         if (!drvr.querySelector('.skill')) {
           stats.insertAdjacentHTML('afterBegin', '<div class="skill">RS: ?</div>');
         }
@@ -1061,8 +1061,8 @@
       let raceLink = await defer('.racing-plus-link-wrap .race-link');
       raceLink.addEventListener('click', async (event) => {
         event.preventDefault();
-        // Copy the race link to clipboard using RPS.setClipboard
-        RPS.setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}`);
+        // Copy the race link to clipboard using PDA.setClipboard
+        PDA.setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}`);
         // Try to find the tooltip and update its content
         const tooltipId = event.currentTarget.getAttribute('aria-describedby');
         if (tooltipId) {
@@ -1087,7 +1087,7 @@
       for (let i = 0; i < results.length; i++) {
         const timeStr = formatTime(results[i][3] * 1000);
         const bestLap = formatTime(results[i][4] * 1000);
-        csv += [i + 1, results[i][0], results[i][1], results[i][2], timeStr, bestLap, results[i][0] === driverId ? RPS.getValue('racingSkill') : ''].join(',') + '\n';
+        csv += [i + 1, results[i][0], results[i][1], results[i][2], timeStr, bestLap, results[i][0] === driverId ? PDA.getValue('racingSkill') : ''].join(',') + '\n';
       }
       const timeE = new Date();
       timeE.setTime(timeEnded * 1000);
@@ -1110,7 +1110,7 @@
     let thisDriver = await defer(`.drivers-list #leaderBoard #lbr-${JSON.parse(scriptData.value).id}`);
 
     // Add race link copy button
-    if (RPS.getValue('rplus_showracelink') === '1') {
+    if (PDA.getValue('rplus_showracelink') === '1') {
       await addRaceLinkCopyButton(thisDriver.getAttribute('data-id').split('-')[0]);
     }
     // Update labels (save some space).
@@ -1294,7 +1294,7 @@
     }
     const banner = await defer('.banner');
     // update driver skill
-    let savedSkill = RPS.getValue('rplus_racingskill');
+    let savedSkill = PDA.getValue('rplus_racingskill');
     if (savedSkill) {
       document.querySelector('.banner .skill').textContent = savedSkill;
     }
@@ -1331,10 +1331,10 @@
       if (Array.from(addedNodes).some((node) => node.id === 'racingupdates')) {
         await officialEvents();
         await loadXMLHttpRequestMonkey();
-      } else if (Array.from(addedNodes).some((node) => node.classList?.contains('enlist-wrap')) && RPS.getValue('rplus_showwinrate') === '1') {
+      } else if (Array.from(addedNodes).some((node) => node.classList?.contains('enlist-wrap')) && PDA.getValue('rplus_showwinrate') === '1') {
         await enlistedCars();
         await unloadXMLHttpRequestMonkey();
-      } else if (Array.from(addedNodes).some((node) => node.classList?.contains('pm-categories-wrap')) && RPS.getValue('rplus_showparts') === '1') {
+      } else if (Array.from(addedNodes).some((node) => node.classList?.contains('pm-categories-wrap')) && PDA.getValue('rplus_showparts') === '1') {
         await partsModifications();
         await unloadXMLHttpRequestMonkey();
       }
