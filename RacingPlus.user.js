@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.48
+// @version      0.49
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -127,14 +127,16 @@
         }
       }
     } catch (err) {
-      if (err) {
-        // Unlock text input
-        await setAPIKeyDisplay({ error: err });
-        // Return error
-        console.error(`Racing+ Error: ${err}`);
+      if (!err) {
+        console.error(`Racing+ Error: Undefined.`);
+        return;
       }
-      return;
+      // Unlock text input
+      await setAPIKeyDisplay({ error: err });
+      // Return error
+      console.error(`Racing+ Error: ${err}`);
     }
+    return;
   };
 
   const setAPIKeyDisplay = async (result = null) => {
@@ -743,7 +745,7 @@
         check();
       } catch (err) {
         if (!err) {
-          console.error(`Racing+ Error: UNKNOWN`);
+          console.error(`Racing+ Error: Undefined.`);
           return;
         }
         console.error(`Racing+ Error: ${err}`);
@@ -773,7 +775,7 @@
         check();
       } catch (err) {
         if (!err) {
-          console.error(`Racing+ Error: UNKNOWN`);
+          console.error(`Racing+ Error: Undefined.`);
           return;
         }
         console.error(`Racing+ Error: ${err}`);
@@ -877,10 +879,12 @@
         }
       }
     } catch (err) {
-      if (err) {
-        // Exit the function if response is unparsable.
-        console.error(`Racing+ Error: ${err.error ?? err}`);
+      if (!err) {
+        console.error(`Racing+ Error: Undefined.`);
+        return;
       }
+      // Exit the function if response is unparsable.
+      console.error(`Racing+ Error: ${err.error ?? err}`);
       return;
     }
   };
@@ -1032,9 +1036,11 @@
               skill.textContent = `RS: ${user.personalstats.racing.skill}`;
             }
           } catch (err) {
-            if (err) {
-              console.error(`Racing+ Error: ${err.error ?? err}`);
+            if (!err) {
+              console.error(`Racing+ Error: Undefined.`);
+              return;
             }
+            console.error(`Racing+ Error: ${err.error ?? err}`);
           }
         }
       }
