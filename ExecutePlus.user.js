@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - Execute+
 // @namespace    TornPDA.ExecutePlus
-// @version      0.3
+// @version      0.4
 // @license      MIT
 // @description  Shows execute limit in health bar.
 // @author       moldypenguins [2881784]
@@ -66,7 +66,7 @@
       return;
     }
     //let progress = healthBar.querySelector('[aria-label^="Progress:"]');
-    let targetHealth = parseFloat(progress.replace(/Progress: (\d{1,3}\.?\d{0,2})%/, '$1'));
+    let targetHealth = parseFloat(progress.ariaLabel.replace(/Progress: (\d{1,3}\.?\d{0,2})%/, '$1'));
     if (targetHealth <= EXECUTE_LEVEL) {
       progress.classList.toggle('execute', true);
     } else {
@@ -83,8 +83,8 @@
     }
     let healthBarObserver = new MutationObserver(async (mutations) => {
       for (const mutation of mutations) {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'aria-label') {
-          await checkExecute(mutation.target.getAttribute('aria-label'));
+        if (mutation.type === 'attributes' && mutation.attributeName === 'aria-label' && mutation.target.ariaLabel && mutation.target.ariaLabel.startsWith('Progress:')) {
+          await checkExecute(mutation.target);
         }
       }
     });
@@ -92,7 +92,7 @@
       subtree: true,
       attributes: true,
     });
-    await checkExecute(healthBar.querySelector('[aria-label^="Progress:"]')?.getAttribute('aria-label'));
+    await checkExecute(healthBar.querySelector('[aria-label^="Progress:"]'));
   }
   PDA.addStyle(`
     .execute {
