@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.53
+// @version      0.54
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -606,10 +606,15 @@
         width:unset!important;
         padding:4px 5px;
         margin:0;
-        border-radius:5px;
+        border-radius:3px;
         white-space:nowrap;
         color:#fff;
         background:rgba(0,0,0,0.25);
+      }
+      @media screen and (max-width: 784px) {
+        .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span {
+          padding:2px 5px;
+        }
       }
       .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-1 {
         background: #74e80080!important;
