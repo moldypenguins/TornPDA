@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.54
+// @version      0.55
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -17,8 +17,9 @@
   'use strict';
 
   //TODO:
+  // fix xmlhttp monkey
   // fix export link
-  // fix best lap
+  // test fix best lap
 
   // TornPDA
   const API_KEY = '###PDA-APIKEY###';
@@ -596,25 +597,28 @@
       .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name a {
         flex-basis:fit-content;
         width:unset!important;
+        height:20px;
         padding:0;
         margin:0;
+        display:block;
+        text-decoration:none;
+      }
+      .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name a:hover {
+        text-decoration:underline;
       }
       .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span {
+        display:block;
         flex-basis:fit-content;
-        line-height:22px;
-        height:22px;
-        width:unset!important;
-        padding:4px 5px;
+        width:unset !important;
+        height:20px;
+        line-height:1.3rem;
+        font-size:0.7rem;
+        padding:0 7px;
         margin:0;
         border-radius:3px;
         white-space:nowrap;
-        color:#fff;
-        background:rgba(0,0,0,0.25);
-      }
-      @media screen and (max-width: 784px) {
-        .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span {
-          padding:2px 5px;
-        }
+        color:#ffffff;
+        background:rgba(0, 0, 0, 0.25);
       }
       .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.name span.color-1 {
         background: #74e80080!important;
