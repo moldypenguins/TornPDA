@@ -1,0 +1,28 @@
+{
+  "name": "tornpda",
+  "version": "1.0",
+  "description": "",
+  "keywords": [],
+  "main": "gulpfile.js",
+  "author": "moldypenguins",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "build": "gulp build",
+    "watch": "gulp",
+    "clean": "gulp clean"
+  },
+  "browserslist": [
+    "defaults"
+  ],
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "clean-css": "^5.3.3",
+    "del": "^8.0.0",
+    "gulp": "^5.0.1",
+    "gulp-rename": "^2.1.0",
+    "postcss": "^8.5.6",
+    "sass": "^1.92.1",
+    "through2": "^4.0.2"
+  }
+}
