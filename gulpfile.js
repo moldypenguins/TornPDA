@@ -1,7 +1,7 @@
 // gulpfile.js
-import { console } from "console";
+import console from "node:console";
 import { Buffer } from "node:buffer";
-import { src, dest, series, parallel, watch as gulpWatch } from "gulp";
+import { src, dest, series, parallel, watch } from "gulp";
 import through2 from "through2";
 import fs from "node:fs";
 import path from "node:path";
@@ -180,23 +180,23 @@ export const clean = () => {
   return deleteAsync([`${OUT_DIR}/**`, `!${OUT_DIR}`]);
 };
 
-/** Watch: lint then build on changes. */
-export const watchFiles = () => {
+/** Monitor: lint then build on changes. */
+export const monitor = () => {
   // JS sources (excluding Common.js) → lint JS, then build
-  gulpWatch(
+  watch(
     [`${SRC_DIR}/*.js`, `!${SRC_DIR}/Common.js`],
     series(lintJs, userscripts),
   );
 
   // Common.js → lint JS, then build (since it’s inlined)
-  gulpWatch(`${SRC_DIR}/Common.js`, series(lintJs, userscripts));
+  watch(`${SRC_DIR}/Common.js`, series(lintJs, userscripts));
 
   // SCSS → lint SCSS, then build
-  gulpWatch(`${SRC_DIR}/*.scss`, series(lintScss, userscripts));
+  watch(`${SRC_DIR}/*.scss`, series(lintScss, userscripts));
 };
 
 /** Build: clean → lint → userscripts */
 export const build = series(clean, lint, userscripts);
 
-/** Default: build once then watch */
-export default series(build, watchFiles);
+/** Default: build once then monitor */
+export default series(build, monitor);

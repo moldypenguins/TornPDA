@@ -11,7 +11,7 @@
     "start": "gulp",
     "build": "gulp build",
     "clean": "gulp clean",
-    "watch": "gulp watch",
+    "monitor": "gulp monitor",
     "lint": "gulp lint",
     "lint:js": "gulp lintJs",
     "lint:scss": "gulp lintScss",

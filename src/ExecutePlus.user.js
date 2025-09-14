@@ -15,25 +15,16 @@
 
 (async (w) => {
   "use strict";
+
   const { defer, DEBUG_MODE } = w.TornPDA.Common;
 
   const EXECUTE_LEVEL = 15;
-  const PDA = {
-    addStyle: (style) => {
-      if (!style) {
-        return;
-      }
-      const s = document.createElement("style");
-      s.innerHTML = style;
-      document.head.appendChild(s);
-    },
-  };
   const checkExecute = async (progress) => {
     if (DEBUG_MODE) {
-      console.log("Execute+: Checking HealthBar...");
+      console.log("[Execute+]: Checking HealthBar...");
     }
     if (!progress) {
-      console.log("Execute+ Error: Invalid progress.");
+      console.log("[Execute+]: Error - Invalid progress.");
       return;
     }
     //let progress = healthBar.querySelector('[aria-label^="Progress:"]');
@@ -54,7 +45,7 @@
   if (healthBar) {
     // Watch healthBar for changes
     if (DEBUG_MODE) {
-      console.log("Execute+: Adding HealthBar Observer...");
+      console.log("[Execute+]: Adding HealthBar Observer...");
     }
     let healthBarObserver = new MutationObserver(async (mutations) => {
       for (const mutation of mutations) {
@@ -74,9 +65,14 @@
     });
     await checkExecute(healthBar.querySelector('[aria-label^="Progress:"]'));
   }
-  PDA.addStyle(`
-    .execute {
-      background-image: linear-gradient(#FFB46C,#FFA737) !important;
-    }
-  `);
+
+  if (DEBUG_MODE) console.log("[Execute+]: Adding styles...");
+  if (!w.document.head)
+    await new Promise((r) =>
+      w.addEventListener("DOMContentLoaded", r, { once: true }),
+    );
+  const s = w.document.createElement("style");
+  s.innerHTML = `__MINIFIED_CSS__`;
+  w.document.head.appendChild(s);
+  if (DEBUG_MODE) console.log("[Execute+]: Styles added.");
 })();
