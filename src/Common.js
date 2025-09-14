@@ -13,7 +13,7 @@
         /* TornPDA Integration Stub */
         PDA_KEY: "###PDA-APIKEY###",
         IS_PDA:
-          !TornPDA.Common.PDA_KEY.includes("###") &&
+          !this.Common.PDA_KEY.includes("###") &&
           typeof w.flutter_inappwebview !== "undefined" &&
           typeof w.flutter_inappwebview.callHandler === "function",
 
