@@ -12,8 +12,10 @@
       Common: {
         /* TornPDA Integration Stub */
         PDA_KEY: "###PDA-APIKEY###",
-        IS_PDA:
-          !TornPDA.Common.PDA_KEY.includes("###") && typeof w.flutter_inappwebview !== "undefined" && typeof w.flutter_inappwebview.callHandler === "function",
+
+        get IS_PDA() {
+          return !this.PDA_KEY.includes("###") && typeof w.flutter_inappwebview !== "undefined" && typeof w.flutter_inappwebview.callHandler === "function";
+        },
 
         /* Common Constants */
         DEBUG_MODE: true, // Turn on to log to console.
