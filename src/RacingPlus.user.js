@@ -7,9 +7,9 @@
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
 // @match        https://www.torn.com/loader.php?sid=racing*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
-// @updateURL    https://github.com/moldypenguins/TornPDA/raw/main/dist/RacingPlus.user.js
-// @downloadURL  https://github.com/moldypenguins/TornPDA/raw/main/dist/RacingPlus.user.js
-// @require      https://github.com/moldypenguins/TornPDA/raw/main/dist/Common.js
+// @updateURL    https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/RacingPlus.user.js
+// @downloadURL  https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/RacingPlus.user.js
+// @require      https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/Common.js
 // @connect      api.torn.com
 // @run-at       document-start
 // ==/UserScript==
@@ -23,7 +23,7 @@
  * ------------------------------------------------------------------------ */
 
 (async (w) => {
-  ("use strict");
+  "use strict";
 
   const { defer, deferAll, getUnixTimestamp, setClipboard, IS_PDA, PDA_KEY, STORE, DEBUG_MODE } = window.TornPDA.Common;
 
