@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         TornPDA - Execute+
-// @namespace    TornPDA.ExecutePlus
+// @name         TPDAplus - Execute+
+// @namespace    TPDAplus.ExecutePlus
 // @version      0.4
 // @license      MIT
 // @description  Shows execute limit in health bar.
@@ -19,7 +19,7 @@
   if (w.execute_plus) return;
   w.execute_plus = Date.now();
 
-  const { defer, DEBUG_MODE } = w.TornPDA.Common;
+  const { defer, DEBUG_MODE } = w.TornPDAPlus.Common;
 
   const EXECUTE_LEVEL = 15;
   const checkExecute = async (progress) => {

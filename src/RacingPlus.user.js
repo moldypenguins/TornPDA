@@ -25,7 +25,7 @@
 (async (w) => {
   "use strict";
 
-  const { defer, deferAll, getUnixTimestamp, setClipboard, IS_PDA, PDA_KEY, STORE, DEBUG_MODE } = window.TornPDA.Common;
+  const { defer, deferAll, getUnixTimestamp, setClipboard, IS_PDA, PDA_KEY, STORE, DEBUG_MODE } = w.TornPDA.Common;
 
   /* ------------------------------------------------------------------------
    * Constants
