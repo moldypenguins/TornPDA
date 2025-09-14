@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - Execute+
 // @namespace    TornPDA.ExecutePlus
-// @version      0.4
+// @version      0.99.0
 // @license      MIT
 // @description  Shows execute limit in health bar.
 // @author       moldypenguins [2881784]
@@ -16,12 +16,13 @@
 (async (w) => {
   "use strict";
 
-  if (w.execute_plus) return;
-  w.execute_plus = Date.now();
+  const { defer, unixTimestamp, DEBUG_MODE } = w.TornPDAPlus.Common;
 
-  const { defer, DEBUG_MODE } = w.TornPDAPlus.Common;
+  if (w.execute_plus) return;
+  w.execute_plus = unixTimestamp();
 
   const EXECUTE_LEVEL = 15;
+
   const checkExecute = async (progress) => {
     if (DEBUG_MODE) {
       console.log("[Execute+]: Checking HealthBar...");
@@ -39,7 +40,9 @@
     }
   };
 
-  let userdata = JSON.parse((await defer("#torn-user")).value);
+  let user = await defer("#torn-user");
+  let userdata = JSON.parse(user.value);
+
   let healthBar = await defer(`div[class^="playersModelWrap_"] div[class^="header_"]:not([aria-describedby^="player-name_${userdata.playername}"])`);
   if (healthBar) {
     // Watch healthBar for changes

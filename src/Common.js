@@ -13,7 +13,7 @@
         /* TornPDA Integration Stub */
         PDA_KEY: "###PDA-APIKEY###",
 
-        get IS_PDA() {
+        get isPDA() {
           return !this.PDA_KEY.includes("###") && typeof w.flutter_inappwebview !== "undefined" && typeof w.flutter_inappwebview.callHandler === "function";
         },
 
@@ -23,6 +23,14 @@
         DEFERRAL_INTERVAL: 100, // Amount of time in milliseconds deferrals will last.
 
         /* Common Utilities */
+        /**
+         * Returns the current Unix timestamp (seconds since epoch).
+         * @returns {number}
+         */
+        get unixTimestamp() {
+          return Math.floor(Date.now() / 1000);
+        },
+
         /**
          * setClipboard - Copies text to the clipboard if document is focused.
          * (Kept global on window for convenience across script)
@@ -37,18 +45,11 @@
             // Optional chaining on call is supported in modern engines.
             // Will no-op silently if Clipboard API is unavailable.
             w.navigator.clipboard?.writeText?.(text);
+            console.log(`[TornPDA+]: Text copied.`);
             return true;
           } catch {
             return false;
           }
-        },
-
-        /**
-         * Returns the current Unix timestamp (seconds since epoch).
-         * @returns {number}
-         */
-        getUnixTimestamp: () => {
-          return Math.floor(Date.now() / 1000);
         },
 
         /**
@@ -57,12 +58,12 @@
          * @param {string} selector
          * @returns {Promise<Element>}
          */
-        defer: (selector) => {
+        defer(selector) {
           let count = 0;
           return new Promise((resolve, reject) => {
             const check = () => {
               count++;
-              if (count > w.TornPDA.Common.DEFERRAL_LIMIT) {
+              if (count > this.DEFERRAL_LIMIT) {
                 reject(new Error("Deferral timed out."));
                 return;
               }
@@ -70,10 +71,8 @@
               if (result) {
                 resolve(result);
               } else {
-                if (w.TornPDA.Common.DEBUG_MODE) {
-                  console.log(`[Racing+]: '${selector}' - Deferring...`);
-                }
-                setTimeout(check, w.TornPDA.Common.DEFERRAL_INTERVAL);
+                if (this.DEBUG_MODE) console.log(`[TornPDA+]: '${selector}' - Deferring...`);
+                setTimeout(check, this.DEFERRAL_INTERVAL);
               }
             };
             check();
@@ -85,11 +84,11 @@
          * @param {string} selector
          * @returns {Promise<NodeListOf<Element>>}
          */
-        deferAll: (selector) => {
+        deferAll(selector) {
           let count = 0;
           return new Promise((resolve, reject) => {
             const check = () => {
-              if (count > w.TornPDA.Common.DEFERRAL_LIMIT) {
+              if (count > this.DEFERRAL_LIMIT) {
                 reject(new Error("Deferral timed out."));
                 return;
               }
@@ -97,11 +96,9 @@
               if (result && result.length > 0) {
                 resolve(result);
               } else {
-                if (w.TornPDA.Common.DEBUG_MODE) {
-                  console.log(`[Racing+]: '${selector}' - Deferring...`);
-                }
+                if (this.DEBUG_MODE) console.log(`[TornPDA+]: '${selector}' - Deferring...`);
                 count++;
-                setTimeout(check, w.TornPDA.Common.DEFERRAL_INTERVAL);
+                setTimeout(check, this.DEFERRAL_INTERVAL);
               }
             };
             check();
@@ -139,4 +136,6 @@
         },
       },
     });
+
+  if (TornPDA.DEBUG_MODE) console.log(`[TornPDA+]: Common loaded.`);
 })(window);

@@ -25,7 +25,7 @@
 (async (w) => {
   "use strict";
 
-  const { defer, deferAll, getUnixTimestamp, setClipboard, IS_PDA, PDA_KEY, STORE, DEBUG_MODE } = w.TornPDA.Common;
+  const { defer, deferAll, setClipboard, unixTimestamp, isPDA, PDA_KEY, STORE, DEBUG_MODE } = w.TornPDA.Common;
 
   /* ------------------------------------------------------------------------
    * Constants
@@ -164,7 +164,7 @@
       this.key = api_key; // use candidate key for the probe call
       try {
         const data = await this.request("key/info", {
-          timestamp: `${getUnixTimestamp()}`,
+          timestamp: `${unixTimestamp()}`,
         });
         if (data?.info?.access && Number(data.info.access.level) >= ACCESS_LEVEL.Minimal) {
           if (DEBUG_MODE) console.log("[Racing+]: API key validated.");
@@ -404,7 +404,7 @@
     async updateRecords() {
       try {
         const results = await torn_api.request("user/racingrecords", {
-          timestamp: `${getUnixTimestamp()}`,
+          timestamp: `${unixTimestamp()}`,
         });
         if (Array.isArray(results?.racingrecords)) {
           results.racingrecords.forEach(({ track, records }) => {
@@ -434,7 +434,7 @@
     async updateCars() {
       try {
         const results = await torn_api.request("user/enlistedcars", {
-          timestamp: `${getUnixTimestamp()}`,
+          timestamp: `${unixTimestamp()}`,
         });
         if (Array.isArray(results?.enlistedcars)) {
           this.cars = results.enlistedcars
@@ -744,7 +744,7 @@
    */
   async function loadRacingPlus() {
     // Load Torn API key (from PDA or local storage)
-    let api_key = IS_PDA ? PDA_KEY : STORE.getValue("RACINGPLUS_APIKEY");
+    let api_key = isPDA() ? PDA_KEY : STORE.getValue("RACINGPLUS_APIKEY");
     if (api_key) {
       if (DEBUG_MODE) console.log("[Racing+]: Loading Torn API...");
       // validate torn api key; if invalid, we'll leave the input editable
@@ -777,7 +777,7 @@
     <div class="flex-col">
       <div class="nowrap">
         ${
-          IS_PDA
+          isPDA()
             ? ""
             : `
         <span class="racing-plus-apikey-actions">
@@ -820,7 +820,7 @@
         const apiStatus = w.document.querySelector(".racing-plus-apikey-status");
 
         // Initialize API key UI
-        if (IS_PDA) {
+        if (isPDA()) {
           if (api_key && apiInput) apiInput.value = api_key;
           if (apiInput) {
             apiInput.disabled = true;
