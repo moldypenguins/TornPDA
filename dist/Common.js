@@ -1,4 +1,4 @@
-// Common.js  (shared utilities for TornPDA userscripts)
+// Common.js - Shared Utilities for TornPDA+ UserScripts.
 (function (w) {
   "use strict";
 
@@ -13,7 +13,7 @@
         /* TornPDA Integration Stub */
         PDA_KEY: "###PDA-APIKEY###",
         IS_PDA:
-          !this.Common.PDA_KEY.includes("###") && typeof w.flutter_inappwebview !== "undefined" && typeof w.flutter_inappwebview.callHandler === "function",
+          !TornPDA.Common.PDA_KEY.includes("###") && typeof w.flutter_inappwebview !== "undefined" && typeof w.flutter_inappwebview.callHandler === "function",
 
         /* Common Constants */
         DEBUG_MODE: true, // Turn on to log to console.

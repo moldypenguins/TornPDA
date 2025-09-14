@@ -7,9 +7,9 @@
 // @author       moldypenguins [2881784]
 // @match        https://www.torn.com/loader.php?sid=attack*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
-// @updateURL    https://github.com/moldypenguins/TornPDA/raw/main/dist/ExecutePlus.user.js
-// @downloadURL  https://github.com/moldypenguins/TornPDA/raw/main/dist/ExecutePlus.user.js
-// @require      https://github.com/moldypenguins/TornPDA/raw/main/dist/Common.js
+// @updateURL    https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/ExecutePlus.user.js
+// @downloadURL  https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/ExecutePlus.user.js
+// @require      https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/Common.js
 // @run-at       document-end
 // ==/UserScript==
 
@@ -19,7 +19,7 @@
   if (w.execute_plus) return;
   w.execute_plus = Date.now();
 
-  const { defer, DEBUG_MODE } = w.TornPDA.Common;
+  const { defer, DEBUG_MODE } = w.TornPDAPlus.Common;
 
   const EXECUTE_LEVEL = 15;
   const checkExecute = async (progress) => {

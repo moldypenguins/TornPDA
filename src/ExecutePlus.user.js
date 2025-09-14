@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         TPDAplus - Execute+
-// @namespace    TPDAplus.ExecutePlus
+// @name         TornPDA - Execute+
+// @namespace    TornPDA.ExecutePlus
 // @version      0.4
 // @license      MIT
 // @description  Shows execute limit in health bar.

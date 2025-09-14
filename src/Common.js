@@ -6,14 +6,14 @@
   if (!w.document || !w.location || !w.navigator) return;
 
   // Create/extend a single shared namespace
-  const TPDAplus =
-    w.TPDAplus ||
-    (w.TPDAplus = {
+  const TornPDA =
+    w.TornPDA ||
+    (w.TornPDA = {
       Common: {
         /* TornPDA Integration Stub */
         PDA_KEY: "###PDA-APIKEY###",
         IS_PDA:
-          !TPDAplus.Common.PDA_KEY.includes("###") && typeof w.flutter_inappwebview !== "undefined" && typeof w.flutter_inappwebview.callHandler === "function",
+          !TornPDA.Common.PDA_KEY.includes("###") && typeof w.flutter_inappwebview !== "undefined" && typeof w.flutter_inappwebview.callHandler === "function",
 
         /* Common Constants */
         DEBUG_MODE: true, // Turn on to log to console.
@@ -60,7 +60,7 @@
           return new Promise((resolve, reject) => {
             const check = () => {
               count++;
-              if (count > w.TPDAplus.Common.DEFERRAL_LIMIT) {
+              if (count > w.TornPDA.Common.DEFERRAL_LIMIT) {
                 reject(new Error("Deferral timed out."));
                 return;
               }
@@ -68,10 +68,10 @@
               if (result) {
                 resolve(result);
               } else {
-                if (w.TPDAplus.Common.DEBUG_MODE) {
+                if (w.TornPDA.Common.DEBUG_MODE) {
                   console.log(`[Racing+]: '${selector}' - Deferring...`);
                 }
-                setTimeout(check, w.TPDAplus.Common.DEFERRAL_INTERVAL);
+                setTimeout(check, w.TornPDA.Common.DEFERRAL_INTERVAL);
               }
             };
             check();
@@ -87,7 +87,7 @@
           let count = 0;
           return new Promise((resolve, reject) => {
             const check = () => {
-              if (count > w.TPDAplus.Common.DEFERRAL_LIMIT) {
+              if (count > w.TornPDA.Common.DEFERRAL_LIMIT) {
                 reject(new Error("Deferral timed out."));
                 return;
               }
@@ -95,11 +95,11 @@
               if (result && result.length > 0) {
                 resolve(result);
               } else {
-                if (w.TPDAplus.Common.DEBUG_MODE) {
+                if (w.TornPDA.Common.DEBUG_MODE) {
                   console.log(`[Racing+]: '${selector}' - Deferring...`);
                 }
                 count++;
-                setTimeout(check, w.TPDAplus.Common.DEFERRAL_INTERVAL);
+                setTimeout(check, w.TornPDA.Common.DEFERRAL_INTERVAL);
               }
             };
             check();
