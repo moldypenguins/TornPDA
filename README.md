@@ -1,26 +1,26 @@
-# TornPDA+ UserScripts
+# TornPDA UserScripts
 
 ```json
-TPDAplus {
+TornPDA {
   Common,
   ExecutePlus,
   RacingPlus
 }
 ```
 
-## Execute+ v0.3
+## Execute+ v0.99.0
 
 Show level when execute will be effective.
-[Install Execute+ User Script](https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/ExecutePlus.user.js)
+[Install Execute+ User Script](https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/ExecutePlus.user.js)
 
 ### Screenshots
 
 ![execute](.github/images/execute.png)
 
-## Racing+ v0.51
+## Racing+ v0.99.1
 
 Show racing skill, current speed, race results, precise skill, upgrade parts.
-[Install RacingPlus User Script](https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/RacingPlus.user.js)
+[Install RacingPlus User Script](https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/RacingPlus.user.js)
 
 ### Screenshots
 
