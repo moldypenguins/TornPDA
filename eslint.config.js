@@ -1,12 +1,12 @@
 // eslint.config.js (Flat Config)
-import eslint from "@eslint/js";
+import js from "@eslint/js";
 import globals from "globals";
+import eslintConfigPrettier from "eslint-config-prettier/flat";
 import prettierRecommended from "eslint-plugin-prettier/recommended";
 
 export default [
-  eslint.configs.recommended,
+  js.configs.recommended,
   {
-    env: { browser: true },
     files: ["src/*.js"],
     ignores: ["**/dist/**", "**/node_modules/**"],
     languageOptions: {
@@ -17,6 +17,13 @@ export default [
     linterOptions: {
       reportUnusedDisableDirectives: true,
     },
+    rules: {
+      "no-unused-vars": "warn",
+    },
   },
-  prettierRecommended,
+
+  // Run Prettier as an ESLint rule + disable conflicting ESLint rules:
+  // Keep these LAST so they can override others.
+  prettierRecommended, // enables `prettier/prettier`
+  eslintConfigPrettier, // disables conflicting ESLint formatting rules
 ];

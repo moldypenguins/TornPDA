@@ -1,7 +1,7 @@
 // gulpfile.js
 import console from "node:console";
 import { Buffer } from "node:buffer";
-import { src, dest, series, parallel, watch } from "gulp";
+import gulp from "gulp";
 import through2 from "through2";
 import fs from "node:fs";
 import path from "node:path";
@@ -12,6 +12,8 @@ import autoprefixer from "autoprefixer";
 import { deleteAsync } from "del";
 import gulpESLintNew from "gulp-eslint-new";
 import gStylelintEsm from "gulp-stylelint-esm";
+
+const { src, dest, series, parallel, watch } = gulp;
 
 // ----------------- Config -----------------
 const SRC_DIR = "src";
@@ -48,9 +50,7 @@ function minifyCss(cssText) {
     console.warn(`[clean-css] Errors:\n  - ${minified.errors.join("\n  - ")}`);
   }
   if (minified.warnings?.length) {
-    console.warn(
-      `[clean-css] Warnings:\n  - ${minified.warnings.join("\n  - ")}`,
-    );
+    console.warn(`[clean-css] Warnings:\n  - ${minified.warnings.join("\n  - ")}`);
   }
   return minified.styles || "";
 }
@@ -82,12 +82,23 @@ function replacePlaceholderSmart(js, token, cssText) {
 }
 
 /** --------- Lint tasks --------- */
-export const lintJs = () => {
+// export const lintJs = () => {
+//   return src(GLOB_JS, { allowEmpty: true })
+//     .pipe(gulpESLintNew({ configType: "flat" }))
+//     .pipe(gulpESLintNew.format())
+//     .pipe(gulpESLintNew.failAfterError());
+// };
+
+export function lintJs() {
   return src(GLOB_JS, { allowEmpty: true })
     .pipe(gulpESLintNew({ configType: "flat" }))
+    .on("error", (e) => {
+      console.error("[lintJs] stream error:", e);
+    })
     .pipe(gulpESLintNew.format())
-    .pipe(gulpESLintNew.failAfterError());
-};
+    .pipe(gulpESLintNew.failAfterError())
+    .once("end", () => console.log("[lintJs] done"));
+}
 
 export const lintScss = () => {
   return src(GLOB_SCSS, { allowEmpty: true }).pipe(
@@ -96,7 +107,7 @@ export const lintScss = () => {
       failAfterError: true,
       fix: false,
       debug: false,
-    }),
+    })
   );
 };
 
@@ -115,7 +126,7 @@ export const lintFixScss = () => {
       failAfterError: true,
       fix: true,
       debug: false,
-    }),
+    })
   );
 };
 
@@ -144,21 +155,13 @@ export const userscripts = () => {
             try {
               cssCompiled = compileScss(scssPath);
             } catch (e) {
-              throw new Error(
-                `[sass] Failed to compile ${base}.scss: ${e.message}`,
-              );
+              throw new Error(`[sass] Failed to compile ${base}.scss: ${e.message}`);
             }
             const cssPrefixed = await autoprefixCss(cssCompiled, scssPath);
             const cssMin = minifyCss(cssPrefixed);
-            const { out, replaced } = replacePlaceholderSmart(
-              js,
-              PLACEHOLDER,
-              cssMin,
-            );
+            const { out, replaced } = replacePlaceholderSmart(js, PLACEHOLDER, cssMin);
             if (!replaced) {
-              console.warn(
-                `[userscripts] Placeholder "${PLACEHOLDER}" not found in ${base}.js; CSS was NOT injected.`,
-              );
+              console.warn(`[userscripts] Placeholder "${PLACEHOLDER}" not found in ${base}.js; CSS was NOT injected.`);
             }
             js = out;
           }
@@ -170,7 +173,7 @@ export const userscripts = () => {
         processFile()
           .then(() => cb(null, file))
           .catch(cb);
-      }),
+      })
     )
     .pipe(dest(OUT_DIR));
 };
@@ -183,10 +186,7 @@ export const clean = () => {
 /** Monitor: lint then build on changes. */
 export const monitor = () => {
   // JS sources (excluding Common.js) → lint JS, then build
-  watch(
-    [`${SRC_DIR}/*.js`, `!${SRC_DIR}/Common.js`],
-    series(lintJs, userscripts),
-  );
+  watch([`${SRC_DIR}/*.js`, `!${SRC_DIR}/Common.js`], series(lintJs, userscripts));
 
   // Common.js → lint JS, then build (since it’s inlined)
   watch(`${SRC_DIR}/Common.js`, series(lintJs, userscripts));

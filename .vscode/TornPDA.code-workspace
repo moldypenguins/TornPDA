@@ -17,6 +17,9 @@
     "editor.tabSize": 2,
     "editor.formatOnSave": true,
     "editor.formatOnSaveMode": "modificationsIfAvailable",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit",
+    },
     "editor.trimAutoWhitespace": true,
     "editor.rulers": [120],
 
