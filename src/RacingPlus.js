@@ -25,7 +25,6 @@
 (async (w) => {
   ("use strict");
   const {
-    d,
     defer,
     deferAll,
     getUnixTimestamp,
@@ -746,12 +745,14 @@
     if (DEBUG_MODE) console.log("[Racing+]: Loading Official Events tab...");
 
     // Fix active tab
-    d.querySelectorAll("#racingMainContainer ul.categories li").forEach((c) => {
-      c.classList.toggle(
-        "active",
-        c.querySelector(".official-events") ? true : false,
-      );
-    });
+    w.document
+      .querySelectorAll("#racingMainContainer ul.categories li")
+      .forEach((c) => {
+        c.classList.toggle(
+          "active",
+          c.querySelector(".official-events") ? true : false,
+        );
+      });
 
     // Resolve the current race ID for this driver
     const thisDriverBoard = await defer(
@@ -798,18 +799,20 @@
     }
 
     // Update labels (save some horizontal space).
-    d.querySelectorAll("#racingdetails li.pd-name").forEach((detail) => {
-      if (detail.textContent === "Name:") detail.remove();
-      if (detail.textContent === "Position:") detail.textContent = "Pos:";
-      if (detail.textContent === "Last Lap:") {
-        detail.textContent = "Last:";
-        detail.classList.toggle("t-hide", false);
-      }
-      if (detail.textContent === "Completion:") {
-        detail.textContent = "Best:";
-        detail.classList.toggle("m-hide", false);
-      }
-    });
+    w.document
+      .querySelectorAll("#racingdetails li.pd-name")
+      .forEach((detail) => {
+        if (detail.textContent === "Name:") detail.remove();
+        if (detail.textContent === "Position:") detail.textContent = "Pos:";
+        if (detail.textContent === "Last Lap:") {
+          detail.textContent = "Last:";
+          detail.classList.toggle("t-hide", false);
+        }
+        if (detail.textContent === "Completion:") {
+          detail.textContent = "Best:";
+          detail.classList.toggle("m-hide", false);
+        }
+      });
 
     // Update laptime value
     let laptime = document.querySelector("#racingdetails li.pd-laptime");
@@ -844,12 +847,12 @@
    */
   async function addStyles() {
     if (DEBUG_MODE) console.log("[Racing+]: Adding styles...");
-    if (!d.head)
+    if (!w.document.head)
       await new Promise((r) =>
         w.addEventListener("DOMContentLoaded", r, { once: true }),
       );
 
-    const s = d.createElement("style");
+    const s = w.document.createElement("style");
     s.innerHTML = `__MINIFIED_CSS__`;
 
     // Dynamic per-part color hints (batched for fewer string writes).
@@ -864,7 +867,7 @@
       });
     });
     s.innerHTML += dynRules.join("");
-    d.head.appendChild(s);
+    w.document.head.appendChild(s);
     if (DEBUG_MODE) console.log("[Racing+]: Styles added.");
   }
 
@@ -895,9 +898,9 @@
     if (DEBUG_MODE) console.log("[Racing+]: Loading DOM...");
     try {
       // Add the Racing+ window (settings panel)
-      if (!d.querySelector("div.racing-plus-window")) {
+      if (!w.document.querySelector("div.racing-plus-window")) {
         const raceway = await defer("#racingMainContainer");
-        const rpw = d.createElement("div");
+        const rpw = w.document.createElement("div");
         rpw.className = "racing-plus-window";
         rpw.innerHTML = `
 <div class="racing-plus-header">Racing+</div>
@@ -944,10 +947,12 @@
         raceway.insertAdjacentElement("beforeBegin", rpw);
 
         /** @type {HTMLInputElement} */
-        const apiInput = d.querySelector("#rplus-apikey");
-        const apiSave = d.querySelector(".racing-plus-apikey-save");
-        const apiReset = d.querySelector(".racing-plus-apikey-reset");
-        const apiStatus = d.querySelector(".racing-plus-apikey-status");
+        const apiInput = w.document.querySelector("#rplus-apikey");
+        const apiSave = w.document.querySelector(".racing-plus-apikey-save");
+        const apiReset = w.document.querySelector(".racing-plus-apikey-reset");
+        const apiStatus = w.document.querySelector(
+          ".racing-plus-apikey-status",
+        );
 
         // Initialize API key UI
         if (IS_PDA) {
@@ -1014,23 +1019,23 @@
         }
 
         // Initialize toggles from storage & persist on click
-        d.querySelectorAll(
-          ".racing-plus-settings input[type=checkbox]",
-        ).forEach((el) => {
-          const key = STORE.getKey(el.id);
-          el.checked = STORE.getValue(key) === "1";
-          el.addEventListener("click", (ev) => {
-            const t = /** @type {HTMLInputElement} */ ev.currentTarget;
-            STORE.setValue(key, t.checked ? "1" : "0");
-            if (DEBUG_MODE) console.log(`[Racing+]: ${el.id} saved.`);
+        w.document
+          .querySelectorAll(".racing-plus-settings input[type=checkbox]")
+          .forEach((el) => {
+            const key = STORE.getKey(el.id);
+            el.checked = STORE.getValue(key) === "1";
+            el.addEventListener("click", (ev) => {
+              const t = /** @type {HTMLInputElement} */ ev.currentTarget;
+              STORE.setValue(key, t.checked ? "1" : "0");
+              if (DEBUG_MODE) console.log(`[Racing+]: ${el.id} saved.`);
+            });
           });
-        });
       }
 
       // Add the "Racing+" top link button
-      if (!d.querySelector("a.racing-plus-button")) {
+      if (!w.document.querySelector("a.racing-plus-button")) {
         const topLinks = await defer("#top-page-links-list");
-        const rpb = d.createElement("a");
+        const rpb = w.document.createElement("a");
         rpb.className = "racing-plus-button t-clear h c-pointer line-h24 right";
         rpb.setAttribute("aria-label", "Racing+");
         rpb.innerHTML = `
@@ -1045,7 +1050,9 @@
         // Toggle the settings panel on click
         rpb.addEventListener("click", (ev) => {
           ev.preventDefault();
-          d.querySelector("div.racing-plus-window")?.classList.toggle("show");
+          w.document
+            .querySelector("div.racing-plus-window")
+            ?.classList.toggle("show");
         });
 
         if (DEBUG_MODE) console.log("[Racing+]: Settings button added.");
@@ -1057,9 +1064,9 @@
     // Normalize the top banner structure & update skill snapshot
     if (DEBUG_MODE) console.log("[Racing+]: Fixing top banner...");
     const banner = await defer(".banner");
-    const leftBanner = d.createElement("div");
+    const leftBanner = w.document.createElement("div");
     leftBanner.className = "left-banner";
-    const rightBanner = d.createElement("div");
+    const rightBanner = w.document.createElement("div");
     rightBanner.className = "right-banner";
 
     const elements = Array.from(banner.children);
