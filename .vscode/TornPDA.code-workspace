@@ -21,7 +21,7 @@
       "source.fixAll.eslint": "explicit",
     },
     "editor.trimAutoWhitespace": true,
-    "editor.rulers": [120],
+    "editor.rulers": [160],
 
     "files.associations": {
       "*.md": "markdown",
