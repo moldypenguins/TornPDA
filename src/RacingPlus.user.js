@@ -389,20 +389,20 @@
               '<div class="speed">0.00mph</div>',
             );
           }
-          if (
-            !["joined", "finished"].includes(racestatus) &&
-            !speedIntervalByDriverId.has(driverId)
-          ) {
-            if (DEBUG_MODE) {
-              console.log(
-                `Racing+: Adding speed interval for driver ${driverId}.`,
-              );
-            }
-            speedIntervalByDriverId.set(
-              driverId,
-              setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId),
-            );
-          }
+          // if (
+          //   !["joined", "finished"].includes(racestatus) &&
+          //   !speedIntervalByDriverId.has(driverId)
+          // ) {
+          //   if (DEBUG_MODE) {
+          //     console.log(
+          //       `Racing+: Adding speed interval for driver ${driverId}.`,
+          //     );
+          //   }
+          //   speedIntervalByDriverId.set(
+          //     driverId,
+          //     setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId),
+          //   );
+          // }
         }
         // Show driver skill
         if (STORE.getValue("rplus_showskill") === "1") {
@@ -412,22 +412,22 @@
               '<div class="skill">RS: ?</div>',
             );
           }
-          if (apikey) {
-            // Fetch racing skill data from the Torn API for the given driver id
-            try {
-              let user = await torn_api(
-                apikey,
-                `user/${driverId}/personalStats`,
-                "stat=racingskill",
-              );
-              if (user) {
-                let skill = stats.querySelector(".skill");
-                skill.textContent = `RS: ${user.personalstats.racing.skill}`;
-              }
-            } catch (err) {
-              console.log(`Racing+ Error: ${err.error ?? err}`);
-            }
-          }
+          // if (apikey) {
+          //   // Fetch racing skill data from the Torn API for the given driver id
+          //   try {
+          //     let user = await torn_api(
+          //       apikey,
+          //       `user/${driverId}/personalStats`,
+          //       "stat=racingskill",
+          //     );
+          //     if (user) {
+          //       let skill = stats.querySelector(".skill");
+          //       skill.textContent = `RS: ${user.personalstats.racing.skill}`;
+          //     }
+          //   } catch (err) {
+          //     console.log(`Racing+ Error: ${err.error ?? err}`);
+          //   }
+          // }
         }
       });
     }

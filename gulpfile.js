@@ -16,13 +16,10 @@ import gStylelintEsm from "gulp-stylelint-esm";
 // ----------------- Config -----------------
 const SRC_DIR = "src";
 const OUT_DIR = "dist";
-// exclude Common.js from userscript sources (but we will lint it)
-const GLOB_JS_BUILD = [`${SRC_DIR}/*.js`, `!${SRC_DIR}/Common.js`];
-const GLOB_JS_LINT = [`${SRC_DIR}/*.js`];
+const GLOB_JS = [`${SRC_DIR}/*.js`];
 const GLOB_SCSS = [`${SRC_DIR}/*.scss`];
 
 const PLACEHOLDER = "__MINIFIED_CSS__";
-const COMMON_FILE = path.join(SRC_DIR, "Common.js");
 // ------------------------------------------
 
 /** Compile SCSS file to CSS (string). */
@@ -84,16 +81,9 @@ function replacePlaceholderSmart(js, token, cssText) {
   return { out, replaced };
 }
 
-/** Find end of userscript header (after "// ==/UserScript=="). */
-function userscriptHeaderEndIndex(js) {
-  const endTag = /\/\/\s*==\/UserScript==[^\n]*\n?/;
-  const m = endTag.exec(js);
-  return m ? m.index + m[0].length : 0;
-}
-
 /** --------- Lint tasks --------- */
 export const lintJs = () => {
-  return src(GLOB_JS_LINT, { allowEmpty: true })
+  return src(GLOB_JS, { allowEmpty: true })
     .pipe(gulpESLintNew({ configType: "flat" }))
     .pipe(gulpESLintNew.format())
     .pipe(gulpESLintNew.failAfterError());
@@ -111,7 +101,7 @@ export const lintScss = () => {
 };
 
 export const lintFixJs = () => {
-  return src(GLOB_JS_LINT, { allowEmpty: true })
+  return src(GLOB_JS, { allowEmpty: true })
     .pipe(gulpESLintNew({ configType: "flat", fix: true }))
     .pipe(gulpESLintNew.fix())
     .pipe(gulpESLintNew.format())
@@ -136,7 +126,7 @@ export const lintFix = parallel(lintFixJs, lintFixScss);
 
 /** Build userscripts: inline minified CSS from SCSS (if present), then inject Common.js. */
 export const userscripts = () => {
-  return src(GLOB_JS_BUILD, { allowEmpty: true })
+  return src(GLOB_JS, { allowEmpty: true })
     .pipe(
       through2.obj(function (file, _, cb) {
         if (file.isNull()) return cb(null, file);
@@ -148,7 +138,7 @@ export const userscripts = () => {
 
           let js = file.contents.toString("utf8");
 
-          // 1) CSS pipeline (optional)
+          // Optional CSS pipeline: compile -> autoprefix -> minify -> inject placeholder
           if (fs.existsSync(scssPath)) {
             let cssCompiled;
             try {
@@ -158,10 +148,8 @@ export const userscripts = () => {
                 `[sass] Failed to compile ${base}.scss: ${e.message}`,
               );
             }
-
             const cssPrefixed = await autoprefixCss(cssCompiled, scssPath);
             const cssMin = minifyCss(cssPrefixed);
-
             const { out, replaced } = replacePlaceholderSmart(
               js,
               PLACEHOLDER,
@@ -175,37 +163,8 @@ export const userscripts = () => {
             js = out;
           }
 
-          // 2) Inject Common.js after 'use strict';
-          if (fs.existsSync(COMMON_FILE)) {
-            const commonCode = fs.readFileSync(COMMON_FILE, "utf8");
-            // Corrected insertion using a safe implementation:
-            const eol = js.includes("\r\n") ? "\r\n" : "\n";
-            const headerEnd = userscriptHeaderEndIndex(js);
-            const before = js.slice(0, headerEnd);
-            let body = js.slice(headerEnd);
-            const strictRe = /(['"])use strict\1\s*;?/;
-            const m = strictRe.exec(body);
-            if (m) {
-              const insertPos = m.index + m[0].length;
-              body =
-                body.slice(0, insertPos) +
-                eol +
-                commonCode +
-                eol +
-                body.slice(insertPos);
-            } else {
-              body = `'use strict';${eol}${commonCode}${eol}${body}`;
-            }
-            js = before + body;
-          } else {
-            console.warn(
-              `[userscripts] ${path.basename(COMMON_FILE)} not found; skipping common code injection.`,
-            );
-          }
-
-          // 3) Rename to *.user.js and output
+          // Output
           file.contents = Buffer.from(js);
-          file.path = jsPath.replace(/\.js$/i, ".user.js");
         };
 
         processFile()
