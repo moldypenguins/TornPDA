@@ -32,6 +32,21 @@
   // Abort early if essentials are not present.
   if (!d || !l || !n) return;
 
+  // TornPDA integration stub.
+  const PDA_KEY = '###PDA-APIKEY###';
+  const IS_PDA = !PDA_KEY.includes('###') && typeof w.flutter_inappwebview !== 'undefined' && typeof w.flutter_inappwebview.callHandler === 'function';
+
+  /* ------------------------------------------------------------------------
+  * Common Constants
+  * --------------------------------------------------------------------- */
+  const DEBUG_MODE = true; // Turn on to log to console.
+  const DEFERRAL_LIMIT = 250; // Maximum amount of times the script will defer.
+  const DEFERRAL_INTERVAL = 100; // Amount of time in milliseconds deferrals will last.
+
+  /* ------------------------------------------------------------------------
+   * Common Utilities
+   * --------------------------------------------------------------------- */
+
   /**
    * setClipboard - Copies text to the clipboard if document is focused.
    * (Kept global on window for convenience across script)
@@ -52,50 +67,66 @@
     }
   };
 
-  /* ------------------------------------------------------------------------
-   * Constants
-   * --------------------------------------------------------------------- */
-  const DEBUG_MODE = true; // Turn on to log to console for troubleshooting.
+  /**
+   * Returns the current Unix timestamp (seconds since epoch).
+   * @returns {number}
+   */
+  w.getUnixTimestamp = () => {
+    return Math.floor(Date.now() / 1000);
+  }
 
-  const API_COMMENT = 'RacingPlus'; // Comment shown in Torn API recent usage.
-  const CACHE_TTL = 60 * 60 * 1000; // Cache duration for API responses (ms). Default = 1 hour.
-  const DEFERRAL_LIMIT = 250; // Maximum number of polling attempts in defer() helpers.
-  const DEFERRAL_INTERVAL = 100; // Interval (ms) between defer() polls.
-  const SPEED_INTERVAL = 1000; // (Reserved) Sample rate for speed updates (ms).
+  /**
+   * Wait for a single element matching selector to appear.
+   * Times out after DEFERRAL_LIMIT * DEFERRAL_INTERVAL ms.
+   * @param {string} selector
+   * @returns {Promise<Element>}
+   */
+  function defer(selector) {
+    let count = 0;
+    return new Promise((resolve, reject) => {
+      const check = () => {
+        count++;
+        if (count > DEFERRAL_LIMIT) {
+          reject(new Error('Deferral timed out.'));
+          return;
+        }
+        const result = d.querySelector(selector);
+        if (result) {
+          resolve(result);
+        } else {
+          if (DEBUG_MODE) console.log(`[Racing+]: '${selector}' - Deferring...`);
+          setTimeout(check, DEFERRAL_INTERVAL);
+        }
+      };
+      check();
+    });
+  }
 
-  // Colours for car parts.
-  const COLOURS = ['#5D9CEC', '#48CFAD', '#FFCE54', '#ED5565', '#EC87C0', '#AC92EC', '#FC6E51', '#A0D468', '#4FC1E9'];
-
-  // Car part categories (used by the CSS injector).
-  const CATEGORIES = {
-    Aerodynamics: ['Spoiler', 'Engine Cooling', 'Brake Cooling', 'Front Diffuser', 'Rear Diffuser'],
-    Brakes: ['Pads', 'Discs', 'Fluid', 'Brake Accessory', 'Brake Control', 'Callipers'],
-    Engine: ['Gasket', 'Engine Porting', 'Engine Cleaning', 'Fuel Pump', 'Camshaft', 'Turbo', 'Pistons', 'Computer', 'Intercooler'],
-    Exhaust: ['Exhaust', 'Air Filter', 'Manifold'],
-    Fuel: ['Fuel'],
-    Safety: ['Overalls', 'Helmet', 'Fire Extinguisher', 'Safety Accessory', 'Roll cage', 'Cut-off', 'Seat'],
-    Suspension: ['Springs', 'Front Bushes', 'Rear Bushes', 'Upper Front Brace', 'Lower Front Brace', 'Rear Brace', 'Front Tie Rods', 'Rear Control Arms'],
-    Transmission: ['Shifting', 'Differential', 'Clutch', 'Flywheel', 'Gearbox'],
-    'Weight Reduction': ['Strip out', 'Steering wheel', 'Interior', 'Windows', 'Roof', 'Boot', 'Hood'],
-    'Wheels & Tires': ['Tyres', 'Wheels'],
-  };
-
-  const TRACKS = {
-    21: {
-      name: 'Speedway',
-    },
-  };
-
-  const AccessLevel = Object.freeze({
-    Public: 0,
-    Minimal: 1,
-    Limited: 2,
-    Full: 3,
-  });
-
-  // TornPDA integration stub.
-  const PDA_KEY = '###PDA-APIKEY###';
-  const IS_PDA = !PDA_KEY.includes('###') && typeof w.flutter_inappwebview !== 'undefined' && typeof w.flutter_inappwebview.callHandler === 'function';
+  /**
+   * Wait for all elements matching selector to appear.
+   * @param {string} selector
+   * @returns {Promise<NodeListOf<Element>>}
+   */
+  function deferAll(selector) {
+    let count = 0;
+    return new Promise((resolve, reject) => {
+      const check = () => {
+        if (count > DEFERRAL_LIMIT) {
+          reject(new Error('Deferral timed out.'));
+          return;
+        }
+        const result = d.querySelectorAll(selector);
+        if (result && result.length > 0) {
+          resolve(result);
+        } else {
+          if (DEBUG_MODE) console.log(`[Racing+]: '${selector}' - Deferring...`);
+          count++;
+          setTimeout(check, DEFERRAL_INTERVAL);
+        }
+      };
+      check();
+    });
+  }
 
   /* ------------------------------------------------------------------------
    * localStorage wrapper
@@ -128,6 +159,45 @@
       }[id];
     },
   };
+
+
+
+  /* ------------------------------------------------------------------------
+   * Constants
+   * --------------------------------------------------------------------- */
+  const API_COMMENT = 'RacingPlus'; // Comment shown in Torn API recent usage.
+  const CACHE_TTL = 60 * 60 * 1000; // Cache duration for API responses (ms). Default = 1 hour.
+  const SPEED_INTERVAL = 1000; // (Reserved) Sample rate for speed updates (ms).
+
+  // Colours for car parts.
+  const COLOURS = ['#5D9CEC', '#48CFAD', '#FFCE54', '#ED5565', '#EC87C0', '#AC92EC', '#FC6E51', '#A0D468', '#4FC1E9'];
+
+  // Car part categories (used by the CSS injector).
+  const CATEGORIES = {
+    Aerodynamics: ['Spoiler', 'Engine Cooling', 'Brake Cooling', 'Front Diffuser', 'Rear Diffuser'],
+    Brakes: ['Pads', 'Discs', 'Fluid', 'Brake Accessory', 'Brake Control', 'Callipers'],
+    Engine: ['Gasket', 'Engine Porting', 'Engine Cleaning', 'Fuel Pump', 'Camshaft', 'Turbo', 'Pistons', 'Computer', 'Intercooler'],
+    Exhaust: ['Exhaust', 'Air Filter', 'Manifold'],
+    Fuel: ['Fuel'],
+    Safety: ['Overalls', 'Helmet', 'Fire Extinguisher', 'Safety Accessory', 'Roll cage', 'Cut-off', 'Seat'],
+    Suspension: ['Springs', 'Front Bushes', 'Rear Bushes', 'Upper Front Brace', 'Lower Front Brace', 'Rear Brace', 'Front Tie Rods', 'Rear Control Arms'],
+    Transmission: ['Shifting', 'Differential', 'Clutch', 'Flywheel', 'Gearbox'],
+    'Weight Reduction': ['Strip out', 'Steering wheel', 'Interior', 'Windows', 'Roof', 'Boot', 'Hood'],
+    'Wheels & Tires': ['Tyres', 'Wheels'],
+  };
+
+  const TRACKS = {
+    21: {
+      name: 'Speedway',
+    },
+  };
+
+  const AccessLevel = Object.freeze({
+    Public: 0,
+    Minimal: 1,
+    Limited: 2,
+    Full: 3,
+  });
 
   /* ------------------------------------------------------------------------
    * Torn API helper
@@ -507,14 +577,6 @@
    * --------------------------------------------------------------------- */
 
   /**
-   * Returns the current Unix timestamp (seconds since epoch).
-   * @returns {number}
-   */
-  function getUnixTimestamp() {
-    return Math.floor(Date.now() / 1000);
-  }
-
-  /**
    * Returns an array of record objects with the best (smallest) lap_time.
    * Includes multiple records if they tie on lap_time but have different car_id.
    * @param {Array<{lap_time:number,car_id?:number}>} records
@@ -524,59 +586,6 @@
     if (!Array.isArray(records) || records.length === 0) return [];
     const minLap = Math.min(...records.map((r) => r.lap_time));
     return records.filter((r) => r.lap_time === minLap);
-  }
-
-  /**
-   * Wait for a single element matching selector to appear.
-   * Times out after DEFERRAL_LIMIT * DEFERRAL_INTERVAL ms.
-   * @param {string} selector
-   * @returns {Promise<Element>}
-   */
-  function defer(selector) {
-    let count = 0;
-    return new Promise((resolve, reject) => {
-      const check = () => {
-        count++;
-        if (count > DEFERRAL_LIMIT) {
-          reject(new Error('Deferral timed out.'));
-          return;
-        }
-        const result = d.querySelector(selector);
-        if (result) {
-          resolve(result);
-        } else {
-          if (DEBUG_MODE) console.log(`[Racing+]: '${selector}' - Deferring...`);
-          setTimeout(check, DEFERRAL_INTERVAL);
-        }
-      };
-      check();
-    });
-  }
-
-  /**
-   * Wait for all elements matching selector to appear.
-   * @param {string} selector
-   * @returns {Promise<NodeListOf<Element>>}
-   */
-  function deferAll(selector) {
-    let count = 0;
-    return new Promise((resolve, reject) => {
-      const check = () => {
-        if (count > DEFERRAL_LIMIT) {
-          reject(new Error('Deferral timed out.'));
-          return;
-        }
-        const result = d.querySelectorAll(selector);
-        if (result && result.length > 0) {
-          resolve(result);
-        } else {
-          if (DEBUG_MODE) console.log(`[Racing+]: '${selector}' - Deferring...`);
-          count++;
-          setTimeout(check, DEFERRAL_INTERVAL);
-        }
-      };
-      check();
-    });
   }
 
   /* ------------------------------------------------------------------------

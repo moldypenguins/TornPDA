@@ -8,21 +8,43 @@
   "license": "GPL-3.0-only",
   "type": "module",
   "scripts": {
+    "start": "gulp",
     "build": "gulp build",
-    "watch": "gulp",
-    "clean": "gulp clean"
+    "clean": "gulp clean",
+    "watch": "gulp watch",
+    "lint": "gulp lint",
+    "lint:js": "gulp lintJs",
+    "lint:scss": "gulp lintScss",
+    "lint:fix": "gulp lintFix"
   },
   "browserslist": [
     "defaults"
   ],
   "devDependencies": {
+    "@eslint/js": "^9.35.0",
     "autoprefixer": "^10.4.21",
     "clean-css": "^5.3.3",
     "del": "^8.0.0",
+    "eslint": "^9.35.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "globals": "^16.4.0",
     "gulp": "^5.0.1",
+    "gulp-cli": "^3.1.0",
+    "gulp-eslint-new": "^2.4.0",
+    "gulp-prettier": "^6.0.0",
     "gulp-rename": "^2.1.0",
+    "gulp-stylelint-esm": "^3.0.0",
     "postcss": "^8.5.6",
+    "postcss-scss": "^4.0.9",
+    "prettier": "^3.6.2",
     "sass": "^1.92.1",
+    "stylelint": "^16.24.0",
+    "stylelint-config-css-modules": "^4.5.1",
+    "stylelint-config-recess-order": "^7.3.0",
+    "stylelint-config-standard-scss": "^16.0.0",
+    "stylelint-prettier": "^5.0.3",
+    "stylelint-scss": "^6.12.1",
     "through2": "^4.0.2"
   }
 }

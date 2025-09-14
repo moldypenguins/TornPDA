@@ -1,12 +1,69 @@
 {
   "folders": [
     {
-      "path": "../"
-    }
+      "path": "..",
+    },
   ],
   "settings": {
+    "editor.aiStats.enabled": false,
+    "github.copilot.enable": {
+      "*": false,
+    },
+
+    "editor.wordWrap": "off",
+    "editor.detectIndentation": false,
+    "editor.insertSpaces": true,
+    "editor.indentSize": "tabSize",
+    "editor.tabSize": 2,
     "editor.formatOnSave": true,
-    "editor.rulers": [160],
-    "prettier.printWidth": 160
-  }
+    "editor.formatOnSaveMode": "modificationsIfAvailable",
+    "editor.trimAutoWhitespace": true,
+    "editor.rulers": [120],
+
+    "files.associations": {
+      "*.md": "markdown",
+      "*.js": "javascript",
+      "*.json": "json",
+      ".env": "properties",
+      ".env.*": "properties",
+      "*.yml": "yaml",
+    },
+    "files.eol": "\n",
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "files.trimTrailingWhitespace": true,
+
+    "[markdown]": {
+      "files.trimTrailingWhitespace": false,
+      "editor.defaultFormatter": "mervin.markdown-formatter",
+    },
+    "[javascript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.maxTokenizationLineLength": 2500,
+    },
+    "[json][jsonc]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
+    "[css][scss]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
+    "[yaml]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.autoIndent": "advanced",
+      "diffEditor.ignoreTrimWhitespace": false,
+      "editor.quickSuggestions": {
+        "strings": "on",
+      },
+    },
+  },
+  "extensions": {
+    "recommendations": [
+      "esbenp.prettier-vscode",
+      "dbaeumer.vscode-eslint",
+      "mervin.markdown-formatter",
+      "bierner.github-markdown-preview",
+      "bierner.markdown-checkbox",
+      "bierner.markdown-emoji",
+    ],
+  },
 }
