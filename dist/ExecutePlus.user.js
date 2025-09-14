@@ -16,6 +16,9 @@
 (async (w) => {
   "use strict";
 
+  if (w.execute_plus) return;
+  w.execute_plus = Date.now();
+
   const { defer, DEBUG_MODE } = w.TornPDA.Common;
 
   const EXECUTE_LEVEL = 15;
@@ -37,9 +40,7 @@
   };
 
   let userdata = JSON.parse((await defer("#torn-user")).value);
-  let healthBar = await defer(
-    `div[class^="playersModelWrap_"] div[class^="header_"]:not([aria-describedby^="player-name_${userdata.playername}"])`
-  );
+  let healthBar = await defer(`div[class^="playersModelWrap_"] div[class^="header_"]:not([aria-describedby^="player-name_${userdata.playername}"])`);
   if (healthBar) {
     // Watch healthBar for changes
     if (DEBUG_MODE) {

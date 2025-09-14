@@ -41,30 +41,11 @@
   const CATEGORIES = {
     Aerodynamics: ["Spoiler", "Engine Cooling", "Brake Cooling", "Front Diffuser", "Rear Diffuser"],
     Brakes: ["Pads", "Discs", "Fluid", "Brake Accessory", "Brake Control", "Callipers"],
-    Engine: [
-      "Gasket",
-      "Engine Porting",
-      "Engine Cleaning",
-      "Fuel Pump",
-      "Camshaft",
-      "Turbo",
-      "Pistons",
-      "Computer",
-      "Intercooler",
-    ],
+    Engine: ["Gasket", "Engine Porting", "Engine Cleaning", "Fuel Pump", "Camshaft", "Turbo", "Pistons", "Computer", "Intercooler"],
     Exhaust: ["Exhaust", "Air Filter", "Manifold"],
     Fuel: ["Fuel"],
     Safety: ["Overalls", "Helmet", "Fire Extinguisher", "Safety Accessory", "Roll cage", "Cut-off", "Seat"],
-    Suspension: [
-      "Springs",
-      "Front Bushes",
-      "Rear Bushes",
-      "Upper Front Brace",
-      "Lower Front Brace",
-      "Rear Brace",
-      "Front Tie Rods",
-      "Rear Control Arms",
-    ],
+    Suspension: ["Springs", "Front Bushes", "Rear Bushes", "Upper Front Brace", "Lower Front Brace", "Rear Brace", "Front Tie Rods", "Rear Control Arms"],
     Transmission: ["Shifting", "Differential", "Clutch", "Flywheel", "Gearbox"],
     "Weight Reduction": ["Strip out", "Steering wheel", "Interior", "Windows", "Roof", "Boot", "Hood"],
     "Wheels & Tires": ["Tyres", "Wheels"],
@@ -640,10 +621,7 @@
         .match(/[+-]\d+/);
       if (propVal) {
         let propNum = parseInt(propVal[0]);
-        propName.insertAdjacentHTML(
-          "afterBegin",
-          `<span class="${propNum > 0 ? "positive" : propNum < 0 ? "negative" : ""}">${propVal[0]}%</span> `
-        );
+        propName.insertAdjacentHTML("afterBegin", `<span class="${propNum > 0 ? "positive" : propNum < 0 ? "negative" : ""}">${propVal[0]}%</span> `);
       }
     });
   }
@@ -1015,10 +993,7 @@
             await loadOfficialEvents();
           } else if (addedNodes.some((node) => node.classList?.contains?.("enlist-wrap"))) {
             await loadEnlistedCars();
-          } else if (
-            addedNodes.some((node) => node.classList?.contains?.("pm-categories-wrap")) &&
-            STORE.getValue(STORE.getKey("rplus_showparts")) === "1"
-          ) {
+          } else if (addedNodes.some((node) => node.classList?.contains?.("pm-categories-wrap")) && STORE.getValue(STORE.getKey("rplus_showparts")) === "1") {
             await loadPartsAndModifications();
           }
         }

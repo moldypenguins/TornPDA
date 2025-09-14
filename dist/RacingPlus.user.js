@@ -23,7 +23,7 @@
  * ------------------------------------------------------------------------ */
 
 (async (w) => {
-  "use strict";
+  ("use strict");
 
   const { defer, deferAll, getUnixTimestamp, setClipboard, IS_PDA, PDA_KEY, STORE, DEBUG_MODE } = window.TornPDA.Common;
 
@@ -41,42 +41,36 @@
   const CATEGORIES = {
     Aerodynamics: ["Spoiler", "Engine Cooling", "Brake Cooling", "Front Diffuser", "Rear Diffuser"],
     Brakes: ["Pads", "Discs", "Fluid", "Brake Accessory", "Brake Control", "Callipers"],
-    Engine: [
-      "Gasket",
-      "Engine Porting",
-      "Engine Cleaning",
-      "Fuel Pump",
-      "Camshaft",
-      "Turbo",
-      "Pistons",
-      "Computer",
-      "Intercooler",
-    ],
+    Engine: ["Gasket", "Engine Porting", "Engine Cleaning", "Fuel Pump", "Camshaft", "Turbo", "Pistons", "Computer", "Intercooler"],
     Exhaust: ["Exhaust", "Air Filter", "Manifold"],
     Fuel: ["Fuel"],
     Safety: ["Overalls", "Helmet", "Fire Extinguisher", "Safety Accessory", "Roll cage", "Cut-off", "Seat"],
-    Suspension: [
-      "Springs",
-      "Front Bushes",
-      "Rear Bushes",
-      "Upper Front Brace",
-      "Lower Front Brace",
-      "Rear Brace",
-      "Front Tie Rods",
-      "Rear Control Arms",
-    ],
+    Suspension: ["Springs", "Front Bushes", "Rear Bushes", "Upper Front Brace", "Lower Front Brace", "Rear Brace", "Front Tie Rods", "Rear Control Arms"],
     Transmission: ["Shifting", "Differential", "Clutch", "Flywheel", "Gearbox"],
     "Weight Reduction": ["Strip out", "Steering wheel", "Interior", "Windows", "Roof", "Boot", "Hood"],
     "Wheels & Tires": ["Tyres", "Wheels"],
   };
 
-  // const TRACKS = {
-  //   21: {
-  //     name: "Speedway",
-  //   },
-  // };
+  const TRACKS = {
+    6: { name: "Uptown", distance: 2.25, laps: 7 },
+    7: { name: "Withdrawal", distance: 0, laps: 0 },
+    8: { name: "Underdog", distance: 0, laps: 0 },
+    9: { name: "Parkland", distance: 0, laps: 5 },
+    10: { name: "Docks", distance: 0, laps: 5 },
+    11: { name: "Commerce", distance: 0, laps: 15 },
+    12: { name: "Two Islands", distance: 0, laps: 6 },
+    15: { name: "Industrial", distance: 0, laps: 0 },
+    16: { name: "Vector", distance: 0, laps: 14 },
+    17: { name: "Mudpit", distance: 0, laps: 0 },
+    18: { name: "Hammerhead", distance: 0, laps: 14 },
+    19: { name: "Sewage", distance: 0, laps: 11 },
+    20: { name: "Meltdown", distance: 0, laps: 13 },
+    21: { name: "Speedway", distance: 0, laps: 0 },
+    23: { name: "Stone Park", distance: 0, laps: 8 },
+    24: { name: "Convict", distance: 0, laps: 10 },
+  };
 
-  const AccessLevel = Object.freeze({
+  const ACCESS_LEVEL = Object.freeze({
     Public: 0,
     Minimal: 1,
     Limited: 2,
@@ -172,7 +166,7 @@
         const data = await this.request("key/info", {
           timestamp: `${getUnixTimestamp()}`,
         });
-        if (data?.info?.access && Number(data.info.access.level) >= AccessLevel.Minimal) {
+        if (data?.info?.access && Number(data.info.access.level) >= ACCESS_LEVEL.Minimal) {
           if (DEBUG_MODE) console.log("[Racing+]: API key validated.");
           return true;
         }
@@ -207,15 +201,12 @@
 
   /**
    * TornRace - helper to compile race meta and compute status.
-   * @param {object} init
+   * @param {object} args
    */
   class TornRace {
-    constructor(init = {}) {
-      this.id = init.id ?? null;
-      this.trackid = init.trackid ?? null;
-      this.title = init.title ?? "";
-      this.distance = init.distance ?? null;
-      this.laps = init.laps ?? null;
+    constructor(args = {}) {
+      this.id = args.id ?? null;
+      this.track = args.trackid ? TRACKS[args.trackid] : null;
       this.status = "unknown";
     }
 
@@ -251,7 +242,7 @@
     updateLeaderBoard(drivers) {
       if (DEBUG_MODE) console.log("[Racing+]: Updating Leaderboard...");
 
-      // Wait for racers to load then enumerate
+      // Fix driver status
       Array.from(drivers).forEach(async (drvr) => {
         let driverId = drvr.id.substring(4);
         let driverStatus = drvr.querySelector(".status");
@@ -275,7 +266,7 @@
               break;
           }
         }
-        // Fix driver colours
+        // Fix driver colour
         let drvrColour = drvr.querySelector("li.color");
         if (drvrColour) {
           drvrColour.classList.remove("color");
@@ -313,7 +304,7 @@
         // Show driver speed
         if (STORE.getValue("rplus_showspeed") === "1") {
           if (!drvr.querySelector(".speed")) {
-            stats.insertAdjacentHTML("beforeEnd", '<div class="speed">0.00mph</div>');
+            stats.insertAdjacentHTML("afterEnd", '<div class="speed">0.00mph</div>');
           }
           // if (
           //   !["joined", "finished"].includes(racestatus) &&
@@ -630,10 +621,7 @@
         .match(/[+-]\d+/);
       if (propVal) {
         let propNum = parseInt(propVal[0]);
-        propName.insertAdjacentHTML(
-          "afterBegin",
-          `<span class="${propNum > 0 ? "positive" : propNum < 0 ? "negative" : ""}">${propVal[0]}%</span> `
-        );
+        propName.insertAdjacentHTML("afterBegin", `<span class="${propNum > 0 ? "positive" : propNum < 0 ? "negative" : ""}">${propVal[0]}%</span> `);
       }
     });
   }
@@ -1005,10 +993,7 @@
             await loadOfficialEvents();
           } else if (addedNodes.some((node) => node.classList?.contains?.("enlist-wrap"))) {
             await loadEnlistedCars();
-          } else if (
-            addedNodes.some((node) => node.classList?.contains?.("pm-categories-wrap")) &&
-            STORE.getValue(STORE.getKey("rplus_showparts")) === "1"
-          ) {
+          } else if (addedNodes.some((node) => node.classList?.contains?.("pm-categories-wrap")) && STORE.getValue(STORE.getKey("rplus_showparts")) === "1") {
             await loadPartsAndModifications();
           }
         }
