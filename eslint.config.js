@@ -7,8 +7,8 @@ import prettierRecommended from "eslint-plugin-prettier/recommended";
 export default [
   js.configs.recommended,
   {
-    files: ["src/*.js"],
-    ignores: ["**/dist/**", "**/node_modules/**"],
+    files: ["src/*.js", "dist/*.js"],
+    ignores: ["node_modules/**"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "script",

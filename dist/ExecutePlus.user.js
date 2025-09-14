@@ -68,7 +68,7 @@
   if (DEBUG_MODE) console.log("[Execute+]: Adding styles...");
   if (!w.document.head) await new Promise((r) => w.addEventListener("DOMContentLoaded", r, { once: true }));
   const s = w.document.createElement("style");
-  s.innerHTML = `__MINIFIED_CSS__`;
+  s.innerHTML = `.execute{background-image:linear-gradient(#ffb46c,#ffa737)!important}`;
   w.document.head.appendChild(s);
   if (DEBUG_MODE) console.log("[Execute+]: Styles added.");
 })();

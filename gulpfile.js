@@ -6,7 +6,7 @@ import through2 from "through2";
 import fs from "node:fs";
 import path from "node:path";
 import CleanCSS from "clean-css";
-import sass from "sass";
+import * as sass from "sass";
 import postcss from "postcss";
 import autoprefixer from "autoprefixer";
 import { deleteAsync } from "del";
@@ -114,6 +114,9 @@ export const lintScss = () => {
 export const lintFixJs = () => {
   return src(GLOB_JS, { allowEmpty: true })
     .pipe(gulpESLintNew({ configType: "flat", fix: true }))
+    .on("error", (e) => {
+      console.error("[lintJs] stream error:", e);
+    })
     .pipe(gulpESLintNew.fix())
     .pipe(gulpESLintNew.format())
     .pipe(gulpESLintNew.failAfterError());
@@ -144,12 +147,12 @@ export const userscripts = () => {
 
         const processFile = async () => {
           const jsPath = file.path;
-          const base = path.basename(jsPath, ".js");
-          const scssPath = path.join(path.dirname(jsPath), `${base}.scss`);
-
-          let js = file.contents.toString("utf8");
+          let jsContents = file.contents.toString("utf8");
 
           // Optional CSS pipeline: compile -> autoprefix -> minify -> inject placeholder
+          const base = path.basename(jsPath, ".user.js");
+          const scssPath = path.join(path.dirname(jsPath), `${base}.scss`);
+
           if (fs.existsSync(scssPath)) {
             let cssCompiled;
             try {
@@ -159,15 +162,15 @@ export const userscripts = () => {
             }
             const cssPrefixed = await autoprefixCss(cssCompiled, scssPath);
             const cssMin = minifyCss(cssPrefixed);
-            const { out, replaced } = replacePlaceholderSmart(js, PLACEHOLDER, cssMin);
+            const { out, replaced } = replacePlaceholderSmart(jsContents, PLACEHOLDER, cssMin);
             if (!replaced) {
               console.warn(`[userscripts] Placeholder "${PLACEHOLDER}" not found in ${base}.js; CSS was NOT injected.`);
             }
-            js = out;
+            jsContents = out;
           }
 
           // Output
-          file.contents = Buffer.from(js);
+          file.contents = Buffer.from(jsContents);
         };
 
         processFile()
