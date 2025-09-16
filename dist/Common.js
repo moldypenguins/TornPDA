@@ -13,7 +13,7 @@
         /* TornPDA Integration Stub */
         PDA_KEY: "###PDA-APIKEY###",
 
-        get isPDA() {
+        get IS_PDA() {
           return !this.PDA_KEY.includes("###") && typeof w.flutter_inappwebview !== "undefined" && typeof w.flutter_inappwebview.callHandler === "function";
         },
 

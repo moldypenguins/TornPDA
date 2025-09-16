@@ -25,7 +25,7 @@
 (async (w) => {
   "use strict";
 
-  const { defer, deferAll, setClipboard, unixTimestamp, isPDA, PDA_KEY, STORE, DEBUG_MODE } = w.TornPDA.Common;
+  const { defer, deferAll, setClipboard, unixTimestamp, IS_PDA, PDA_KEY, STORE, DEBUG_MODE } = w.TornPDA.Common;
 
   /* ------------------------------------------------------------------------
    * Constants
@@ -744,7 +744,7 @@
    */
   async function loadRacingPlus() {
     // Load Torn API key (from PDA or local storage)
-    let api_key = isPDA() ? PDA_KEY : STORE.getValue("RACINGPLUS_APIKEY");
+    let api_key = IS_PDA ? PDA_KEY : STORE.getValue("RACINGPLUS_APIKEY");
     if (api_key) {
       if (DEBUG_MODE) console.log("[Racing+]: Loading Torn API...");
       // validate torn api key; if invalid, we'll leave the input editable
@@ -777,7 +777,7 @@
     <div class="flex-col">
       <div class="nowrap">
         ${
-          isPDA()
+          IS_PDA
             ? ""
             : `
         <span class="racing-plus-apikey-actions">
@@ -820,7 +820,7 @@
         const apiStatus = w.document.querySelector(".racing-plus-apikey-status");
 
         // Initialize API key UI
-        if (isPDA()) {
+        if (IS_PDA) {
           if (api_key && apiInput) apiInput.value = api_key;
           if (apiInput) {
             apiInput.disabled = true;
