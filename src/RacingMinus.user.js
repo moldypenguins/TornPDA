@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         TornPDA - Racing-
+// @name         TornPDA - RacingMinus
 // @namespace    TornPDA.RacingMinus
 // @version      0.55
 // @license      MIT
@@ -7,8 +7,8 @@
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
-// @updateURL    https://github.com/moldypenguins/TornPDA/raw/main/RacingMinus.user.js
-// @downloadURL  https://github.com/moldypenguins/TornPDA/raw/main/RacingMinus.user.js
+// @updateURL    https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/src/RacingMinus.user.js
+// @downloadURL  https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/src/RacingMinus.user.js
 // @connect      api.torn.com
 // @run-at       document-end
 // ==/UserScript==
