@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         TornPDA - RacingMinus
-// @namespace    TornPDA.RacingMinus
+// @namespace    TornPDA
 // @version      0.555
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
