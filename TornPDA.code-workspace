@@ -1,15 +1,10 @@
 {
   "folders": [
     {
-      "path": "..",
+      "path": ".",
     },
   ],
   "settings": {
-    "editor.aiStats.enabled": false,
-    "github.copilot.enable": {
-      "*": false,
-    },
-
     "editor.wordWrap": "off",
     "editor.detectIndentation": false,
     "editor.insertSpaces": true,
