@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         TornPDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.1
+// @version      0.99.2
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
-// @match        https://www.torn.com/loader.php?sid=racing*
+// @match        https://www.torn.com/page.php?sid=racing*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
 // @updateURL    https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/RacingPlus.user.js
 // @downloadURL  https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/RacingPlus.user.js
@@ -33,6 +33,7 @@
   const API_COMMENT = "RacingPlus"; // Comment shown in Torn API recent usage.
   const CACHE_TTL = 60 * 60 * 1000; // Cache duration for API responses (ms). Default = 1 hour.
   const SPEED_INTERVAL = 1000; // (Reserved) Sample rate for speed updates (ms).
+  const KMS_PER_MI = 1.609344; // Number of kilometers in 1 mile.
 
   // Colours for car parts.
   const COLOURS = ["#5D9CEC", "#48CFAD", "#FFCE54", "#ED5565", "#EC87C0", "#AC92EC", "#FC6E51", "#A0D468", "#4FC1E9"];
@@ -52,22 +53,22 @@
   };
 
   const TRACKS = {
-    6: { name: "Uptown", distance: 2.25, laps: 7 },
-    7: { name: "Withdrawal", distance: 0, laps: 0 },
-    8: { name: "Underdog", distance: 0, laps: 0 },
-    9: { name: "Parkland", distance: 0, laps: 5 },
-    10: { name: "Docks", distance: 3.81, laps: 5 },
-    11: { name: "Commerce", distance: 0, laps: 15 },
-    12: { name: "Two Islands", distance: 0, laps: 6 },
-    15: { name: "Industrial", distance: 0, laps: 0 },
-    16: { name: "Vector", distance: 0, laps: 14 },
-    17: { name: "Mudpit", distance: 0, laps: 0 },
-    18: { name: "Hammerhead", distance: 0, laps: 14 },
-    19: { name: "Sewage", distance: 0, laps: 11 },
-    20: { name: "Meltdown", distance: 0, laps: 13 },
-    21: { name: "Speedway", distance: 0, laps: 0 },
-    23: { name: "Stone Park", distance: 0, laps: 8 },
-    24: { name: "Convict", distance: 0, laps: 10 },
+    6: { name: "Uptown", distance: new Distance({ mi: 2.25 }), laps: 7 },
+    7: { name: "Withdrawal", distance: new Distance({ mi: 0 }), laps: 0 },
+    8: { name: "Underdog", distance: new Distance({ mi: 0 }), laps: 0 },
+    9: { name: "Parkland", distance: new Distance({ mi: 0 }), laps: 5 },
+    10: { name: "Docks", distance: new Distance({ mi: 3.81 }), laps: 5 },
+    11: { name: "Commerce", distance: new Distance({ mi: 0 }), laps: 15 },
+    12: { name: "Two Islands", distance: new Distance({ mi: 0 }), laps: 6 },
+    15: { name: "Industrial", distance: new Distance({ mi: 0 }), laps: 0 },
+    16: { name: "Vector", distance: new Distance({ mi: 0 }), laps: 14 },
+    17: { name: "Mudpit", distance: new Distance({ mi: 1.06 }), laps: 15 },
+    18: { name: "Hammerhead", distance: new Distance({ mi: 0 }), laps: 14 },
+    19: { name: "Sewage", distance: new Distance({ mi: 1.5 }), laps: 11 },
+    20: { name: "Meltdown", distance: new Distance({ mi: 0 }), laps: 13 },
+    21: { name: "Speedway", distance: new Distance({ mi: 0 }), laps: 0 },
+    23: { name: "Stone Park", distance: new Distance({ mi: 0 }), laps: 8 },
+    24: { name: "Convict", distance: new Distance({ mi: 0 }), laps: 10 },
   };
 
   const ACCESS_LEVEL = Object.freeze({
@@ -198,6 +199,74 @@
   /* ------------------------------------------------------------------------
    * Models
    * --------------------------------------------------------------------- */
+
+  /**
+   * Distance helper.
+   * @param {object} [args]
+   * @param {number} [args.miles=0]
+   */
+  class Distance {
+    constructor(args = {}) {
+      const { miles } = args;
+      if (!Number.isFinite(miles)) {
+        throw new TypeError("miles must be a finite number.");
+      }
+      this._mi = miles;
+      this._units = STORE.getValue(STORE.getKey("rplus_units")) ?? "mi";
+    }
+
+    /** Miles */
+    get mi() {
+      return this._mi;
+    }
+
+    /** Kilometers */
+    get km() {
+      return this._mi * KMS_PER_MI;
+    }
+
+    /** Format as string */
+    toString() {
+      const val = this._units === "km" ? this.km : this.mi;
+      return `${val.toFixed(2)} ${this._units}`;
+    }
+  }
+
+  /**
+   * Speed helper.
+   * @param {object} args
+   * @param {Distance} args.distance distance traveled
+   * @param {number} args.seconds elapsed time in seconds (> 0)
+   */
+  class Speed {
+    constructor(args = {}) {
+      const { distance, seconds } = args;
+      if (!(distance instanceof Distance)) {
+        throw new TypeError("distance must be a Distance instance.");
+      }
+      if (!Number.isFinite(seconds) || seconds <= 0) {
+        throw new TypeError("seconds must be a finite number > 0.");
+      }
+      this._mph = distance.mi / (seconds / 3600);
+      this._units = STORE.getValue(STORE.getKey("rplus_units")) ?? "mph";
+    }
+
+    /** Miles per hour */
+    get mph() {
+      return this._mph;
+    }
+
+    /** Kilometers per hour */
+    get kph() {
+      return this._mph * KMS_PER_MI;
+    }
+
+    /** Format as string */
+    toString() {
+      const val = this._units === "kph" ? this.kph : this.mph;
+      return `${val.toFixed(2)} ${this._units}`;
+    }
+  }
 
   /**
    * TornRace - helper to compile race meta and compute status.
