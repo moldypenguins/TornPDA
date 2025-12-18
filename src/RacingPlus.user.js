@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.2
+// @version      0.99.3
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -23,7 +23,7 @@
  * ------------------------------------------------------------------------ */
 
 (async (w) => {
-  "use strict";
+  ("use strict");
 
   const { defer, deferAll, setClipboard, unixTimestamp, IS_PDA, PDA_KEY, STORE, DEBUG_MODE } = w.TornPDA.Common;
 
@@ -77,6 +77,77 @@
     Limited: 2,
     Full: 3,
   });
+
+  /* ------------------------------------------------------------------------
+   * Helpers
+   * --------------------------------------------------------------------- */
+  /**
+   * Distance helper.
+   * @param {object} [args]
+   * @param {number} [args.miles=0]
+   */
+  class Distance {
+    constructor(args = {}) {
+      const { miles } = args;
+      if (!Number.isFinite(miles)) {
+        throw new TypeError("miles must be a finite number.");
+      }
+      this._mi = miles;
+      this._units = STORE.getValue(STORE.getKey("rplus_units")) ?? "mi";
+    }
+
+    /** Miles */
+    get mi() {
+      return this._mi;
+    }
+
+    /** Kilometers */
+    get km() {
+      return this._mi * KMS_PER_MI;
+    }
+
+    /** Format as string */
+    toString() {
+      const val = this._units === "km" ? this.km : this.mi;
+      return `${val.toFixed(2)} ${this._units}`;
+    }
+  }
+
+  /**
+   * Speed helper.
+   * @param {object} args
+   * @param {Distance} args.distance distance traveled
+   * @param {number} args.seconds elapsed time in seconds (> 0)
+   */
+  class Speed {
+    constructor(args = {}) {
+      const { distance, seconds } = args;
+      if (!(distance instanceof Distance)) {
+        throw new TypeError("distance must be a Distance instance.");
+      }
+      if (!Number.isFinite(seconds) || seconds <= 0) {
+        throw new TypeError("seconds must be a finite number > 0.");
+      }
+      this._mph = distance.mi / (seconds / 3600);
+      this._units = STORE.getValue(STORE.getKey("rplus_units")) ?? "mph";
+    }
+
+    /** Miles per hour */
+    get mph() {
+      return this._mph;
+    }
+
+    /** Kilometers per hour */
+    get kph() {
+      return this._mph * KMS_PER_MI;
+    }
+
+    /** Format as string */
+    toString() {
+      const val = this._units === "kph" ? this.kph : this.mph;
+      return `${val.toFixed(2)} ${this._units}`;
+    }
+  }
 
   /* ------------------------------------------------------------------------
    * Torn API helper
@@ -199,75 +270,6 @@
   /* ------------------------------------------------------------------------
    * Models
    * --------------------------------------------------------------------- */
-
-  /**
-   * Distance helper.
-   * @param {object} [args]
-   * @param {number} [args.miles=0]
-   */
-  class Distance {
-    constructor(args = {}) {
-      const { miles } = args;
-      if (!Number.isFinite(miles)) {
-        throw new TypeError("miles must be a finite number.");
-      }
-      this._mi = miles;
-      this._units = STORE.getValue(STORE.getKey("rplus_units")) ?? "mi";
-    }
-
-    /** Miles */
-    get mi() {
-      return this._mi;
-    }
-
-    /** Kilometers */
-    get km() {
-      return this._mi * KMS_PER_MI;
-    }
-
-    /** Format as string */
-    toString() {
-      const val = this._units === "km" ? this.km : this.mi;
-      return `${val.toFixed(2)} ${this._units}`;
-    }
-  }
-
-  /**
-   * Speed helper.
-   * @param {object} args
-   * @param {Distance} args.distance distance traveled
-   * @param {number} args.seconds elapsed time in seconds (> 0)
-   */
-  class Speed {
-    constructor(args = {}) {
-      const { distance, seconds } = args;
-      if (!(distance instanceof Distance)) {
-        throw new TypeError("distance must be a Distance instance.");
-      }
-      if (!Number.isFinite(seconds) || seconds <= 0) {
-        throw new TypeError("seconds must be a finite number > 0.");
-      }
-      this._mph = distance.mi / (seconds / 3600);
-      this._units = STORE.getValue(STORE.getKey("rplus_units")) ?? "mph";
-    }
-
-    /** Miles per hour */
-    get mph() {
-      return this._mph;
-    }
-
-    /** Kilometers per hour */
-    get kph() {
-      return this._mph * KMS_PER_MI;
-    }
-
-    /** Format as string */
-    toString() {
-      const val = this._units === "kph" ? this.kph : this.mph;
-      return `${val.toFixed(2)} ${this._units}`;
-    }
-  }
-
   /**
    * TornRace - helper to compile race meta and compute status.
    * @param {object} args
