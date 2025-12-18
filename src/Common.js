@@ -124,6 +124,7 @@
           /** Map logical toggle IDs to persistent keys. */
           getKey(id) {
             return {
+              rplus_units: "RACINGPLUS_DISPLAYUNITS",
               rplus_addlinks: "RACINGPLUS_ADDPROFILELINKS",
               rplus_showskill: "RACINGPLUS_SHOWRACINGSKILL",
               rplus_showspeed: "RACINGPLUS_SHOWCARSPEED",
