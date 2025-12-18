@@ -23,7 +23,7 @@
  * ------------------------------------------------------------------------ */
 
 (async (w) => {
-  ("use strict");
+  "use strict";
 
   const { defer, deferAll, setClipboard, unixTimestamp, IS_PDA, PDA_KEY, STORE, DEBUG_MODE } = w.TornPDA.Common;
 

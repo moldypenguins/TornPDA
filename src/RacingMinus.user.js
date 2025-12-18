@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - RacingMinus
 // @namespace    TornPDA
-// @version      0.56
+// @version      0.57
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -243,7 +243,8 @@
           </span>
           <span id="racing-plus-link-label" class="linkName">Racing+</span>
         </a>`;
-      document.querySelector("#racing-leaderboard-header-root div[class^='linksContainer']").insertAdjacentHTML("beforeEnd", rplus_button_html);
+      let header_buttons = await defer("#racing-leaderboard-header-root div[class^='linksContainer']");
+      header_buttons.insertAdjacentHTML("beforeEnd", rplus_button_html);
       if (DEBUG_MODE) {
         console.log("Racing+: Settings button added.");
       }
