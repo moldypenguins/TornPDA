@@ -14,7 +14,7 @@
 // ==/UserScript==
 
 (async () => {
-  ("use strict");
+  "use strict";
 
   //TODO:
   // fix xmlhttp monkey
