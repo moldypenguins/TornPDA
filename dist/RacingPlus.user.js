@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.6
+// @version      0.99.7
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -248,22 +248,22 @@
   };
 
   const TRACKS = {
-    6: { name: "Uptown", distance: new Distance({ mi: 2.25 }), laps: 7 },
-    7: { name: "Withdrawal", distance: new Distance({ mi: 0 }), laps: 0 },
-    8: { name: "Underdog", distance: new Distance({ mi: 0 }), laps: 0 },
-    9: { name: "Parkland", distance: new Distance({ mi: 0 }), laps: 5 },
-    10: { name: "Docks", distance: new Distance({ mi: 3.81 }), laps: 5 },
-    11: { name: "Commerce", distance: new Distance({ mi: 0 }), laps: 15 },
-    12: { name: "Two Islands", distance: new Distance({ mi: 0 }), laps: 6 },
-    15: { name: "Industrial", distance: new Distance({ mi: 0 }), laps: 0 },
-    16: { name: "Vector", distance: new Distance({ mi: 0 }), laps: 14 },
-    17: { name: "Mudpit", distance: new Distance({ mi: 1.06 }), laps: 15 },
-    18: { name: "Hammerhead", distance: new Distance({ mi: 0 }), laps: 14 },
-    19: { name: "Sewage", distance: new Distance({ mi: 1.5 }), laps: 11 },
-    20: { name: "Meltdown", distance: new Distance({ mi: 0 }), laps: 13 },
-    21: { name: "Speedway", distance: new Distance({ mi: 0 }), laps: 0 },
-    23: { name: "Stone Park", distance: new Distance({ mi: 0 }), laps: 8 },
-    24: { name: "Convict", distance: new Distance({ mi: 0 }), laps: 10 },
+    6: { name: "Uptown", distance: new Distance({ miles: 2.25 }), laps: 7 },
+    7: { name: "Withdrawal", distance: new Distance({ miles: 0 }), laps: 0 },
+    8: { name: "Underdog", distance: new Distance({ miles: 0 }), laps: 0 },
+    9: { name: "Parkland", distance: new Distance({ miles: 0 }), laps: 5 },
+    10: { name: "Docks", distance: new Distance({ miles: 3.81 }), laps: 5 },
+    11: { name: "Commerce", distance: new Distance({ miles: 1.09 }), laps: 15 },
+    12: { name: "Two Islands", distance: new Distance({ miles: 0 }), laps: 6 },
+    15: { name: "Industrial", distance: new Distance({ miles: 0 }), laps: 0 },
+    16: { name: "Vector", distance: new Distance({ miles: 0 }), laps: 14 },
+    17: { name: "Mudpit", distance: new Distance({ miles: 1.06 }), laps: 15 },
+    18: { name: "Hammerhead", distance: new Distance({ miles: 0 }), laps: 14 },
+    19: { name: "Sewage", distance: new Distance({ miles: 1.5 }), laps: 11 },
+    20: { name: "Meltdown", distance: new Distance({ miles: 0 }), laps: 13 },
+    21: { name: "Speedway", distance: new Distance({ miles: 0 }), laps: 0 },
+    23: { name: "Stone Park", distance: new Distance({ miles: 0 }), laps: 8 },
+    24: { name: "Convict", distance: new Distance({ miles: 0 }), laps: 10 },
   };
 
   const ACCESS_LEVEL = Object.freeze({
