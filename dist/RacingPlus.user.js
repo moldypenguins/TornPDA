@@ -152,58 +152,7 @@
   if (DEBUG_MODE) console.log(`[TornPDA+]: Common loaded.`);
 
   /* ------------------------------------------------------------------------
-   * Constants
-   * --------------------------------------------------------------------- */
-  const API_COMMENT = "RacingPlus"; // Comment shown in Torn API recent usage.
-  const CACHE_TTL = 60 * 60 * 1000; // Cache duration for API responses (ms). Default = 1 hour.
-  const SPEED_INTERVAL = 1000; // (Reserved) Sample rate for speed updates (ms).
-  const KMS_PER_MI = 1.609344; // Number of kilometers in 1 mile.
-
-  // Colours for car parts.
-  const COLOURS = ["#5D9CEC", "#48CFAD", "#FFCE54", "#ED5565", "#EC87C0", "#AC92EC", "#FC6E51", "#A0D468", "#4FC1E9"];
-
-  // Car part categories (used by the CSS injector).
-  const CATEGORIES = {
-    Aerodynamics: ["Spoiler", "Engine Cooling", "Brake Cooling", "Front Diffuser", "Rear Diffuser"],
-    Brakes: ["Pads", "Discs", "Fluid", "Brake Accessory", "Brake Control", "Callipers"],
-    Engine: ["Gasket", "Engine Porting", "Engine Cleaning", "Fuel Pump", "Camshaft", "Turbo", "Pistons", "Computer", "Intercooler"],
-    Exhaust: ["Exhaust", "Air Filter", "Manifold"],
-    Fuel: ["Fuel"],
-    Safety: ["Overalls", "Helmet", "Fire Extinguisher", "Safety Accessory", "Roll cage", "Cut-off", "Seat"],
-    Suspension: ["Springs", "Front Bushes", "Rear Bushes", "Upper Front Brace", "Lower Front Brace", "Rear Brace", "Front Tie Rods", "Rear Control Arms"],
-    Transmission: ["Shifting", "Differential", "Clutch", "Flywheel", "Gearbox"],
-    "Weight Reduction": ["Strip out", "Steering wheel", "Interior", "Windows", "Roof", "Boot", "Hood"],
-    "Wheels & Tires": ["Tyres", "Wheels"],
-  };
-
-  const TRACKS = {
-    6: { name: "Uptown", distance: new Distance({ mi: 2.25 }), laps: 7 },
-    7: { name: "Withdrawal", distance: new Distance({ mi: 0 }), laps: 0 },
-    8: { name: "Underdog", distance: new Distance({ mi: 0 }), laps: 0 },
-    9: { name: "Parkland", distance: new Distance({ mi: 0 }), laps: 5 },
-    10: { name: "Docks", distance: new Distance({ mi: 3.81 }), laps: 5 },
-    11: { name: "Commerce", distance: new Distance({ mi: 0 }), laps: 15 },
-    12: { name: "Two Islands", distance: new Distance({ mi: 0 }), laps: 6 },
-    15: { name: "Industrial", distance: new Distance({ mi: 0 }), laps: 0 },
-    16: { name: "Vector", distance: new Distance({ mi: 0 }), laps: 14 },
-    17: { name: "Mudpit", distance: new Distance({ mi: 1.06 }), laps: 15 },
-    18: { name: "Hammerhead", distance: new Distance({ mi: 0 }), laps: 14 },
-    19: { name: "Sewage", distance: new Distance({ mi: 1.5 }), laps: 11 },
-    20: { name: "Meltdown", distance: new Distance({ mi: 0 }), laps: 13 },
-    21: { name: "Speedway", distance: new Distance({ mi: 0 }), laps: 0 },
-    23: { name: "Stone Park", distance: new Distance({ mi: 0 }), laps: 8 },
-    24: { name: "Convict", distance: new Distance({ mi: 0 }), laps: 10 },
-  };
-
-  const ACCESS_LEVEL = Object.freeze({
-    Public: 0,
-    Minimal: 1,
-    Limited: 2,
-    Full: 3,
-  });
-
-  /* ------------------------------------------------------------------------
-   * Helpers
+   * Distance and Speed Helpers
    * --------------------------------------------------------------------- */
   /**
    * Distance helper.
@@ -272,6 +221,57 @@
       return `${val.toFixed(2)} ${this._units}`;
     }
   }
+
+  /* ------------------------------------------------------------------------
+   * Constants
+   * --------------------------------------------------------------------- */
+  const API_COMMENT = "RacingPlus"; // Comment shown in Torn API recent usage.
+  const CACHE_TTL = 60 * 60 * 1000; // Cache duration for API responses (ms). Default = 1 hour.
+  const SPEED_INTERVAL = 1000; // (Reserved) Sample rate for speed updates (ms).
+  const KMS_PER_MI = 1.609344; // Number of kilometers in 1 mile.
+
+  // Colours for car parts.
+  const COLOURS = ["#5D9CEC", "#48CFAD", "#FFCE54", "#ED5565", "#EC87C0", "#AC92EC", "#FC6E51", "#A0D468", "#4FC1E9"];
+
+  // Car part categories (used by the CSS injector).
+  const CATEGORIES = {
+    Aerodynamics: ["Spoiler", "Engine Cooling", "Brake Cooling", "Front Diffuser", "Rear Diffuser"],
+    Brakes: ["Pads", "Discs", "Fluid", "Brake Accessory", "Brake Control", "Callipers"],
+    Engine: ["Gasket", "Engine Porting", "Engine Cleaning", "Fuel Pump", "Camshaft", "Turbo", "Pistons", "Computer", "Intercooler"],
+    Exhaust: ["Exhaust", "Air Filter", "Manifold"],
+    Fuel: ["Fuel"],
+    Safety: ["Overalls", "Helmet", "Fire Extinguisher", "Safety Accessory", "Roll cage", "Cut-off", "Seat"],
+    Suspension: ["Springs", "Front Bushes", "Rear Bushes", "Upper Front Brace", "Lower Front Brace", "Rear Brace", "Front Tie Rods", "Rear Control Arms"],
+    Transmission: ["Shifting", "Differential", "Clutch", "Flywheel", "Gearbox"],
+    "Weight Reduction": ["Strip out", "Steering wheel", "Interior", "Windows", "Roof", "Boot", "Hood"],
+    "Wheels & Tires": ["Tyres", "Wheels"],
+  };
+
+  const TRACKS = {
+    6: { name: "Uptown", distance: new Distance({ mi: 2.25 }), laps: 7 },
+    7: { name: "Withdrawal", distance: new Distance({ mi: 0 }), laps: 0 },
+    8: { name: "Underdog", distance: new Distance({ mi: 0 }), laps: 0 },
+    9: { name: "Parkland", distance: new Distance({ mi: 0 }), laps: 5 },
+    10: { name: "Docks", distance: new Distance({ mi: 3.81 }), laps: 5 },
+    11: { name: "Commerce", distance: new Distance({ mi: 0 }), laps: 15 },
+    12: { name: "Two Islands", distance: new Distance({ mi: 0 }), laps: 6 },
+    15: { name: "Industrial", distance: new Distance({ mi: 0 }), laps: 0 },
+    16: { name: "Vector", distance: new Distance({ mi: 0 }), laps: 14 },
+    17: { name: "Mudpit", distance: new Distance({ mi: 1.06 }), laps: 15 },
+    18: { name: "Hammerhead", distance: new Distance({ mi: 0 }), laps: 14 },
+    19: { name: "Sewage", distance: new Distance({ mi: 1.5 }), laps: 11 },
+    20: { name: "Meltdown", distance: new Distance({ mi: 0 }), laps: 13 },
+    21: { name: "Speedway", distance: new Distance({ mi: 0 }), laps: 0 },
+    23: { name: "Stone Park", distance: new Distance({ mi: 0 }), laps: 8 },
+    24: { name: "Convict", distance: new Distance({ mi: 0 }), laps: 10 },
+  };
+
+  const ACCESS_LEVEL = Object.freeze({
+    Public: 0,
+    Minimal: 1,
+    Limited: 2,
+    Full: 3,
+  });
 
   /* ------------------------------------------------------------------------
    * Torn API helper
