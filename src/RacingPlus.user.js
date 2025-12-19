@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.7
+// @version      0.99.9
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -13,24 +13,20 @@
 // @run-at       document-start
 // ==/UserScript==
 
-/* --------------------------------------------------------------------------
- * Racing+ userscript
- * Notes:
- *  - This version fixes several guard/logic issues (||, fallbacks),
- *    improves robustness of DOM handling, and keeps feature flags intact.
- *  - Commented-out feature hooks remain (race link copy, winrate, parts).
- * ------------------------------------------------------------------------ */
-
 (async (w) => {
   ("use strict");
 
   // Abort early if essentials are not present.
   if (!w.document || !w.location || !w.navigator) return;
 
+  // Local alias to the document for fewer property lookups.
+  const doc = w.document;
+
   /* TornPDA Integration Stub */
   const PDA_KEY = "###PDA-APIKEY###";
 
-  const IS_PDA = () => !PDA_KEY.includes("###") && typeof w.flutter_inappwebview !== "undefined" && typeof w.flutter_inappwebview.callHandler === "function";
+  // IS_PDA is a boolean indicating whether script is running in TornPDA.
+  const IS_PDA = !PDA_KEY.includes("###") && typeof w.flutter_inappwebview !== "undefined" && typeof w.flutter_inappwebview.callHandler === "function";
 
   /* Common Constants */
   const DEBUG_MODE = true; // Turn on to log to console.
@@ -51,14 +47,14 @@
    * @returns {boolean} true if a write operation was attempted without throwing.
    */
   const setClipboard = (text) => {
-    if (!w.document.hasFocus()) {
+    if (!doc.hasFocus()) {
       throw new DOMException("Document is not focused");
     }
     try {
       // Optional chaining on call is supported in modern engines.
       // Will no-op silently if Clipboard API is unavailable.
       w.navigator.clipboard?.writeText?.(text);
-      console.log(`[TornPDA+]: Text copied.`);
+      if (DEBUG_MODE) console.log(`[TornPDA+]: Text copied.`);
       return true;
     } catch {
       return false;
@@ -80,7 +76,7 @@
           reject(new Error("Deferral timed out."));
           return;
         }
-        const result = w.document.querySelector(selector);
+        const result = doc.querySelector(selector);
         if (result) {
           resolve(result);
         } else {
@@ -105,7 +101,7 @@
           reject(new Error("Deferral timed out."));
           return;
         }
-        const result = w.document.querySelectorAll(selector);
+        const result = doc.querySelectorAll(selector);
         if (result && result.length > 0) {
           resolve(result);
         } else {
@@ -120,21 +116,21 @@
 
   /* LocalStorage Wrapper */
   const STORE = {
-    /** Get a value by key (string or null). */
+    // Function: getValue - Get a value by key (string or null).
     getValue: (key) => localStorage.getItem(key),
 
-    /** Set a value by key (string). */
+    // Function: setValue - Set a value by key (string).
     setValue: (key, value) => localStorage.setItem(key, value),
 
-    /** Delete a value by key. */
+    // Function: deleteValue - Delete a value by key.
     deleteValue: (key) => localStorage.removeItem(key),
 
-    /** List stored values (strings). Mainly for debugging. */
+    // Function: listValues - List stored values (strings). Mainly for debugging.
     listValues() {
       return Object.values(localStorage);
     },
 
-    /** Map logical toggle IDs to persistent keys. */
+    // Function: getKey - Map logical toggle IDs to persistent keys.
     getKey(id) {
       return {
         rplus_units: "RACINGPLUS_DISPLAYUNITS",
@@ -155,31 +151,34 @@
    * Distance and Speed Helpers
    * --------------------------------------------------------------------- */
   /**
-   * Distance helper.
+   * Class Distance - stores distance and formats value based on preferred units.
    * @param {object} [args]
-   * @param {number} [args.miles=0]
+   * @param {number} [args.miles=null]
+   * @param {number} [args.kilometers=null]
    */
   class Distance {
+    // Constructor: ensures given distance is a finite number and captures unit preference.
     constructor(args = {}) {
-      const { miles } = args;
-      if (!Number.isFinite(miles)) {
+      const { miles, kilometers } = args;
+      const mi = miles || kilometers * KMS_PER_MI;
+      if (!Number.isFinite(mi)) {
         throw new TypeError("miles must be a finite number.");
       }
-      this._mi = miles;
-      this._units = STORE.getValue(STORE.getKey("rplus_units")) ?? "mi";
+      this._mi = mi;
+      this._units = STORE.getValue(STORE.getKey("rplus_units")) ?? (kilometers ? "km" : "mi");
     }
 
-    /** Miles */
+    // Getter: mi - return miles
     get mi() {
       return this._mi;
     }
 
-    /** Kilometers */
+    // Getter: km - return kilometers (computed)
     get km() {
       return this._mi * KMS_PER_MI;
     }
 
-    /** Format as string */
+    // Function: toString - Format as string according to chosen units.
     toString() {
       const val = this._units === "km" ? this.km : this.mi;
       return `${val.toFixed(2)} ${this._units}`;
@@ -187,12 +186,13 @@
   }
 
   /**
-   * Speed helper.
+   * Class Speed - computes mph from a Distance and elapsed seconds; formats to preferred units.
    * @param {object} args
    * @param {Distance} args.distance distance traveled
    * @param {number} args.seconds elapsed time in seconds (> 0)
    */
   class Speed {
+    // Constructor: distance must be Distance instance; seconds must be > 0.
     constructor(args = {}) {
       const { distance, seconds } = args;
       if (!(distance instanceof Distance)) {
@@ -205,17 +205,17 @@
       this._units = STORE.getValue(STORE.getKey("rplus_units")) ?? "mph";
     }
 
-    /** Miles per hour */
+    // Getter: mph - return miles per hour
     get mph() {
       return this._mph;
     }
 
-    /** Kilometers per hour */
+    // Getter: kph - return kilometers per hour converted from mph
     get kph() {
       return this._mph * KMS_PER_MI;
     }
 
-    /** Format as string */
+    // Function: toString - Format speed according to preferred units.
     toString() {
       const val = this._units === "kph" ? this.kph : this.mph;
       return `${val.toFixed(2)} ${this._units}`;
@@ -247,6 +247,7 @@
     "Wheels & Tires": ["Tyres", "Wheels"],
   };
 
+  // Tracks meta: uses Distance instances for known distances.
   const TRACKS = {
     6: { name: "Uptown", distance: new Distance({ miles: 2.25 }), laps: 7 },
     7: { name: "Withdrawal", distance: new Distance({ miles: 0 }), laps: 0 },
@@ -276,6 +277,9 @@
   /* ------------------------------------------------------------------------
    * Torn API helper
    * --------------------------------------------------------------------- */
+  /**
+   * Class TornAPI - Wrapper to make authenticated Torn API calls with caching and timeouts.
+   */
   class TornAPI {
     constructor() {
       /** @type {Map<string, {data:any, timestamp:number}>} */
@@ -285,7 +289,7 @@
     }
 
     /**
-     * Makes a Torn API request and caches the response.
+     * Function: request - Makes a Torn API request and caches the response.
      * @param {string} path - e.g. 'key/info' or '/user/stats'
      * @param {object|string} [args] - query parameters or prebuilt query string.
      * @returns {Promise<object>}
@@ -346,7 +350,7 @@
     }
 
     /**
-     * Validates a Torn API key by calling /key/info.
+     * Function: validateKey - Validates a Torn API key by calling /key/info.
      * On success, stores the key in this instance (not persisted).
      * @param {string} api_key
      * @returns {Promise<boolean>} true if valid, false otherwise.
@@ -376,14 +380,14 @@
       }
     }
 
-    // Stores API key in local settings (idempotent).
+    // Function: saveKey - Stores API key in local settings (idempotent).
     saveKey() {
       if (!this.key) return;
       STORE.setValue("RACINGPLUS_APIKEY", this.key);
       if (DEBUG_MODE) console.log("[Racing+]: API Key saved.");
     }
 
-    // Removes API key from settings and memory.
+    // Function: deleteKey - Removes API key from settings and memory.
     deleteKey() {
       this.key = null;
       STORE.deleteValue("RACINGPLUS_APIKEY");
@@ -395,18 +399,21 @@
    * Models
    * --------------------------------------------------------------------- */
   /**
-   * TornRace - helper to compile race meta and compute status.
+   * Class TornRace - helper to compile race meta and compute status.
    * @param {object} args
    */
   class TornRace {
     constructor(args = {}) {
       this.id = args.id ?? null;
       this.track = args.trackid ? TRACKS[args.trackid] : null;
+      this.title = args.title ?? "";
+      this.distance = args.distance ?? null;
+      this.laps = args.laps ?? null;
       this.status = "unknown";
     }
 
     /**
-     * Updates the track status from the info spot text.
+     * Function: updateStatus - Updates the track status from the info spot text.
      * @param {string} info_spot
      * @returns {'unknown'|'racing'|'finished'|'waiting'|'joined'}
      */
@@ -432,17 +439,25 @@
           }
           break;
       }
+      return this.status;
     }
 
+    // Function: updateLeaderBoard - Normalize leaderboard DOM entries and optionally add info.
     updateLeaderBoard(drivers) {
       if (DEBUG_MODE) console.log("[Racing+]: Updating Leaderboard...");
 
       // Fix driver status
       Array.from(drivers).forEach(async (drvr) => {
-        let driverId = drvr.id.substring(4);
-        let driverStatus = drvr.querySelector(".status");
+        // Cache frequently used lookups to avoid repeated DOM queries.
+        const driverId = (drvr.id || "").substring(4);
+        const driverStatus = drvr.querySelector(".status");
+        const drvrName = drvr.querySelector("li.name");
+        const nameLink = drvrName.querySelector("a");
+        const nameSpan = drvrName.querySelector("span");
+        const drvrColour = drvr.querySelector("li.color");
+
+        // Update status icon classes
         if (driverStatus) {
-          // fix status icon
           switch (this.status) {
             case "joined":
               driverStatus.className = "status success";
@@ -461,43 +476,44 @@
               break;
           }
         }
-        // Fix driver colour
-        let drvrColour = drvr.querySelector("li.color");
-        if (drvrColour) {
+
+        // Fix driver colours
+        if (drvrColour && nameSpan) {
           drvrColour.classList.remove("color");
-          drvr.querySelector("li.name span").className = drvrColour.className;
+          nameSpan.className = drvrColour.className;
         }
+
         // Add driver profile links
-        if (STORE.getValue("rplus_addlinks") === "1") {
-          // Add links
-          if (!drvr.querySelector("li.name a")) {
-            drvr.querySelector("li.name span").outerHTML =
-              `<a target="_blank" href="/profiles.php?XID=${driverId}">${drvr.querySelector("li.name span").outerHTML}</a>`;
+        if (STORE.getValue(STORE.getKey("rplus_addlinks")) === "1") {
+          if (!nameLink) {
+            nameSpan.outerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${nameSpan.outerHTML}</a>`;
           }
         } else {
-          // Remove links
-          if (drvr.querySelector("li.name a")) {
-            drvr.querySelector("li.name").innerHTML = `${drvr.querySelector("li.name a").innerHTML}`;
+          if (nameLink) {
+            drvrName.innerHTML = `${nameLink.innerHTML}`;
           }
         }
+
         // Fix driver race stats
         if (!drvr.querySelector(".statistics")) {
           // Add stats container
-          drvr.querySelector(".name").insertAdjacentHTML("beforeEnd", `<div class="statistics"></div>`);
+          drvrName.insertAdjacentHTML("beforeEnd", `<div class="statistics"></div>`);
         }
-        let stats = drvr.querySelector(".statistics");
+        const stats = drvr.querySelector(".statistics");
+
         // Adjust time
-        let timeLi = drvr.querySelector("li.time");
+        const timeLi = drvr.querySelector("li.time");
         if (timeLi) {
           if (timeLi.textContent === "") {
             timeLi.textContent = "0.00 %";
           }
-          let timeContainer = document.createElement("ul");
+          const timeContainer = doc.createElement("ul");
           timeContainer.appendChild(timeLi);
           stats.insertAdjacentElement("afterEnd", timeContainer);
         }
+
         // Show driver speed
-        if (STORE.getValue("rplus_showspeed") === "1") {
+        if (STORE.getValue(STORE.getKey("rplus_showspeed")) === "1") {
           if (!drvr.querySelector(".speed")) {
             stats.insertAdjacentHTML("afterEnd", '<div class="speed">0.00mph</div>');
           }
@@ -517,7 +533,7 @@
           // }
         }
         // Show driver skill
-        if (STORE.getValue("rplus_showskill") === "1") {
+        if (STORE.getValue(STORE.getKey("rplus_showskill")) === "1") {
           if (!drvr.querySelector(".skill")) {
             stats.insertAdjacentHTML("afterBegin", '<div class="skill">RS: ?</div>');
           }
@@ -543,7 +559,7 @@
   }
 
   /**
-   * TornDriver - Stores skill and per-track best records for current user.
+   * Class TornDriver - Stores skill and per-track best records for current user.
    */
   class TornDriver {
     constructor(driver_id) {
@@ -553,7 +569,7 @@
       this.cars = {};
     }
 
-    /** Load cached driver data from localStorage (idempotent). */
+    // Function: load - Load cached driver data from localStorage (idempotent).
     load() {
       const raw = STORE.getValue("RACINGPLUS_DRIVER");
       if (!raw) return;
@@ -569,7 +585,7 @@
       }
     }
 
-    /** Persist driver data. */
+    // Function: save - Persist driver data to localStorage.
     save() {
       const payload = JSON.stringify({
         id: this.id,
@@ -581,7 +597,7 @@
     }
 
     /**
-     * Update stored skill if newer value is higher (skill increases only).
+     * Function: updateSkill - Update stored skill if newer value is higher (skill increases only).
      * @param {number|string} skill
      */
     updateSkill(skill) {
@@ -593,6 +609,7 @@
     }
 
     /**
+     * Function: updateRecords - Fetch racing records from API and store best lap per car.
      * Store the best lap record for a given track.
      * Keeps the smallest lap_time; ties can be handled elsewhere if needed.
      */
@@ -625,7 +642,7 @@
       }
     }
 
-    /** Fetch and store enlisted cars. Hooks win-rate calc if feature flag is enabled. */
+    // Function: updateCars - Fetch and store enlisted cars. Hooks win-rate calc if feature flag is enabled.
     async updateCars() {
       try {
         const results = await torn_api.request("user/enlistedcars", {
@@ -649,7 +666,7 @@
                 points_spent: car.points_spent,
                 races_entered: car.races_entered,
                 races_won: car.races_won,
-                win_rate: car.races_won / car.races_entered,
+                win_rate: car.races_entered > 0 ? car.races_won / car.races_entered : 0,
               };
               return acc;
             }, {});
@@ -681,14 +698,12 @@
    * Helper Methods
    * --------------------------------------------------------------------- */
 
-  /**
-   * addRaceLinkCopyButton -
-   */
+  // Function: addRaceLinkCopyButton - Add a copy-link button for the current race.
   async function addRaceLinkCopyButton(raceId) {
     // Check if the race link already exists
-    if (!document.querySelector(".racing-plus-link-wrap .race-link")) {
-      let trackInfo = await defer(".track-info-wrap");
-      let racelink_html =
+    if (!doc.querySelector(".racing-plus-link-wrap .race-link")) {
+      const trackInfo = await defer(".track-info-wrap");
+      const racelink_html =
         '<div class="racing-plus-link-wrap">' +
         `<a class="race-link" title="Copy link" href="https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}">` +
         '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-2 -2 20 20" fill="currentColor" stroke-width="0">' +
@@ -698,17 +713,20 @@
         "</div>";
       // Append the link to the info container
       trackInfo.insertAdjacentHTML("afterEnd", racelink_html);
-
       // Add click event listener to the race link
-      let raceLink = await defer(".racing-plus-link-wrap .race-link");
+      const raceLink = await defer(".racing-plus-link-wrap .race-link");
       raceLink.addEventListener("click", async (event) => {
         event.preventDefault();
-        // Copy the race link to clipboard using setClipboard
-        setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}`);
+        try {
+          // Copy the race link to clipboard using setClipboard
+          setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}`);
+        } catch {
+          // swallow clipboard focus errors
+        }
         // Try to find the tooltip and update its content
         const tooltipId = event.currentTarget.getAttribute("aria-describedby");
         if (tooltipId) {
-          const tooltip = document.querySelector(`#${tooltipId} .ui-tooltip-content`);
+          const tooltip = doc.querySelector(`#${tooltipId} .ui-tooltip-content`);
           if (tooltip && tooltip.firstChild) {
             tooltip.firstChild.nodeValue = "Copied";
             const tooltipDiv = tooltip.closest("div");
@@ -726,24 +744,22 @@
    * Feature loaders
    * --------------------------------------------------------------------- */
 
-  /**
-   * loadPartsAndModifications - Injects/updates the Parts and Modifications tab content.
-   */
+  // Function: loadPartsAndModifications - Injects/updates the Parts and Modifications tab content.
   async function loadPartsAndModifications() {
-    let categories = {};
-    // Select all category list items except those with .empty or .clear
-    let elems = await deferAll(".pm-categories li:not(.empty):not(.clear)");
+    const categories = {};
+    // Get category elements (exclude empty/clear)
+    const elems = await deferAll(".pm-categories li:not(.empty):not(.clear)");
     Array.from(elems).forEach((category) => {
       // Get the category id
       const cat = category.getAttribute("data-category");
       // Get the category name from classList (excluding 'unlock')
-      let categoryName = [...category.classList].find((c) => c !== "unlock");
+      const categoryName = [...category.classList].find((c) => c !== "unlock");
       // Initialize bought and unbought arrays for this category
       categories[cat] = { bought: [], unbought: [] };
       // Select all parts that belong to this category and have a valid data-part attribute
-      const parts = document.querySelectorAll(`.pm-items li.${categoryName}[data-part]:not([data-part=""])`);
+      const parts = doc.querySelectorAll(`.pm-items li.${categoryName}[data-part]:not([data-part=""])`);
       parts.forEach((part) => {
-        let groupName = part.getAttribute("data-part");
+        const groupName = part.getAttribute("data-part");
         if (part.classList.contains("bought")) {
           // Add to bought if not already included
           if (!categories[cat].bought.includes(groupName)) {
@@ -759,10 +775,10 @@
           }
         }
       });
-      // Remove any group from unbought that exists in bought
+      // Remove any group from unbought that exists in bought and mark bought duplicates.
       categories[cat].bought.forEach((b) => {
         if (categories[cat].unbought.includes(b)) {
-          let bought = document.querySelectorAll(`.pm-items li.${categoryName}[data-part="${b}"]`);
+          const bought = doc.querySelectorAll(`.pm-items li.${categoryName}[data-part="${b}"]`);
           bought.forEach((el) => {
             if (!el.classList.contains("active")) {
               el.classList.toggle("bought", true);
@@ -773,9 +789,9 @@
         }
       });
       // Create a div showing the count of bought/unbought parts
-      const divParts = document.createElement("div");
-      let boughtParts = Object.keys(categories[cat].bought).length;
-      let totalParts = boughtParts + Object.keys(categories[cat].unbought).length;
+      const divParts = doc.createElement("div");
+      const boughtParts = categories[cat].bought.length;
+      const totalParts = boughtParts + categories[cat].unbought.length;
       divParts.className = boughtParts === totalParts ? "parts bought" : "parts";
       divParts.innerHTML = `${boughtParts} / ${totalParts}`;
       // Insert the parts count div after the icon element
@@ -787,49 +803,50 @@
     // Add available parts sections
     const links = await deferAll(".pm-categories li a.link");
     Array.from(links).forEach(async (link) => {
-      let catId = link.parentElement?.getAttribute("data-category");
-      let partscat = await defer(`.pm-items-wrap[category="${catId}"]`);
+      const catId = link.parentElement?.getAttribute("data-category");
+      const partscat = await defer(`.pm-items-wrap[category="${catId}"]`);
       // Remove existing parts available section.
       const existing = partscat.querySelectorAll(".racing-plus-parts-available");
-      existing.forEach((ex) => {
-        ex.remove();
-      });
+      existing.forEach((ex) => ex.remove());
       // Create new parts available section.
-      const div = document.createElement("div");
+      const div = doc.createElement("div");
       div.className = "racing-plus-parts-available";
-      let content = Object.entries(categories[catId].unbought)
-        .sort(([, a], [, b]) => a.localeCompare(b)) // Sort by value
-        .map(([key, val]) => `<span data-part="${val}">${val.replace("Tyres", "Tires")}</span>`)
+      const content = (categories[catId].unbought || [])
+        .slice()
+        .sort((a, b) => a.localeCompare(b)) // Sort by value
+        .map((val) => `<span data-part="${val}">${val.replace("Tyres", "Tires")}</span>`)
         .join(", ");
       div.innerHTML = `<span class="bold nowrap">Parts Available:</span><span>${content.length > 0 ? content : "None"}</span>`;
-      let titlediv = partscat.querySelector(".title-black");
-      titlediv.insertAdjacentHTML("afterEnd", div.outerHTML);
+      const titlediv = partscat.querySelector(".title-black");
+      if (titlediv) {
+        titlediv.insertAdjacentHTML("afterEnd", div.outerHTML);
+      }
     });
 
-    let props = await deferAll(".properties-wrap .properties");
+    // Update property progress labels with percentage badges
+    const props = await deferAll(".properties-wrap .properties");
     Array.from(props).forEach((prop) => {
-      let propName = prop.querySelector(".name");
-      let propVal = prop
-        .querySelector(".progress-bar .progressbar-wrap[title]")
+      const propName = prop.querySelector(".name");
+      const wrap = prop.querySelector(".progress-bar .progressbar-wrap[title]");
+      if (!propName || !wrap) return;
+      const propVal = wrap
         .getAttribute("title")
         .replace(/\s/g, "")
         .match(/[+-]\d+/);
       if (propVal) {
-        let propNum = parseInt(propVal[0]);
+        const propNum = parseInt(propVal[0], 10);
         propName.insertAdjacentHTML("afterBegin", `<span class="${propNum > 0 ? "positive" : propNum < 0 ? "negative" : ""}">${propVal[0]}%</span> `);
       }
     });
   }
 
-  /**
-   * loadOfficialEvents - Injects/updates the Official Events tab content.
-   */
+  // Function: loadOfficialEvents - Injects/updates the Official Events tab content.
   async function loadOfficialEvents() {
     if (DEBUG_MODE) console.log("[Racing+]: Loading Official Events tab...");
 
-    // Fix active tab
-    w.document.querySelectorAll("#racingMainContainer ul.categories li").forEach((c) => {
-      c.classList.toggle("active", c.querySelector(".official-events") ? true : false);
+    // Fix active tab highlighting
+    doc.querySelectorAll("#racingMainContainer ul.categories li").forEach((c) => {
+      c.classList.toggle("active", !!c.querySelector(".official-events"));
     });
 
     // Resolve the current race ID for this driver
@@ -848,6 +865,7 @@
       const lapsText = (racingupdates.textContent ?? "").split(" - ")[1]?.split(" ")[0] ?? "";
       const lapsNum = Number.parseInt(lapsText, 10);
 
+      // Create TornRace with compatible keys.
       this_race = new TornRace({
         raceid: raceId,
         title: trackInfo?.getAttribute("title") ?? "",
@@ -856,14 +874,16 @@
       });
     }
 
-    let drivers = await deferAll("#leaderBoard li[id^=lbr-]");
+    // Attach click handlers to drivers.
+    const drivers = await deferAll("#leaderBoard li[id^=lbr-]");
     drivers.forEach((drvr) => {
       drvr.addEventListener("click", async (event) => {
         event.preventDefault();
-        //await setBestLap(event.currentTarget.id.substring(4));
+        //TODO: await setBestLap(event.currentTarget.id.substring(4));
       });
     });
-    // Update the leaderboard
+
+    // Update the leaderboard DOM and optional widgets.
     this_race.updateLeaderBoard(drivers || []);
 
     // Add race link copy button
@@ -871,8 +891,8 @@
       await addRaceLinkCopyButton(this_race.id);
     }
 
-    // Update labels (save some horizontal space).
-    w.document.querySelectorAll("#racingdetails li.pd-name").forEach((detail) => {
+    // Condense long labels in the racing details area to save horizontal space.
+    doc.querySelectorAll("#racingdetails li.pd-name").forEach((detail) => {
       if (detail.textContent === "Name:") detail.remove();
       if (detail.textContent === "Position:") detail.textContent = "Pos:";
       if (detail.textContent === "Last Lap:") {
@@ -885,36 +905,35 @@
       }
     });
 
-    // Update laptime value
-    let laptime = document.querySelector("#racingdetails li.pd-laptime");
-    laptime.classList.toggle("t-hide", false);
+    // Ensure lap time and best time elements are visible and normalized.
+    const laptime = doc.querySelector("#racingdetails li.pd-laptime");
+    if (laptime) {
+      laptime.classList.toggle("t-hide", false);
+    }
     // Update best laptime value
-    let besttime = document.querySelector("#racingdetails li.pd-completion");
-    besttime.classList.toggle("t-hide", false);
-    besttime.textContent = "--:--";
+    const besttime = doc.querySelector("#racingdetails li.pd-completion");
+    if (besttime) {
+      besttime.classList.toggle("t-hide", false);
+      besttime.textContent = "--:--";
+    }
   }
 
-  /**
-   * loadEnlistedCars - Injects/updates the Enlisted Cars tab content.
-   */
+  // Function: loadEnlistedCars - Injects/updates the Enlisted Cars tab content.
   async function loadEnlistedCars() {
-    document.querySelectorAll(".enlist-list .enlist-info .enlisted-stat").forEach((ul) => {
-      let wonRaces = ul.children[0].textContent.replace(/[\n\s]/g, "").replace("•Raceswon:", "");
-      let totalRaces = ul.children[1].textContent.replace(/[\n\s]/g, "").replace("•Racesentered:", "");
+    doc.querySelectorAll(".enlist-list .enlist-info .enlisted-stat").forEach((ul) => {
+      const wonRaces = ul.children[0].textContent.replace(/[\n\s]/g, "").replace("•Raceswon:", "");
+      const totalRaces = ul.children[1].textContent.replace(/[\n\s]/g, "").replace("•Racesentered:", "");
       ul.children[0].textContent = `• Races won: ${wonRaces} / ${totalRaces}`;
       ul.children[1].textContent = `• Win rate: ${totalRaces <= 0 ? 0 : Math.round((wonRaces / totalRaces) * 10000) / 100}%`;
     });
   }
 
-  /**
-   * addStyles - Injects Racing+ CSS into document head.
-   * (Original stylesheet retained; dynamic color rules generated for categories)
-   */
+  // Function: addStyles - Injects Racing+ CSS into document head (dynamic rules generated for categories).
   async function addStyles() {
     if (DEBUG_MODE) console.log("[Racing+]: Adding styles...");
-    if (!w.document.head) await new Promise((r) => w.addEventListener("DOMContentLoaded", r, { once: true }));
+    if (!doc.head) await new Promise((r) => w.addEventListener("DOMContentLoaded", r, { once: true }));
 
-    const s = w.document.createElement("style");
+    const s = doc.createElement("style");
     s.innerHTML = `__MINIFIED_CSS__`;
 
     // Dynamic per-part color hints (batched for fewer string writes).
@@ -929,14 +948,11 @@
       });
     });
     s.innerHTML += dynRules.join("");
-    w.document.head.appendChild(s);
+    doc.head.appendChild(s);
     if (DEBUG_MODE) console.log("[Racing+]: Styles added.");
   }
 
-  /**
-   * loadRacingPlus - Builds the Racing+ settings UI, binds events, wires API,
-   * adjusts header banner, and primes initial content.
-   */
+  // Function: loadRacingPlus - Builds the Racing+ settings UI, binds events, wires API, adjusts header banner, and primes initial content.
   async function loadRacingPlus() {
     // Load Torn API key (from PDA or local storage)
     let api_key = IS_PDA ? PDA_KEY : STORE.getValue("RACINGPLUS_APIKEY");
@@ -950,9 +966,8 @@
       }
     }
 
-    // Load driver data
     if (DEBUG_MODE) console.log("[Racing+]: Loading Driver Data...");
-    // Typically a hidden input with JSON { id, ... }
+    // Load driver data - Typically a hidden input with JSON { id, ... }
     const scriptData = await defer("#torn-user");
     this_driver = new TornDriver(JSON.parse(scriptData.value).id);
     this_driver.load();
@@ -960,9 +975,9 @@
     if (DEBUG_MODE) console.log("[Racing+]: Loading DOM...");
     try {
       // Add the Racing+ window (settings panel)
-      if (!w.document.querySelector("div.racing-plus-window")) {
+      if (!doc.querySelector("div.racing-plus-window")) {
         const raceway = await defer("#racingMainContainer");
-        const rpw = w.document.createElement("div");
+        const rpw = doc.createElement("div");
         rpw.className = "racing-plus-window";
         rpw.innerHTML = `
 <div class="racing-plus-header">Racing+</div>
@@ -1009,10 +1024,10 @@
         raceway.insertAdjacentElement("beforeBegin", rpw);
 
         /** @type {HTMLInputElement} */
-        const apiInput = w.document.querySelector("#rplus-apikey");
-        const apiSave = w.document.querySelector(".racing-plus-apikey-save");
-        const apiReset = w.document.querySelector(".racing-plus-apikey-reset");
-        const apiStatus = w.document.querySelector(".racing-plus-apikey-status");
+        const apiInput = doc.querySelector("#rplus-apikey");
+        const apiSave = doc.querySelector(".racing-plus-apikey-save");
+        const apiReset = doc.querySelector(".racing-plus-apikey-reset");
+        const apiStatus = doc.querySelector(".racing-plus-apikey-status");
 
         // Initialize API key UI
         if (IS_PDA) {
@@ -1042,7 +1057,7 @@
             apiReset?.classList.toggle("show", false);
           }
 
-          // Save button handler
+          // Save button handler: validate and persist key.
           apiSave?.addEventListener("click", async (ev) => {
             ev.preventDefault();
             if (!apiInput) return;
@@ -1063,7 +1078,7 @@
             }
           });
 
-          // Reset button handler
+          // Reset button handler: clear stored key and make input editable.
           apiReset?.addEventListener("click", (ev) => {
             ev.preventDefault();
             if (!apiInput) return;
@@ -1078,8 +1093,8 @@
           });
         }
 
-        // Initialize toggles from storage & persist on click
-        w.document.querySelectorAll(".racing-plus-settings input[type=checkbox]").forEach((el) => {
+        // Initialize toggles from storage & persist on click.
+        doc.querySelectorAll(".racing-plus-settings input[type=checkbox]").forEach((el) => {
           const key = STORE.getKey(el.id);
           el.checked = STORE.getValue(key) === "1";
           el.addEventListener("click", (ev) => {
@@ -1090,10 +1105,10 @@
         });
       }
 
-      // Add the "Racing+" top link button
-      if (!w.document.querySelector("a.racing-plus-button")) {
+      // Add the "Racing+" top link button.
+      if (!doc.querySelector("a.racing-plus-button")) {
         const topLinks = await defer("#top-page-links-list");
-        const rpb = w.document.createElement("a");
+        const rpb = doc.createElement("a");
         rpb.className = "racing-plus-button t-clear h c-pointer line-h24 right";
         rpb.setAttribute("aria-label", "Racing+");
         rpb.innerHTML = `
@@ -1108,7 +1123,7 @@
         // Toggle the settings panel on click
         rpb.addEventListener("click", (ev) => {
           ev.preventDefault();
-          w.document.querySelector("div.racing-plus-window")?.classList.toggle("show");
+          doc.querySelector("div.racing-plus-window")?.classList.toggle("show");
         });
 
         if (DEBUG_MODE) console.log("[Racing+]: Settings button added.");
@@ -1120,9 +1135,9 @@
     // Normalize the top banner structure & update skill snapshot
     if (DEBUG_MODE) console.log("[Racing+]: Fixing top banner...");
     const banner = await defer(".banner");
-    const leftBanner = w.document.createElement("div");
+    const leftBanner = doc.createElement("div");
     leftBanner.className = "left-banner";
-    const rightBanner = w.document.createElement("div");
+    const rightBanner = doc.createElement("div");
     rightBanner.className = "right-banner";
 
     const elements = Array.from(banner.children);
@@ -1148,9 +1163,7 @@
    * App lifecycle
    * --------------------------------------------------------------------- */
 
-  /**
-   * Main entry point for Racing+ userscript.
-   */
+  // Function: init - Main entry point for Racing+ userscript.
   async function init() {
     if (DEBUG_MODE) console.log("[Racing+]: Initializing...");
 
@@ -1224,6 +1237,7 @@
     if (DEBUG_MODE) console.log("[Racing+]: Initialized.");
   }
 
+  // Function: disconnectRacingPlusObserver - Safely disconnect the page MutationObserver.
   function disconnectRacingPlusObserver() {
     try {
       pageObserver?.disconnect();
