@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - RacingMinus
 // @namespace    TornPDA
-// @version      0.57
+// @version      0.58
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -234,23 +234,27 @@
     }
 
     // Add the Racing+ button to the DOM
-    if (!document.querySelector("a.racing-plus-button")) {
-      let rplus_button_html = `<a role="button" aria-labelledby="racing-plus-link-label" class="racing-plus-button t-clear h c-pointer line-h24 right">
-          <span class="icon-wrap svg-icon-wrap">
-            <span class="link-icon-svg racing">
-              <svg xmlns="http://www.w3.org/2000/svg" stroke="transparent" stroke-width="0" width="15" height="14" viewBox="0 0 15 14"><path d="m14.02,11.5c.65-1.17.99-2.48.99-3.82,0-2.03-.78-3.98-2.2-5.44-2.83-2.93-7.49-3.01-10.42-.18-.06.06-.12.12-.18.18C.78,3.7,0,5.66,0,7.69c0,1.36.35,2.69,1.02,3.88.36.64.82,1.22,1.35,1.73l.73.7,1.37-1.5-.73-.7c-.24-.23-.45-.47-.64-.74l1.22-.72-.64-1.14-1.22.72c-.6-1.42-.6-3.03,0-4.45l1.22.72.64-1.14-1.22-.72c.89-1.23,2.25-2.04,3.76-2.23v1.44h1.29v-1.44c1.51.19,2.87.99,3.76,2.23l-1.22.72.65,1.14,1.22-.72c.68,1.63.58,3.48-.28,5.02-.06.11-.12.21-.19.31l-1.14-.88.48,3.5,3.41-.49-1.15-.89c.12-.18.23-.35.33-.53Zm-6.51-4.97c-.64-.02-1.17.49-1.18,1.13s.49,1.17,1.13,1.18,1.17-.49,1.18-1.13c0,0,0-.01,0-.02l1.95-1.88-2.56.85c-.16-.09-.34-.13-.52-.13h0Z"/></svg>
-            </span>
+    if (!document.querySelector("#racing-plus-button")) {
+      let links_container = await defer("#racing-leaderboard-header-root div[class^='linksContainer']");
+
+      let city_button = links_container.firstChild;
+      let city_label = city_button.querySelector(`#${city_button.getAttribute("aria-labelledby")}`);
+      let city_icon_wrap = city_button.querySelector(`:not([id])`);
+
+      let rplus_button_html = `<a id="racing-plus-button" role="button" aria-labelledby="racing-plus-link-label" class="${city_button.className}">
+          <span id="racing-plus-button-icon" class="${city_icon_wrap.className}">
+            <svg xmlns="http://www.w3.org/2000/svg" stroke="transparent" stroke-width="0" width="15" height="14" viewBox="0 0 15 14"><path d="m14.02,11.5c.65-1.17.99-2.48.99-3.82,0-2.03-.78-3.98-2.2-5.44-2.83-2.93-7.49-3.01-10.42-.18-.06.06-.12.12-.18.18C.78,3.7,0,5.66,0,7.69c0,1.36.35,2.69,1.02,3.88.36.64.82,1.22,1.35,1.73l.73.7,1.37-1.5-.73-.7c-.24-.23-.45-.47-.64-.74l1.22-.72-.64-1.14-1.22.72c-.6-1.42-.6-3.03,0-4.45l1.22.72.64-1.14-1.22-.72c.89-1.23,2.25-2.04,3.76-2.23v1.44h1.29v-1.44c1.51.19,2.87.99,3.76,2.23l-1.22.72.65,1.14,1.22-.72c.68,1.63.58,3.48-.28,5.02-.06.11-.12.21-.19.31l-1.14-.88.48,3.5,3.41-.49-1.15-.89c.12-.18.23-.35.33-.53Zm-6.51-4.97c-.64-.02-1.17.49-1.18,1.13s.49,1.17,1.13,1.18,1.17-.49,1.18-1.13c0,0,0-.01,0-.02l1.95-1.88-2.56.85c-.16-.09-.34-.13-.52-.13h0Z"/></svg>
           </span>
-          <span id="racing-plus-link-label" class="linkName">Racing+</span>
+          <span id="racing-plus-button-label" class="${city_label.className}">Racing+</span>
         </a>`;
-      let header_buttons = await defer("#racing-leaderboard-header-root div[class^='linksContainer']");
-      header_buttons.insertAdjacentHTML("beforeEnd", rplus_button_html);
+
+      links_container.insertAdjacentHTML("afterBegin", rplus_button_html);
       if (DEBUG_MODE) {
         console.log("Racing+: Settings button added.");
       }
     }
     // Add the Racing+ button click event handler
-    document.querySelector("a.racing-plus-button").addEventListener("click", (ev) => {
+    document.querySelector("#racing-plus-button").addEventListener("click", (ev) => {
       ev.preventDefault();
       // Toggle show/hide racing-plus-window
       document.querySelector("div.racing-plus-window").classList.toggle("show");
