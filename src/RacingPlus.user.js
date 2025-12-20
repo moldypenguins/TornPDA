@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA-Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.19
+// @version      0.99.20
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1098,7 +1098,7 @@ const ACCESS_LEVEL = Object.freeze({
   /**
    * Creates a div HTML element with the given className.
    * @param {string} className the div class attribute
-   * @param {object} innerHTML the elements to inject into the div
+   * @param {string|object} innerHTML the element(s) to inject into the div
    * @returns {HTMLDivElement} HTMLDivElement
    */
   function createDiv(className = "", innerHTML = null) {
@@ -1106,11 +1106,15 @@ const ACCESS_LEVEL = Object.freeze({
     el.className = className;
     if (innerHTML) {
       if (typeof innerHTML === "string") {
-        el.appendChild(innerHTML);
+        el.innerHTML = innerHTML;
       }
-      if (typeof innerHTML === "object") {
+      if (typeof innerHTML === "object" && innerHTML instanceof Array) {
         for (const inner of innerHTML) {
-          el.appendChild(inner);
+          if (typeof inner === "string") {
+            el.innerHTML += innerHTML;
+          } else {
+            el.appendChild(inner);
+          }
         }
       }
     }
@@ -1174,8 +1178,7 @@ const ACCESS_LEVEL = Object.freeze({
 
     const rplus_panel = doc.createElement("div");
     rplus_panel.id = "racing-plus-panel";
-    const header = createDiv("racing-plus-header", "Racing+");
-    rplus_panel.appendChild(header);
+    rplus_panel.appendChild(createDiv("racing-plus-header", "Racing+"));
     rplus_panel.appendChild(
       createDiv(
         "racing-plus-main",
