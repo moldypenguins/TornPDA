@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA-Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.18
+// @version      0.99.19
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1174,7 +1174,8 @@ const ACCESS_LEVEL = Object.freeze({
 
     const rplus_panel = doc.createElement("div");
     rplus_panel.id = "racing-plus-panel";
-    rplus_panel.appendChild(createDiv("racing-plus-header", "Racing+"));
+    const header = createDiv("racing-plus-header", "Racing+");
+    rplus_panel.appendChild(header);
     rplus_panel.appendChild(
       createDiv(
         "racing-plus-main",
