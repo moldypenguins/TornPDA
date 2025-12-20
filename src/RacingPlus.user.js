@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA-Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.16
+// @version      0.99.17
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -29,6 +29,10 @@ const API_COMMENT = "RacingPlus"; // Comment shown in Torn API recent usage.
 const CACHE_TTL = 60 * 60 * 1000; // Cache duration for API responses (ms). Default = 1 hour.
 const SPEED_INTERVAL = 1000; // (Reserved) Sample rate for speed updates (ms).
 const KMS_PER_MI = 1.609344; // Number of kilometers in 1 mile.
+
+const RACING_HEADER_SELECTOR = "#racing-leaderboard-header-root";
+const RACING_MAIN_SELECTOR = "#racingMainContainer";
+const RACING_ADDITIONAL_SELECTOR = "#racingAdditionalContainer";
 
 /* ------------------------------------------------------------------------
  * Static Type Methods
@@ -1074,38 +1078,231 @@ const ACCESS_LEVEL = Object.freeze({
     s.innerHTML = `__MINIFIED_CSS__`;
 
     // Dynamic per-part color hints (batched for fewer string writes).
-    const dynRules = [];
-    Object.entries(CATEGORIES).forEach(([, parts]) => {
-      parts.forEach((g, i) => {
-        dynRules.push(
-          `.d .racing-plus-parts-available span[data-part="${g}"]{color:${COLOURS[i]};}`,
-          `.d .racing-main-wrap .pm-items-wrap .pm-items li[data-part="${g}"]:not(.bought):not(.active) .status{background-color:${COLOURS[i]};background-image:unset;}`,
-          `.d .racing-main-wrap .pm-items-wrap .pm-items li[data-part="${g}"]:not(.bought):not(.active) .bg-wrap .title{background-color:${COLOURS[i]}40;}`
-        );
+    if (STORE.getValue(STORE.getKey("rplus_showparts")) === "1") {
+      const dynRules = [];
+      Object.entries(CATEGORIES).forEach(([, parts]) => {
+        parts.forEach((g, i) => {
+          dynRules.push(
+            `.d .racing-plus-parts-available span[data-part="${g}"]{color:${COLOURS[i]};}`,
+            `.d .racing-main-wrap .pm-items-wrap .pm-items li[data-part="${g}"]:not(.bought):not(.active) .status{background-color:${COLOURS[i]};background-image:unset;}`,
+            `.d .racing-main-wrap .pm-items-wrap .pm-items li[data-part="${g}"]:not(.bought):not(.active) .bg-wrap .title{background-color:${COLOURS[i]}40;}`
+          );
+        });
       });
-    });
-    s.innerHTML += dynRules.join("");
+      s.innerHTML += dynRules.join("");
+    }
     doc.head.appendChild(s);
     if (DEBUG_MODE) console.log("[Racing+]: Styles added.");
+  }
+
+  /**
+   * Creates a div HTML element with the given className.
+   * @param {string} className the div class attribute
+   * @param {object} innerHTML the elements to inject into the div
+   * @returns {object} DOM Element
+   */
+  function createDiv(className = "", innerHTML = null) {
+    let el = doc.createElement("div");
+    el.className = className;
+    if (innerHTML) {
+      if (typeof innerHTML === "string") {
+        el.appendChild(innerHTML);
+      }
+      if (typeof innerHTML === "object") {
+        for (const inner of innerHTML) {
+          el.appendChild(inner);
+        }
+      }
+    }
+    return el;
+  }
+
+  /**
+   * Adds the Racing+ settings button to the UI
+   * @returns {Promise<void>}
+   */
+  async function addRacingPlusButton(header_container) {
+    // Check if button already exists
+    if (doc.querySelector("#racing-plus-button")) return;
+
+    const links_container = header_container.querySelector("div[class^='linksContainer']");
+    if (!links_container) return;
+
+    let city_label = links_container.firstChild.querySelector(`#${links_container.firstChild.getAttribute("aria-labelledby")}`);
+    let city_icon_wrap = links_container.firstChild.querySelector(`:not([id])`);
+    if (!city_label || !city_icon_wrap) return;
+
+    const rplus_button = doc.createElement("a");
+    rplus_button.id = "racing-plus-button";
+    rplus_button.className = links_container.firstChild.className;
+    rplus_button.setAttribute("aria-labelledby", "racing-plus-link-label");
+    rplus_button.innerHTML = `
+        <span id="racing-plus-button-icon" class="${city_icon_wrap.className}">
+          <svg xmlns="http://www.w3.org/2000/svg" stroke="transparent" stroke-width="0" width="15" height="14" viewBox="0 0 15 14"><path d="m14.02,11.5c.65-1.17.99-2.48.99-3.82,0-2.03-.78-3.98-2.2-5.44-2.83-2.93-7.49-3.01-10.42-.18-.06.06-.12.12-.18.18C.78,3.7,0,5.66,0,7.69c0,1.36.35,2.69,1.02,3.88.36.64.82,1.22,1.35,1.73l.73.7,1.37-1.5-.73-.7c-.24-.23-.45-.47-.64-.74l1.22-.72-.64-1.14-1.22.72c-.6-1.42-.6-3.03,0-4.45l1.22.72.64-1.14-1.22-.72c.89-1.23,2.25-2.04,3.76-2.23v1.44h1.29v-1.44c1.51.19,2.87.99,3.76,2.23l-1.22.72.65,1.14,1.22-.72c.68,1.63.58,3.48-.28,5.02-.06.11-.12.21-.19.31l-1.14-.88.48,3.5,3.41-.49-1.15-.89c.12-.18.23-.35.33-.53Zm-6.51-4.97c-.64-.02-1.17.49-1.18,1.13s.49,1.17,1.13,1.18,1.17-.49,1.18-1.13c0,0,0-.01,0-.02l1.95-1.88-2.56.85c-.16-.09-.34-.13-.52-.13h0Z"/></svg>
+        </span>
+        <span id="racing-plus-button-label" class="${city_label.className}">Racing+</span>
+      `;
+    links_container.insertAdjacentHTML("afterBegin", rplus_button);
+
+    // Toggle the settings panel on click
+    rplus_button.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      doc.querySelector("#racing-plus-panel")?.classList.toggle("show");
+    });
+
+    if (DEBUG_MODE) console.log("[Racing+]: Settings button added.");
+  }
+
+  /**
+   * Adds the Racing+ settings panel to the UI
+   * @returns {Promise<void>}
+   */
+  async function addRacingPlusPanel(main_container) {
+    // Check if panel already exists
+    if (doc.querySelector("#racing-plus-panel")) return;
+
+    // Load Torn API key (from PDA or local storage)
+    let api_key = IS_PDA ? PDA_KEY : STORE.getValue("RACINGPLUS_APIKEY");
+    if (api_key) {
+      if (DEBUG_MODE) console.log("[Racing+]: Loading Torn API...");
+      // validate torn api key; if invalid, we'll leave the input editable
+      if (!(await torn_api.validateKey(api_key))) {
+        torn_api.deleteKey();
+        api_key = "";
+      }
+    }
+
+    const rplus_panel = doc.createElement("div");
+    rplus_panel.id = "racing-plus-panel";
+    rplus_panel.appendChild(createDiv("racing-plus-header", "Racing+"));
+    rplus_panel.appendChild(
+      createDiv(
+        "racing-plus-main",
+        createDiv("racing-plus-settings", [
+          '<label for="rplus-apikey">API Key</label>',
+          createDiv("flex-col", [
+            createDiv("nowrap", [
+              IS_PDA
+                ? ""
+                : '<span class="racing-plus-apikey-actions">' +
+                  '<button type="button" class="racing-plus-apikey-save" aria-label="Save">' +
+                  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" version="1.1">' +
+                  '<path fill-rule="evenodd" clip-rule="evenodd" d="M7 2C4.23858 2 2 4.23858 2 7V17C2 19.7614 4.23858 22 7 22H17C19.7614 22 22 19.7614 22 17V8.82843C22 8.03278 21.6839 7.26972 21.1213 6.70711L17.2929 2.87868C16.7303 2.31607 15.9672 2 15.1716 2H7ZM7 4C6.44772 4 6 4.44772 6 5V7C6 7.55228 6.44772 8 7 8H15C15.5523 8 16 7.55228 16 7V5C16 4.44772 15.5523 4 15 4H7ZM12 17C13.6569 17 15 15.6569 15 14C15 12.3431 13.6569 11 12 11C10.3431 11 9 12.3431 9 14C9 15.6569 10.3431 17 12 17Z" />' +
+                  "</svg>" +
+                  "</button>" +
+                  '<button type="button" class="racing-plus-apikey-reset" aria-label="Reset">' +
+                  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" version="1.1">' +
+                  '<path d="M790.2 590.67l105.978 32.29C847.364 783.876 697.86 901 521 901c-216.496 0-392-175.504-392-392s175.504-392 392-392c108.502 0 206.708 44.083 277.685 115.315l-76.64 76.64C670.99 257.13 599.997 225 521.5 225 366.032 225 240 351.032 240 506.5 240 661.968 366.032 788 521.5 788c126.148 0 232.916-82.978 268.7-197.33z"/>' +
+                  '<path d="M855.58 173.003L650.426 363.491l228.569 32.285z"/>' +
+                  "</svg>" +
+                  "</button>" +
+                  "</span>",
+              '<input type="text" id="rplus-apikey" maxlength="16" />',
+            ]),
+            '<span class="racing-plus-apikey-status"></span>',
+          ]),
+          '<label for="rplus_addlinks">Add profile links</label><div><input type="checkbox" id="rplus_addlinks" /></div>',
+          '<label for="rplus_showskill">Show racing skill</label><div><input type="checkbox" id="rplus_showskill" /></div>',
+          '<label for="rplus_showspeed">Show current speed</label><div><input type="checkbox" id="rplus_showspeed" /></div>',
+          '<label for="rplus_showracelink">Add race link</label><div><input type="checkbox" id="rplus_showracelink" /></div>',
+          '<label for="rplus_showexportlink">Add export link</label><div><input type="checkbox" id="rplus_showexportlink" /></div>',
+          '<label for="rplus_showwinrate">Show car win rate</label><div><input type="checkbox" id="rplus_showwinrate" /></div>',
+          '<label for="rplus_showparts">Show available parts</label><div><input type="checkbox" id="rplus_showparts" /></div>',
+        ])
+      )
+    );
+    rplus_panel.appendChild(createDiv("racing-plus-footer"));
+    main_container.insertAdjacentElement("beforeBegin", rplus_panel);
+
+    /** @type {HTMLInputElement} */
+    const apiInput = doc.querySelector("#rplus-apikey");
+    const apiSave = doc.querySelector(".racing-plus-apikey-save");
+    const apiReset = doc.querySelector(".racing-plus-apikey-reset");
+    const apiStatus = doc.querySelector(".racing-plus-apikey-status");
+
+    // Initialize API key UI
+    if (IS_PDA) {
+      if (api_key && apiInput) apiInput.value = api_key;
+      if (apiInput) {
+        apiInput.disabled = true;
+        apiInput.readOnly = true;
+      }
+      if (apiStatus) apiStatus.textContent = "Edit in TornPDA settings.";
+      apiSave?.classList.toggle("show", false);
+      apiReset?.classList.toggle("show", false);
+    } else {
+      if (api_key && apiInput) {
+        apiInput.value = api_key;
+        apiInput.disabled = true;
+        apiInput.readOnly = true;
+        if (apiStatus) apiStatus.textContent = "";
+        apiSave?.classList.toggle("show", false);
+        apiReset?.classList.toggle("show", true);
+      } else {
+        if (apiInput) {
+          apiInput.disabled = false;
+          apiInput.readOnly = false;
+        }
+        if (apiStatus) apiStatus.textContent = "";
+        apiSave?.classList.toggle("show", true);
+        apiReset?.classList.toggle("show", false);
+      }
+
+      // Save button handler: validate and persist key.
+      apiSave?.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        if (!apiInput) return;
+        const candidate = apiInput.value.trim();
+        const ok = await torn_api.validateKey(candidate);
+        apiInput.classList.remove("valid", "invalid");
+        if (ok) {
+          apiInput.classList.add("valid");
+          torn_api.saveKey();
+          apiInput.disabled = true;
+          apiInput.readOnly = true;
+          apiSave.classList.toggle("show", false);
+          apiReset?.classList.toggle("show", true);
+          if (apiStatus) apiStatus.textContent = "";
+        } else {
+          apiInput.classList.add("invalid");
+          if (apiStatus) apiStatus.textContent = "Invalid API key.";
+        }
+      });
+
+      // Reset button handler: clear stored key and make input editable.
+      apiReset?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        if (!apiInput) return;
+        apiInput.value = "";
+        apiInput.disabled = false;
+        apiInput.readOnly = false;
+        apiInput.classList.remove("valid", "invalid");
+        torn_api.deleteKey();
+        apiSave?.classList.toggle("show", true);
+        apiReset.classList.toggle("show", false);
+        if (apiStatus) apiStatus.textContent = "";
+      });
+    }
+
+    // Initialize toggles from storage & persist on click.
+    doc.querySelectorAll(".racing-plus-settings input[type=checkbox]").forEach((el) => {
+      const key = STORE.getKey(el.id);
+      el.checked = STORE.getValue(key) === "1";
+      el.addEventListener("click", (ev) => {
+        const t = /** @type {HTMLInputElement} */ (ev.currentTarget);
+        STORE.setValue(key, t.checked ? "1" : "0");
+        if (DEBUG_MODE) console.log(`[Racing+]: ${el.id} saved.`);
+      });
+    });
+
+    if (DEBUG_MODE) console.log("[Racing+]: Settings panel added.");
   }
 
   /**
    * Builds Racing+ settings UI, binds events, wires API, adjusts header
    * @returns {Promise<void>}
    */
-  async function loadRacingPlus() {
-    // Load Torn API key (from PDA or local storage)
-    let api_key = IS_PDA ? PDA_KEY : STORE.getValue("RACINGPLUS_APIKEY");
-    if (api_key) {
-      if (DEBUG_MODE) console.log("[Racing+]: Loading Torn API...");
-      // validate torn api key; if invalid, we'll leave the input editable
-      const ok = await torn_api.validateKey(api_key);
-      if (!ok) {
-        torn_api.deleteKey();
-        api_key = "";
-      }
-    }
-
+  async function loadRacingPlus(header_container, main_container) {
     if (DEBUG_MODE) console.log("[Racing+]: Loading Driver Data...");
     // Load driver data - Typically a hidden input with JSON { id, ... }
     const scriptData = await defer("#torn-user");
@@ -1114,160 +1311,10 @@ const ACCESS_LEVEL = Object.freeze({
 
     if (DEBUG_MODE) console.log("[Racing+]: Loading DOM...");
     try {
-      // Add the Racing+ window (settings panel)
-      if (!doc.querySelector("div.racing-plus-window")) {
-        const raceway = await defer("#racingMainContainer");
-        const rpw = doc.createElement("div");
-        rpw.className = "racing-plus-window";
-        rpw.innerHTML = `
-<div class="racing-plus-header">Racing+</div>
-<div class="racing-plus-main">
-  <div class="racing-plus-settings">
-    <label for="rplus-apikey">API Key</label>
-    <div class="flex-col">
-      <div class="nowrap">
-        ${
-          IS_PDA
-            ? ""
-            : `
-        <span class="racing-plus-apikey-actions">
-          <button type="button" class="racing-plus-apikey-save" aria-label="Save">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" version="1.1">
-              <path fill-rule="evenodd" clip-rule="evenodd" d="M7 2C4.23858 2 2 4.23858 2 7V17C2 19.7614 4.23858 22 7 22H17C19.7614 22 22 19.7614 22 17V8.82843C22 8.03278 21.6839 7.26972 21.1213 6.70711L17.2929 2.87868C16.7303 2.31607 15.9672 2 15.1716 2H7ZM7 4C6.44772 4 6 4.44772 6 5V7C6 7.55228 6.44772 8 7 8H15C15.5523 8 16 7.55228 16 7V5C16 4.44772 15.5523 4 15 4H7ZM12 17C13.6569 17 15 15.6569 15 14C15 12.3431 13.6569 11 12 11C10.3431 11 9 12.3431 9 14C9 15.6569 10.3431 17 12 17Z" />
-            </svg>
-          </button>
-          <button type="button" class="racing-plus-apikey-reset" aria-label="Reset">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" version="1.1">
-              <path d="M790.2 590.67l105.978 32.29C847.364 783.876 697.86 901 521 901c-216.496 0-392-175.504-392-392s175.504-392 392-392c108.502 0 206.708 44.083 277.685 115.315l-76.64 76.64C670.99 257.13 599.997 225 521.5 225 366.032 225 240 351.032 240 506.5 240 661.968 366.032 788 521.5 788c126.148 0 232.916-82.978 268.7-197.33z"/>
-              <path d="M855.58 173.003L650.426 363.491l228.569 32.285z"/>
-            </svg>
-          </button>
-        </span>
-        `
-        }
-        <input type="text" id="rplus-apikey" maxlength="16" />
-      </div>
-      <span class="racing-plus-apikey-status"></span>
-    </div>
-
-    <label for="rplus_addlinks">Add profile links</label><div><input type="checkbox" id="rplus_addlinks" /></div>
-    <label for="rplus_showskill">Show racing skill</label><div><input type="checkbox" id="rplus_showskill" /></div>
-    <label for="rplus_showspeed">Show current speed</label><div><input type="checkbox" id="rplus_showspeed" /></div>
-    <label for="rplus_showracelink">Add race link</label><div><input type="checkbox" id="rplus_showracelink" /></div>
-    <label for="rplus_showexportlink">Add export link</label><div><input type="checkbox" id="rplus_showexportlink" /></div>
-    <label for="rplus_showwinrate">Show car win rate</label><div><input type="checkbox" id="rplus_showwinrate" /></div>
-    <label for="rplus_showparts">Show available parts</label><div><input type="checkbox" id="rplus_showparts" /></div>
-  </div>
-</div>
-<div class="racing-plus-footer"></div>`;
-
-        raceway.insertAdjacentElement("beforeBegin", rpw);
-
-        /** @type {HTMLInputElement} */
-        const apiInput = doc.querySelector("#rplus-apikey");
-        const apiSave = doc.querySelector(".racing-plus-apikey-save");
-        const apiReset = doc.querySelector(".racing-plus-apikey-reset");
-        const apiStatus = doc.querySelector(".racing-plus-apikey-status");
-
-        // Initialize API key UI
-        if (IS_PDA) {
-          if (api_key && apiInput) apiInput.value = api_key;
-          if (apiInput) {
-            apiInput.disabled = true;
-            apiInput.readOnly = true;
-          }
-          if (apiStatus) apiStatus.textContent = "Edit in TornPDA settings.";
-          apiSave?.classList.toggle("show", false);
-          apiReset?.classList.toggle("show", false);
-        } else {
-          if (api_key && apiInput) {
-            apiInput.value = api_key;
-            apiInput.disabled = true;
-            apiInput.readOnly = true;
-            if (apiStatus) apiStatus.textContent = "";
-            apiSave?.classList.toggle("show", false);
-            apiReset?.classList.toggle("show", true);
-          } else {
-            if (apiInput) {
-              apiInput.disabled = false;
-              apiInput.readOnly = false;
-            }
-            if (apiStatus) apiStatus.textContent = "";
-            apiSave?.classList.toggle("show", true);
-            apiReset?.classList.toggle("show", false);
-          }
-
-          // Save button handler: validate and persist key.
-          apiSave?.addEventListener("click", async (ev) => {
-            ev.preventDefault();
-            if (!apiInput) return;
-            const candidate = apiInput.value.trim();
-            const ok = await torn_api.validateKey(candidate);
-            apiInput.classList.remove("valid", "invalid");
-            if (ok) {
-              apiInput.classList.add("valid");
-              torn_api.saveKey();
-              apiInput.disabled = true;
-              apiInput.readOnly = true;
-              apiSave.classList.toggle("show", false);
-              apiReset?.classList.toggle("show", true);
-              if (apiStatus) apiStatus.textContent = "";
-            } else {
-              apiInput.classList.add("invalid");
-              if (apiStatus) apiStatus.textContent = "Invalid API key.";
-            }
-          });
-
-          // Reset button handler: clear stored key and make input editable.
-          apiReset?.addEventListener("click", (ev) => {
-            ev.preventDefault();
-            if (!apiInput) return;
-            apiInput.value = "";
-            apiInput.disabled = false;
-            apiInput.readOnly = false;
-            apiInput.classList.remove("valid", "invalid");
-            torn_api.deleteKey();
-            apiSave?.classList.toggle("show", true);
-            apiReset.classList.toggle("show", false);
-            if (apiStatus) apiStatus.textContent = "";
-          });
-        }
-
-        // Initialize toggles from storage & persist on click.
-        doc.querySelectorAll(".racing-plus-settings input[type=checkbox]").forEach((el) => {
-          const key = STORE.getKey(el.id);
-          el.checked = STORE.getValue(key) === "1";
-          el.addEventListener("click", (ev) => {
-            const t = /** @type {HTMLInputElement} */ (ev.currentTarget);
-            STORE.setValue(key, t.checked ? "1" : "0");
-            if (DEBUG_MODE) console.log(`[Racing+]: ${el.id} saved.`);
-          });
-        });
-      }
-
-      // Add the "Racing+" top link button.
-      if (!doc.querySelector("a.racing-plus-button")) {
-        const topLinks = await defer("#top-page-links-list");
-        const rpb = doc.createElement("a");
-        rpb.className = "racing-plus-button t-clear h c-pointer line-h24 right";
-        rpb.setAttribute("aria-label", "Racing+");
-        rpb.innerHTML = `
-<span class="icon-wrap svg-icon-wrap">
-  <span class="link-icon-svg racing">
-    <svg xmlns="http://www.w3.org/2000/svg" stroke="transparent" stroke-width="0" width="15" height="14" viewBox="0 0 15 14"><path d="m14.02,11.5c.65-1.17.99-2.48.99-3.82,0-2.03-.78-3.98-2.2-5.44-2.83-2.93-7.49-3.01-10.42-.18-.06.06-.12.12-.18.18C.78,3.7,0,5.66,0,7.69c0,1.36.35,2.69,1.02,3.88.36.64.82,1.22,1.35,1.73l.73.7,1.37-1.5-.73-.7c-.24-.23-.45-.47-.64-.74l1.22-.72-.64-1.14-1.22.72c-.6-1.42-.6-3.03,0-4.45l1.22.72.64-1.14-1.22-.72c.89-1.23,2.25-2.04,3.76-2.23v1.44h1.29v-1.44c1.51.19,2.87.99,3.76,2.23l-1.22.72.65,1.14,1.22-.72c.68,1.63.58,3.48-.28,5.02-.06.11-.12.21-.19.31l-1.14-.88.48,3.5,3.41-.49-1.15-.89c.12-.18.23-.35.33-.53Zm-6.51-4.97c-.64-.02-1.17.49-1.18,1.13s.49,1.17,1.13,1.18,1.17-.49,1.18-1.13c0,0,0-.01,0-.02l1.95-1.88-2.56.85c-.16-.09-.34-.13-.52-.13h0Z"/></svg>
-  </span>
-</span>
-<span class="linkName">Racing+</span>`;
-        topLinks.insertAdjacentElement("beforeEnd", rpb);
-
-        // Toggle the settings panel on click
-        rpb.addEventListener("click", (ev) => {
-          ev.preventDefault();
-          doc.querySelector("div.racing-plus-window")?.classList.toggle("show");
-        });
-
-        if (DEBUG_MODE) console.log("[Racing+]: Settings button added.");
-      }
+      // Add the Racing+ panel to the DOM
+      await addRacingPlusPanel(main_container);
+      // Add the Racing+ button to the DOM
+      await addRacingPlusButton(header_container);
     } catch (err) {
       console.log(`Racing+ Error: ${err}`);
     }
@@ -1303,84 +1350,6 @@ const ACCESS_LEVEL = Object.freeze({
    * App lifecycle
    * --------------------------------------------------------------------- */
   /**
-   * Main entry point for Racing+ userscript
-   * @returns {Promise<void>}
-   */
-  async function init() {
-    if (DEBUG_MODE) console.log("[Racing+]: Initializing...");
-
-    await addStyles(); // Add CSS
-    await loadRacingPlus(); // Verify API and build UI
-
-    await this_driver.updateRecords(); // Update track records from API
-    await this_driver.updateCars(); // Update available cars from API
-
-    // Add Page observer (track tab changes, race updates, etc.)
-    if (DEBUG_MODE) console.log("[Racing+]: Adding Page Observer...");
-    const tabContainer = await defer("#racingAdditionalContainer");
-
-    // Use the outer-scoped pageObserver.
-    pageObserver = new MutationObserver(async (mutations) => {
-      for (const mutation of mutations) {
-        // If infospot text changed, update status
-        if (mutation.type === "characterData" || mutation.type === "childList") {
-          /** @type {Node} */
-          const tNode = mutation.target;
-          const el = tNode.nodeType === Node.ELEMENT_NODE ? tNode : tNode.parentElement;
-          if (el && el.id === "infoSpot") {
-            this_race?.updateStatus(el.textContent || "");
-            // if (DEBUG_MODE) console.log(`[Racing+]: Race Status Update -> ${this_race.status}.`);
-          }
-          if (el && el.id === "leaderBoard") {
-            this_race?.updateLeaderBoard(el.childNodes || []);
-            // if (DEBUG_MODE) console.log(`[Racing+]: Leader Board Update.`);
-          }
-        }
-        // Handle injected subtrees (new tab content loaded)
-        const addedNodes = mutation.addedNodes && mutation.addedNodes.length > 0 ? Array.from(mutation.addedNodes) : [];
-        if (addedNodes.length > 0 && !addedNodes.some((node) => node.classList?.contains?.("ajax-preloader"))) {
-          if (addedNodes.some((node) => node.id === "racingupdates")) {
-            await loadOfficialEvents();
-          } else if (addedNodes.some((node) => node.classList?.contains?.("enlist-wrap"))) {
-            await loadEnlistedCars();
-          } else if (addedNodes.some((node) => node.classList?.contains?.("pm-categories-wrap")) && STORE.getValue(STORE.getKey("rplus_showparts")) === "1") {
-            await loadPartsAndModifications();
-          }
-        }
-      }
-    });
-
-    pageObserver.observe(tabContainer, {
-      characterData: true,
-      childList: true,
-      subtree: true,
-    });
-
-    // Belt-and-suspenders: disconnect on pagehide/unload
-    w.addEventListener(
-      "pagehide",
-      (e) => {
-        disconnectRacingPlusObserver();
-        if (DEBUG_MODE) console.log("[Racing+]: pagehide fired", { persisted: e.persisted });
-      },
-      { once: true }
-    );
-    w.addEventListener(
-      "beforeunload",
-      //(e) => {
-      () => {
-        disconnectRacingPlusObserver();
-        if (DEBUG_MODE) console.log("[Racing+]: beforeunload fired.");
-      },
-      { once: true }
-    );
-
-    // Prime initial content
-    await loadOfficialEvents();
-    if (DEBUG_MODE) console.log("[Racing+]: Initialized.");
-  }
-
-  /**
    * Safely disconnect the page MutationObserver
    */
   function disconnectRacingPlusObserver() {
@@ -1399,10 +1368,87 @@ const ACCESS_LEVEL = Object.freeze({
   /** @type {TornRace} */ let this_race;
   /** @type {MutationObserver|null} */ let pageObserver = null;
 
-  if (DEBUG_MODE) console.log("[Racing+]: Script loaded.");
+  if (DEBUG_MODE) console.log("[Racing+]: Script loaded. Initializing...");
 
-  // Kick off
-  init();
+  await addStyles(); // Add CSS
+
+  const header_container = await defer(RACING_HEADER_SELECTOR);
+  const main_container = await defer(RACING_MAIN_SELECTOR);
+  const race_container = await defer(RACING_ADDITIONAL_SELECTOR); // race is a child of main
+
+  await loadRacingPlus(header_container, main_container); // Verify API and build UI
+
+  await this_driver.updateRecords(); // Update track records from API
+  await this_driver.updateCars(); // Update available cars from API
+
+  // Add Page observer (track tab changes, race updates, etc.)
+  if (DEBUG_MODE) console.log("[Racing+]: Adding Page Observer...");
+
+  // Use the outer-scoped pageObserver.
+  pageObserver = new MutationObserver(async (mutations) => {
+    for (const mutation of mutations) {
+      // If infospot text changed, update status
+      if (mutation.type === "characterData" || mutation.type === "childList") {
+        /** @type {Node} */
+        const tNode = mutation.target;
+        const el = tNode.nodeType === Node.ELEMENT_NODE ? tNode : tNode.parentElement;
+        if (el && el.id === "infoSpot") {
+          this_race?.updateStatus(el.textContent || "");
+          // if (DEBUG_MODE) console.log(`[Racing+]: Race Status Update -> ${this_race.status}.`);
+        }
+        if (el && el.id === "leaderBoard") {
+          this_race?.updateLeaderBoard(el.childNodes || []);
+          // if (DEBUG_MODE) console.log(`[Racing+]: Leader Board Update.`);
+        }
+      }
+      // Handle injected subtrees (new tab content loaded)
+      const addedNodes = mutation.addedNodes && mutation.addedNodes.length > 0 ? Array.from(mutation.addedNodes) : [];
+      if (addedNodes.length > 0 && !addedNodes.some((node) => node.classList?.contains?.("ajax-preloader"))) {
+        if (addedNodes.some((node) => node.id === "racingupdates")) {
+          await loadOfficialEvents();
+        } else if (addedNodes.some((node) => node.classList?.contains?.("enlist-wrap"))) {
+          await loadEnlistedCars();
+        } else if (addedNodes.some((node) => node.classList?.contains?.("pm-categories-wrap")) && STORE.getValue(STORE.getKey("rplus_showparts")) === "1") {
+          await loadPartsAndModifications();
+        }
+      }
+    }
+  });
+
+  pageObserver.observe(race_container, {
+    characterData: true,
+    childList: true,
+    subtree: true,
+  });
+
+  pageObserver.observe(header_container, {
+    characterData: true,
+    childList: true,
+    subtree: true,
+  });
+
+  // Belt-and-suspenders: disconnect on pagehide/unload
+  w.addEventListener(
+    "pagehide",
+    (e) => {
+      disconnectRacingPlusObserver();
+      if (DEBUG_MODE) console.log("[Racing+]: pagehide fired", { persisted: e.persisted });
+    },
+    { once: true }
+  );
+  w.addEventListener(
+    "beforeunload",
+    //(e) => {
+    () => {
+      disconnectRacingPlusObserver();
+      if (DEBUG_MODE) console.log("[Racing+]: beforeunload fired.");
+    },
+    { once: true }
+  );
+
+  // load initial content
+  await loadOfficialEvents();
+  if (DEBUG_MODE) console.log("[Racing+]: Initialized.");
 })(window);
 
 // End of file: RacingPlus.user.js
