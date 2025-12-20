@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA-Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.20
+// @version      0.99.21
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -21,7 +21,7 @@ const DEFERRAL_LIMIT = 250; // Maximum amount of times the script will defer.
 const DEFERRAL_INTERVAL = 100; // Amount of time in milliseconds deferrals will last.
 
 const API_FETCH_TIMEOUT = 10000; // API request timeout in milliseconds
-const MIN_API_KEY_LENGTH = 8; // Minimum valid API key length
+const API_KEY_LENGTH = 8; // Minimum valid API key length
 
 const HOURS_PER_SECOND = 3600; // Seconds in an hour for speed calculations
 
@@ -451,7 +451,7 @@ const ACCESS_LEVEL = Object.freeze({
      * @returns {Promise<boolean>} True if valid with sufficient access
      */
     async validateKey(api_key) {
-      if (!api_key || typeof api_key !== "string" || api_key.length < MIN_API_KEY_LENGTH) {
+      if (!api_key || typeof api_key !== "string" || api_key.length != API_KEY_LENGTH) {
         if (DEBUG_MODE) console.log("[Racing+]: API key rejected by local validation.");
         return false;
       }
@@ -1072,7 +1072,6 @@ const ACCESS_LEVEL = Object.freeze({
    */
   async function addStyles() {
     if (DEBUG_MODE) console.log("[Racing+]: Adding styles...");
-    if (!doc.head) await new Promise((r) => w.addEventListener("DOMContentLoaded", r, { once: true }));
 
     const s = doc.createElement("style");
     s.innerHTML = `__MINIFIED_CSS__`;
@@ -1119,6 +1118,27 @@ const ACCESS_LEVEL = Object.freeze({
       }
     }
     return el;
+  }
+
+  /**
+   * Creates a label and checkbox with the given id and text.
+   * @param {string} id the div class attribute
+   * @param {string} label the element(s) to inject into the div
+   * @returns {object<HTMLElement>}
+   */
+  function createCheckbox(id, label) {
+    let lbl = doc.createElement("label");
+    lbl.for = id;
+    if (label && typeof label === "string") {
+      lbl.innerText = label;
+    }
+    let div = doc.createElement("div");
+    let chk = doc.createElement("input");
+    chk.type = "checkbox";
+    chk.id = id;
+    div.appendChild(chk);
+
+    return { lbl, div };
   }
 
   /**
@@ -1179,42 +1199,42 @@ const ACCESS_LEVEL = Object.freeze({
     const rplus_panel = doc.createElement("div");
     rplus_panel.id = "racing-plus-panel";
     rplus_panel.appendChild(createDiv("racing-plus-header", "Racing+"));
-    rplus_panel.appendChild(
-      createDiv(
-        "racing-plus-main",
-        createDiv("racing-plus-settings", [
-          '<label for="rplus-apikey">API Key</label>',
-          createDiv("flex-col", [
-            createDiv("nowrap", [
-              IS_PDA
-                ? ""
-                : '<span class="racing-plus-apikey-actions">' +
-                  '<button type="button" class="racing-plus-apikey-save" aria-label="Save">' +
-                  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" version="1.1">' +
-                  '<path fill-rule="evenodd" clip-rule="evenodd" d="M7 2C4.23858 2 2 4.23858 2 7V17C2 19.7614 4.23858 22 7 22H17C19.7614 22 22 19.7614 22 17V8.82843C22 8.03278 21.6839 7.26972 21.1213 6.70711L17.2929 2.87868C16.7303 2.31607 15.9672 2 15.1716 2H7ZM7 4C6.44772 4 6 4.44772 6 5V7C6 7.55228 6.44772 8 7 8H15C15.5523 8 16 7.55228 16 7V5C16 4.44772 15.5523 4 15 4H7ZM12 17C13.6569 17 15 15.6569 15 14C15 12.3431 13.6569 11 12 11C10.3431 11 9 12.3431 9 14C9 15.6569 10.3431 17 12 17Z" />' +
-                  "</svg>" +
-                  "</button>" +
-                  '<button type="button" class="racing-plus-apikey-reset" aria-label="Reset">' +
-                  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" version="1.1">' +
-                  '<path d="M790.2 590.67l105.978 32.29C847.364 783.876 697.86 901 521 901c-216.496 0-392-175.504-392-392s175.504-392 392-392c108.502 0 206.708 44.083 277.685 115.315l-76.64 76.64C670.99 257.13 599.997 225 521.5 225 366.032 225 240 351.032 240 506.5 240 661.968 366.032 788 521.5 788c126.148 0 232.916-82.978 268.7-197.33z"/>' +
-                  '<path d="M855.58 173.003L650.426 363.491l228.569 32.285z"/>' +
-                  "</svg>" +
-                  "</button>" +
-                  "</span>",
-              '<input type="text" id="rplus-apikey" maxlength="16" />',
-            ]),
-            '<span class="racing-plus-apikey-status"></span>',
-          ]),
-          '<label for="rplus_addlinks">Add profile links</label><div><input type="checkbox" id="rplus_addlinks" /></div>',
-          '<label for="rplus_showskill">Show racing skill</label><div><input type="checkbox" id="rplus_showskill" /></div>',
-          '<label for="rplus_showspeed">Show current speed</label><div><input type="checkbox" id="rplus_showspeed" /></div>',
-          '<label for="rplus_showracelink">Add race link</label><div><input type="checkbox" id="rplus_showracelink" /></div>',
-          '<label for="rplus_showexportlink">Add export link</label><div><input type="checkbox" id="rplus_showexportlink" /></div>',
-          '<label for="rplus_showwinrate">Show car win rate</label><div><input type="checkbox" id="rplus_showwinrate" /></div>',
-          '<label for="rplus_showparts">Show available parts</label><div><input type="checkbox" id="rplus_showparts" /></div>',
-        ])
-      )
+
+    const api_actions = createDiv("nowrap", [
+      IS_PDA
+        ? ""
+        : '<span class="racing-plus-apikey-actions">' +
+          '<button type="button" class="racing-plus-apikey-save" aria-label="Save">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" version="1.1">' +
+          '<path fill-rule="evenodd" clip-rule="evenodd" d="M7 2C4.23858 2 2 4.23858 2 7V17C2 19.7614 4.23858 22 7 22H17C19.7614 22 22 19.7614 22 17V8.82843C22 8.03278 21.6839 7.26972 21.1213 6.70711L17.2929 2.87868C16.7303 2.31607 15.9672 2 15.1716 2H7ZM7 4C6.44772 4 6 4.44772 6 5V7C6 7.55228 6.44772 8 7 8H15C15.5523 8 16 7.55228 16 7V5C16 4.44772 15.5523 4 15 4H7ZM12 17C13.6569 17 15 15.6569 15 14C15 12.3431 13.6569 11 12 11C10.3431 11 9 12.3431 9 14C9 15.6569 10.3431 17 12 17Z" />' +
+          "</svg>" +
+          "</button>" +
+          '<button type="button" class="racing-plus-apikey-reset" aria-label="Reset">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" version="1.1">' +
+          '<path d="M790.2 590.67l105.978 32.29C847.364 783.876 697.86 901 521 901c-216.496 0-392-175.504-392-392s175.504-392 392-392c108.502 0 206.708 44.083 277.685 115.315l-76.64 76.64C670.99 257.13 599.997 225 521.5 225 366.032 225 240 351.032 240 506.5 240 661.968 366.032 788 521.5 788c126.148 0 232.916-82.978 268.7-197.33z"/>' +
+          '<path d="M855.58 173.003L650.426 363.491l228.569 32.285z"/>' +
+          "</svg>" +
+          "</button>" +
+          "</span>",
+      `<input type="text" id="rplus-apikey" maxlength="${API_KEY_LENGTH}" />`,
+    ]);
+
+    const rplus_main = createDiv("racing-plus-main");
+    rplus_main.appendChild(
+      createDiv("racing-plus-settings", [
+        '<label for="rplus_apikey">API Key</label>',
+        createDiv("flex-col", [api_actions, '<span class="racing-plus-apikey-status"></span>']),
+        createCheckbox("rplus_addlinks", "Add profile links"),
+        createCheckbox("rplus_showskill", "Show racing skill"),
+        createCheckbox("rplus_showspeed", "Show current speed"),
+        createCheckbox("rplus_showracelink", "Add race link"),
+        createCheckbox("rplus_showexportlink", "Add export link"),
+        createCheckbox("rplus_showwinrate", "Show car win rate"),
+        createCheckbox("rplus_showparts", "Show available parts"),
+      ])
     );
+
+    rplus_panel.appendChild(rplus_main);
     rplus_panel.appendChild(createDiv("racing-plus-footer"));
     main_container.insertAdjacentElement("beforeBegin", rplus_panel);
 
@@ -1353,29 +1373,17 @@ const ACCESS_LEVEL = Object.freeze({
   /* ------------------------------------------------------------------------
    * App lifecycle
    * --------------------------------------------------------------------- */
-  /**
-   * Safely disconnect the page MutationObserver
-   */
-  function disconnectRacingPlusObserver() {
-    try {
-      pageObserver?.disconnect();
-    } catch {
-      console.log("[Racing+]: Page Observer disconnection error.");
-    }
-    pageObserver = null;
-    if (DEBUG_MODE) console.log("[Racing+]: Page Observer disconnected.");
-  }
-
   // Singletons / shared state
   const torn_api = new TornAPI();
   /** @type {TornDriver} */ let this_driver;
   /** @type {TornRace} */ let this_race;
-  /** @type {MutationObserver|null} */ let pageObserver = null;
+  /** @type {MutationObserver|null} */ let page_observer = null;
 
   if (DEBUG_MODE) console.log("[Racing+]: Script loaded. Initializing...");
 
   await addStyles(); // Add CSS
 
+  if (!doc.head) await new Promise((r) => w.addEventListener("DOMContentLoaded", r, { once: true }));
   const header_container = await defer(RACING_HEADER_SELECTOR);
   const main_container = await defer(RACING_MAIN_SELECTOR);
   const race_container = await defer(RACING_ADDITIONAL_SELECTOR); // race is a child of main
@@ -1388,8 +1396,8 @@ const ACCESS_LEVEL = Object.freeze({
   // Add Page observer (track tab changes, race updates, etc.)
   if (DEBUG_MODE) console.log("[Racing+]: Adding Page Observer...");
 
-  // Use the outer-scoped pageObserver.
-  pageObserver = new MutationObserver(async (mutations) => {
+  // Use the outer-scoped page_observer.
+  page_observer = new MutationObserver(async (mutations) => {
     for (const mutation of mutations) {
       // If infospot text changed, update status
       if (mutation.type === "characterData" || mutation.type === "childList") {
@@ -1419,36 +1427,21 @@ const ACCESS_LEVEL = Object.freeze({
     }
   });
 
-  pageObserver.observe(race_container, {
+  page_observer.observe(race_container, {
     characterData: true,
     childList: true,
     subtree: true,
   });
 
-  pageObserver.observe(header_container, {
+  page_observer.observe(header_container, {
     characterData: true,
     childList: true,
     subtree: true,
   });
 
-  // Belt-and-suspenders: disconnect on pagehide/unload
-  w.addEventListener(
-    "pagehide",
-    (e) => {
-      disconnectRacingPlusObserver();
-      if (DEBUG_MODE) console.log("[Racing+]: pagehide fired", { persisted: e.persisted });
-    },
-    { once: true }
-  );
-  w.addEventListener(
-    "beforeunload",
-    //(e) => {
-    () => {
-      disconnectRacingPlusObserver();
-      if (DEBUG_MODE) console.log("[Racing+]: beforeunload fired.");
-    },
-    { once: true }
-  );
+  /** Safely disconnect the page MutationObserver */
+  w.addEventListener("pagehide", () => page_observer.disconnect(), { once: true });
+  w.addEventListener("beforeunload", () => page_observer.disconnect(), { once: true });
 
   // load initial content
   await loadOfficialEvents();

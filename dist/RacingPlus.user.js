@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA-Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.20
+// @version      0.99.21
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -21,7 +21,7 @@ const DEFERRAL_LIMIT = 250; // Maximum amount of times the script will defer.
 const DEFERRAL_INTERVAL = 100; // Amount of time in milliseconds deferrals will last.
 
 const API_FETCH_TIMEOUT = 10000; // API request timeout in milliseconds
-const MIN_API_KEY_LENGTH = 8; // Minimum valid API key length
+const API_KEY_LENGTH = 8; // Minimum valid API key length
 
 const HOURS_PER_SECOND = 3600; // Seconds in an hour for speed calculations
 
@@ -451,7 +451,7 @@ const ACCESS_LEVEL = Object.freeze({
      * @returns {Promise<boolean>} True if valid with sufficient access
      */
     async validateKey(api_key) {
-      if (!api_key || typeof api_key !== "string" || api_key.length < MIN_API_KEY_LENGTH) {
+      if (!api_key || typeof api_key !== "string" || api_key.length != API_KEY_LENGTH) {
         if (DEBUG_MODE) console.log("[Racing+]: API key rejected by local validation.");
         return false;
       }
@@ -1072,7 +1072,6 @@ const ACCESS_LEVEL = Object.freeze({
    */
   async function addStyles() {
     if (DEBUG_MODE) console.log("[Racing+]: Adding styles...");
-    if (!doc.head) await new Promise((r) => w.addEventListener("DOMContentLoaded", r, { once: true }));
 
     const s = doc.createElement("style");
     s.innerHTML = `.d .racing-plus-footer::before,.d .racing-plus-header::after{position:absolute;display:block;content:"";height:0;width:100%;left:0}.d .racing-plus-window{margin:10px 0;padding:0;display:none}.d .racing-plus-window .show{display:block}.d .racing-plus-header{position:relative;padding-left:10px;height:30px;line-height:30px;font-size:12px;font-weight:700;letter-spacing:0;text-shadow:0 0 2px rgba(0,0,0,.5019607843);text-shadow:var(--tutorial-title-shadow);color:#fff;color:var(--tutorial-title-color);border:0!important;border-radius:5px 5px 0 0;background:linear-gradient(180deg,#888 0,#444 100%)}.d.dark-mode .racing-plus-header{background:linear-gradient(180deg,#555 0,#333 100%)}.d .racing-plus-header::after{bottom:-1px;border-top:1px solid #999;border-bottom:1px solid #ebebeb}.d.dark-mode .racing-plus-header::after{border-bottom:1px solid #222;border-top:1px solid #444}.d .racing-plus-footer{position:relative;margin:0;padding:0;height:10px;border:0!important;border-radius:0 0 5px 5px;background:linear-gradient(0deg,#888 0,#444 100%)}.d.dark-mode .racing-plus-footer{background:linear-gradient(0deg,#555 0,#333 100%)}.d .racing-plus-footer::before{top:-1px;border-bottom:1px solid #999;border-top:1px solid #ebebeb}.d.dark-mode .racing-plus-footer::before{border-top:1px solid #222;border-bottom:1px solid #444}.d .racing-plus-main{margin:0;padding:5px 10px;background-color:#f2f2f2}.d.dark-mode .racing-plus-main{background-color:#2e2e2e}.d .racing-plus-settings{display:grid;grid-template-columns:auto min-content;grid-template-rows:repeat(6,min-content);gap:0}.d .racing-plus-settings label{padding:6px 5px;font-size:.7rem;white-space:nowrap}.d .racing-plus-settings div{padding:0 5px;font-size:.7rem;text-align:right;position:relative}.d .racing-plus-settings div.flex-col{padding:6px 0 0}.d .racing-plus-settings div,.d .racing-plus-settings label{border-bottom:2px groove #ebebeb}.d.dark-mode .racing-plus-settings div,.d.dark-mode .racing-plus-settings label{border-bottom:2px groove #444}.d .racing-plus-settings div:last-of-type,.d .racing-plus-settings label:last-of-type{border-bottom:0}.d .racing-plus-settings div input[type=checkbox]{vertical-align:middle;height:11px;margin:5px 0}#rplus-apikey{text-align:right;vertical-align:middle;width:120px;height:13px;margin:0;padding:0 4px;border-radius:3px;border:1px solid #ccc;border-color:var(--input-disabled-border-color)}#rplus-apikey .valid{border-color:#0c0!important}#rplus-apikey .invalid{border-color:red!important}.d .flex-col{display:flex;flex-direction:column}.d .nowrap{white-space:nowrap!important}.d .racing-plus-apikey-actions{margin-right:10px;vertical-align:middle}.d .racing-plus-apikey-status{vertical-align:middle;color:red;padding:5px;font-size:.6rem}.d .racing-plus-apikey-reset,.d .racing-plus-apikey-save{cursor:pointer;vertical-align:middle;margin:0 0 2px;padding:0;height:15px;width:15px;display:none}.d .racing-plus-apikey-reset.show,.d .racing-plus-apikey-save.show{display:inline-block!important}.d .racing-plus-apikey-reset svg path,.d .racing-plus-apikey-save svg path{fill:#666;fill:var(--top-links-icon-svg-fill);filter:drop-shadow(0 1px 0 rgba(255, 255, 255, .6509803922));filter:var(--top-links-icon-svg-shadow)}.d .racing-plus-apikey-reset:hover svg path,.d .racing-plus-apikey-save:hover svg path{fill:#444;fill:var(--top-links-icon-svg-hover-fill);filter:drop-shadow(0 1px 0 rgba(255, 255, 255, .6509803922));filter:var(--top-links-icon-svg-hover-shadow)}.d .racing-plus-parts-available{display:flex;flex-direction:row;gap:10px;font-style:italic;padding:10px;font-size:.7rem;background:url("/images/v2/racing/header/stripy_bg.png") #2e2e2e}.d .left-banner,.d .right-banner{height:57px;top:44px;position:absolute;border-top:1px solid #424242;border-bottom:1px solid #424242;background:url("/images/v2/racing/header/stripy_bg.png")}.d .racing-plus-parts-available::after{position:absolute;left:0;bottom:-1px;content:"";display:block;height:0;width:100%;border-bottom:1px solid #222;border-top:1px solid #444}.d .racing-plus-link-wrap .export-link,.d .racing-plus-link-wrap .race-link{width:20px;float:right;filter:drop-shadow(0 0 1px rgba(17, 17, 17, .5803921569));height:20px}.d .pm-categories .link .icons .parts{position:absolute;bottom:5px;left:5px;color:#00bfff}.d .pm-categories .link .icons .parts.bought{color:#0c0}.d .racing-main-wrap .pm-items-wrap .part-wrap .l-delimiter,.d .racing-main-wrap .pm-items-wrap .part-wrap .r-delimiter,.d .racing-main-wrap .pm-items-wrap .pm-items>li .b-delimiter{height:0!important;width:0!important}.d .racing-main-wrap .pm-items-wrap .pm-items .active .properties-wrap>li .name,.d .racing-main-wrap .pm-items-wrap .pm-items .active .properties-wrap>li .progress-bar,.d .racing-main-wrap .pm-items-wrap .pm-items .bought .properties-wrap>li .name,.d .racing-main-wrap .pm-items-wrap .pm-items .bought .properties-wrap>li .progress-bar{background:unset!important}.d .racing-main-wrap .pm-items-wrap .pm-items .active,.d .racing-main-wrap .pm-items-wrap .pm-items .active .title{background:rgba(0,191,255,.07)}.d .racing-main-wrap .pm-items-wrap .pm-items .active .info{color:#00bfff}.d .racing-main-wrap .pm-items-wrap .pm-items .name .positive{color:#9c0}.d .racing-main-wrap .pm-items-wrap .pm-items .active .name .positive{color:#00a9f9}.d .racing-main-wrap .pm-items-wrap .pm-items .name .negative{color:#e54c19}.d .racing-main-wrap .pm-items-wrap .pm-items .active .name .negative{color:#ca9800}.d .racing-main-wrap .pm-items-wrap .pm-items .bought,.d .racing-main-wrap .pm-items-wrap .pm-items .bought .title{background:rgba(133,178,0,.07)}.d .racing-main-wrap .pm-items-wrap .pm-items .bought .desc{color:#85b200}.d .racing-plus-link-wrap{cursor:pointer;float:right}.d .racing-plus-link-wrap .race-link{margin:4px 5px 6px}.d .racing-plus-link-wrap .export-link:hover,.d .racing-plus-link-wrap .race-link:hover{filter:drop-shadow(1px 1px 1px rgba(17, 17, 17, .5803921569))}.d .racing-plus-link-wrap .export-link{margin:5px}.d .racing-main-wrap .car-selected-wrap #drivers-scrollbar{overflow:hidden!important;max-height:none!important}.d .racing-main-wrap .car-selected-wrap .driver-item>li.status-wrap .status{margin:5px!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item{font-size:.7rem!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.car{padding:0 5px}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name{width:unset!important;display:flex;align-items:center;flex-grow:1;border-right:0}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name a{flex-basis:fit-content;width:unset!important;height:20px;padding:0;margin:0;display:block;text-decoration:none}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name a:hover{text-decoration:underline}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span{display:block;flex-basis:fit-content;width:unset!important;height:20px;line-height:1.3rem;font-size:.7rem;padding:0 7px;margin:0;border-radius:3px;white-space:nowrap;color:#fff;background:rgba(0,0,0,.25)}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-1{background:rgba(116,232,0,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-2{background:rgba(255,38,38,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-3{background:rgba(255,201,38,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-4{background:rgba(0,217,217,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-5{background:rgba(0,128,255,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-6{background:rgba(153,51,255,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-7{background:rgba(255,38,255,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-8{background:rgba(85,85,85,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-9{background:rgba(242,141,141,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-10{background:rgba(225,201,25,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-11{background:rgba(160,207,23,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-12{background:rgba(24,217,217,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-13{background:rgba(111,175,238,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-14{background:rgba(176,114,239,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-15{background:rgba(240,128,240,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-16{background:rgba(97,97,97,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-17{background:rgba(178,0,0,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-18{background:rgba(204,153,0,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-19{background:rgba(78,155,0,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-20{background:rgba(0,157,157,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-21{background:rgba(0,0,183,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name span.color-22{background:rgba(140,0,140,.5019607843)!important}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name div.statistics{display:flex;flex-grow:1;list-style:none;align-items:center;justify-content:space-between;padding:0 10px;margin:0}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.time{display:none}.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name div.statistics div,.d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item>li.name li.time{flex-basis:fit-content;line-height:22px;height:22px;width:unset!important;padding:0 5px;margin:0;border-radius:3px;white-space:nowrap;background-color:rgba(0,0,0,.25)}.d .left-banner{width:150px;left:0;border-right:1px solid #424242;border-top-right-radius:5px;border-bottom-right-radius:5px;box-shadow:5px 0 10px -2px rgba(0,0,0,.5),0 5px 10px -2px rgba(0,0,0,.5)}.d .racing-main-wrap .header-wrap .banner .skill-desc{width:130px!important;top:15px!important;left:8px!important;font-size:1rem!important}.d .racing-main-wrap .header-wrap .banner .skill{top:33px!important;left:10px!important;font-size:.8rem!important}.d .racing-main-wrap .header-wrap .banner .lastgain{top:33px;left:75px;color:#0f0;position:absolute;font-size:.6rem!important}.d .right-banner{width:115px;right:0;border-left:1px solid #424242;border-top-left-radius:5px;border-bottom-left-radius:5px;box-shadow:-5px 0 10px -2px rgba(0,0,0,.5),0 5px 10px -2px rgba(0,0,0,.5)}.d .racing-main-wrap .header-wrap .banner .class-desc{right:40px!important;top:23px!important;font-size:1rem!important}.d .racing-main-wrap .header-wrap .banner .class-letter{right:12px!important;top:22px!important;font-size:1.5rem!important}@media screen and (max-width:784px){.d .racing-main-wrap .header-wrap .banner .class-desc,.d .racing-main-wrap .header-wrap .banner .skill-desc{font-size:.8rem!important;top:10px!important}.d .racing-main-wrap .header-wrap .banner .skill{top:10px!important;left:125px!important}.d .racing-main-wrap .header-wrap .banner .lastgain{top:10px!important;left:190px}.d .racing-main-wrap .header-wrap .banner .class-letter{top:10px!important;font-size:1.25rem!important}.d .left-banner,.d .right-banner{top:0;background-image:none!important;border:none!important;box-shadow:none!important}}`;
@@ -1119,6 +1118,27 @@ const ACCESS_LEVEL = Object.freeze({
       }
     }
     return el;
+  }
+
+  /**
+   * Creates a label and checkbox with the given id and text.
+   * @param {string} id the div class attribute
+   * @param {string} label the element(s) to inject into the div
+   * @returns {object<HTMLElement>}
+   */
+  function createCheckbox(id, label) {
+    let lbl = doc.createElement("label");
+    lbl.for = id;
+    if (label && typeof label === "string") {
+      lbl.innerText = label;
+    }
+    let div = doc.createElement("div");
+    let chk = doc.createElement("input");
+    chk.type = "checkbox";
+    chk.id = id;
+    div.appendChild(chk);
+
+    return { lbl, div };
   }
 
   /**
@@ -1179,42 +1199,42 @@ const ACCESS_LEVEL = Object.freeze({
     const rplus_panel = doc.createElement("div");
     rplus_panel.id = "racing-plus-panel";
     rplus_panel.appendChild(createDiv("racing-plus-header", "Racing+"));
-    rplus_panel.appendChild(
-      createDiv(
-        "racing-plus-main",
-        createDiv("racing-plus-settings", [
-          '<label for="rplus-apikey">API Key</label>',
-          createDiv("flex-col", [
-            createDiv("nowrap", [
-              IS_PDA
-                ? ""
-                : '<span class="racing-plus-apikey-actions">' +
-                  '<button type="button" class="racing-plus-apikey-save" aria-label="Save">' +
-                  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" version="1.1">' +
-                  '<path fill-rule="evenodd" clip-rule="evenodd" d="M7 2C4.23858 2 2 4.23858 2 7V17C2 19.7614 4.23858 22 7 22H17C19.7614 22 22 19.7614 22 17V8.82843C22 8.03278 21.6839 7.26972 21.1213 6.70711L17.2929 2.87868C16.7303 2.31607 15.9672 2 15.1716 2H7ZM7 4C6.44772 4 6 4.44772 6 5V7C6 7.55228 6.44772 8 7 8H15C15.5523 8 16 7.55228 16 7V5C16 4.44772 15.5523 4 15 4H7ZM12 17C13.6569 17 15 15.6569 15 14C15 12.3431 13.6569 11 12 11C10.3431 11 9 12.3431 9 14C9 15.6569 10.3431 17 12 17Z" />' +
-                  "</svg>" +
-                  "</button>" +
-                  '<button type="button" class="racing-plus-apikey-reset" aria-label="Reset">' +
-                  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" version="1.1">' +
-                  '<path d="M790.2 590.67l105.978 32.29C847.364 783.876 697.86 901 521 901c-216.496 0-392-175.504-392-392s175.504-392 392-392c108.502 0 206.708 44.083 277.685 115.315l-76.64 76.64C670.99 257.13 599.997 225 521.5 225 366.032 225 240 351.032 240 506.5 240 661.968 366.032 788 521.5 788c126.148 0 232.916-82.978 268.7-197.33z"/>' +
-                  '<path d="M855.58 173.003L650.426 363.491l228.569 32.285z"/>' +
-                  "</svg>" +
-                  "</button>" +
-                  "</span>",
-              '<input type="text" id="rplus-apikey" maxlength="16" />',
-            ]),
-            '<span class="racing-plus-apikey-status"></span>',
-          ]),
-          '<label for="rplus_addlinks">Add profile links</label><div><input type="checkbox" id="rplus_addlinks" /></div>',
-          '<label for="rplus_showskill">Show racing skill</label><div><input type="checkbox" id="rplus_showskill" /></div>',
-          '<label for="rplus_showspeed">Show current speed</label><div><input type="checkbox" id="rplus_showspeed" /></div>',
-          '<label for="rplus_showracelink">Add race link</label><div><input type="checkbox" id="rplus_showracelink" /></div>',
-          '<label for="rplus_showexportlink">Add export link</label><div><input type="checkbox" id="rplus_showexportlink" /></div>',
-          '<label for="rplus_showwinrate">Show car win rate</label><div><input type="checkbox" id="rplus_showwinrate" /></div>',
-          '<label for="rplus_showparts">Show available parts</label><div><input type="checkbox" id="rplus_showparts" /></div>',
-        ])
-      )
+
+    const api_actions = createDiv("nowrap", [
+      IS_PDA
+        ? ""
+        : '<span class="racing-plus-apikey-actions">' +
+          '<button type="button" class="racing-plus-apikey-save" aria-label="Save">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" version="1.1">' +
+          '<path fill-rule="evenodd" clip-rule="evenodd" d="M7 2C4.23858 2 2 4.23858 2 7V17C2 19.7614 4.23858 22 7 22H17C19.7614 22 22 19.7614 22 17V8.82843C22 8.03278 21.6839 7.26972 21.1213 6.70711L17.2929 2.87868C16.7303 2.31607 15.9672 2 15.1716 2H7ZM7 4C6.44772 4 6 4.44772 6 5V7C6 7.55228 6.44772 8 7 8H15C15.5523 8 16 7.55228 16 7V5C16 4.44772 15.5523 4 15 4H7ZM12 17C13.6569 17 15 15.6569 15 14C15 12.3431 13.6569 11 12 11C10.3431 11 9 12.3431 9 14C9 15.6569 10.3431 17 12 17Z" />' +
+          "</svg>" +
+          "</button>" +
+          '<button type="button" class="racing-plus-apikey-reset" aria-label="Reset">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" version="1.1">' +
+          '<path d="M790.2 590.67l105.978 32.29C847.364 783.876 697.86 901 521 901c-216.496 0-392-175.504-392-392s175.504-392 392-392c108.502 0 206.708 44.083 277.685 115.315l-76.64 76.64C670.99 257.13 599.997 225 521.5 225 366.032 225 240 351.032 240 506.5 240 661.968 366.032 788 521.5 788c126.148 0 232.916-82.978 268.7-197.33z"/>' +
+          '<path d="M855.58 173.003L650.426 363.491l228.569 32.285z"/>' +
+          "</svg>" +
+          "</button>" +
+          "</span>",
+      `<input type="text" id="rplus-apikey" maxlength="${API_KEY_LENGTH}" />`,
+    ]);
+
+    const rplus_main = createDiv("racing-plus-main");
+    rplus_main.appendChild(
+      createDiv("racing-plus-settings", [
+        '<label for="rplus_apikey">API Key</label>',
+        createDiv("flex-col", [api_actions, '<span class="racing-plus-apikey-status"></span>']),
+        createCheckbox("rplus_addlinks", "Add profile links"),
+        createCheckbox("rplus_showskill", "Show racing skill"),
+        createCheckbox("rplus_showspeed", "Show current speed"),
+        createCheckbox("rplus_showracelink", "Add race link"),
+        createCheckbox("rplus_showexportlink", "Add export link"),
+        createCheckbox("rplus_showwinrate", "Show car win rate"),
+        createCheckbox("rplus_showparts", "Show available parts"),
+      ])
     );
+
+    rplus_panel.appendChild(rplus_main);
     rplus_panel.appendChild(createDiv("racing-plus-footer"));
     main_container.insertAdjacentElement("beforeBegin", rplus_panel);
 
@@ -1353,29 +1373,17 @@ const ACCESS_LEVEL = Object.freeze({
   /* ------------------------------------------------------------------------
    * App lifecycle
    * --------------------------------------------------------------------- */
-  /**
-   * Safely disconnect the page MutationObserver
-   */
-  function disconnectRacingPlusObserver() {
-    try {
-      pageObserver?.disconnect();
-    } catch {
-      console.log("[Racing+]: Page Observer disconnection error.");
-    }
-    pageObserver = null;
-    if (DEBUG_MODE) console.log("[Racing+]: Page Observer disconnected.");
-  }
-
   // Singletons / shared state
   const torn_api = new TornAPI();
   /** @type {TornDriver} */ let this_driver;
   /** @type {TornRace} */ let this_race;
-  /** @type {MutationObserver|null} */ let pageObserver = null;
+  /** @type {MutationObserver|null} */ let page_observer = null;
 
   if (DEBUG_MODE) console.log("[Racing+]: Script loaded. Initializing...");
 
   await addStyles(); // Add CSS
 
+  if (!doc.head) await new Promise((r) => w.addEventListener("DOMContentLoaded", r, { once: true }));
   const header_container = await defer(RACING_HEADER_SELECTOR);
   const main_container = await defer(RACING_MAIN_SELECTOR);
   const race_container = await defer(RACING_ADDITIONAL_SELECTOR); // race is a child of main
@@ -1388,8 +1396,8 @@ const ACCESS_LEVEL = Object.freeze({
   // Add Page observer (track tab changes, race updates, etc.)
   if (DEBUG_MODE) console.log("[Racing+]: Adding Page Observer...");
 
-  // Use the outer-scoped pageObserver.
-  pageObserver = new MutationObserver(async (mutations) => {
+  // Use the outer-scoped page_observer.
+  page_observer = new MutationObserver(async (mutations) => {
     for (const mutation of mutations) {
       // If infospot text changed, update status
       if (mutation.type === "characterData" || mutation.type === "childList") {
@@ -1419,36 +1427,21 @@ const ACCESS_LEVEL = Object.freeze({
     }
   });
 
-  pageObserver.observe(race_container, {
+  page_observer.observe(race_container, {
     characterData: true,
     childList: true,
     subtree: true,
   });
 
-  pageObserver.observe(header_container, {
+  page_observer.observe(header_container, {
     characterData: true,
     childList: true,
     subtree: true,
   });
 
-  // Belt-and-suspenders: disconnect on pagehide/unload
-  w.addEventListener(
-    "pagehide",
-    (e) => {
-      disconnectRacingPlusObserver();
-      if (DEBUG_MODE) console.log("[Racing+]: pagehide fired", { persisted: e.persisted });
-    },
-    { once: true }
-  );
-  w.addEventListener(
-    "beforeunload",
-    //(e) => {
-    () => {
-      disconnectRacingPlusObserver();
-      if (DEBUG_MODE) console.log("[Racing+]: beforeunload fired.");
-    },
-    { once: true }
-  );
+  /** Safely disconnect the page MutationObserver */
+  w.addEventListener("pagehide", () => page_observer.disconnect(), { once: true });
+  w.addEventListener("beforeunload", () => page_observer.disconnect(), { once: true });
 
   // load initial content
   await loadOfficialEvents();
