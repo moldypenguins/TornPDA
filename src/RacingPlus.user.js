@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.28
+// @version      0.99.30
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -13,6 +13,11 @@
 // @run-at       document-start
 // ==/UserScript==
 
+const SCRIPT_START = Date.now();
+
+/* ------------------------------------------------------------------------
+ * Logger
+ * --------------------------------------------------------------------- */
 /**
  * Log level enumeration
  * @readonly
@@ -25,6 +30,56 @@ const LOG_LEVEL = Object.freeze({
   ERROR: 40,
   SILENT: 50,
 });
+
+/**
+ * Logger
+ * @class
+ */
+class Logger {
+  /**
+   * private levelOrder - Lowercased name->number lookup derived from LogLevel.
+   */
+  static _levelOrder = Object.freeze(Object.fromEntries(Object.entries(LOG_LEVEL).map(([k, v]) => [k.toLowerCase(), v])));
+
+  /**
+   * private shouldLog - Returns true if the given level passes the current LOG_MODE threshold.
+   */
+  static _shouldLog(level) {
+    const current = Logger._levelOrder[String(LOG_MODE).toLowerCase()] ?? Logger._levelOrder.info;
+    const incoming = Logger._levelOrder[String(level).toLowerCase()] ?? Logger._levelOrder.info;
+    return incoming >= current && current < Logger._levelOrder.silent;
+  }
+  /**
+   *  debug
+   */
+  static debug(...args) {
+    if (!Logger._shouldLog("debug")) return;
+    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#9aa0a6;font-weight:600", ...args);
+  }
+  /**
+   *  info - Logs an info-level message.
+   */
+  static info(...args) {
+    if (!Logger._shouldLog("info")) return;
+    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#1a73e8;font-weight:600", ...args);
+  }
+  /**
+   *  warn - Logs a warning-level message.
+   */
+  static warn(...args) {
+    if (!Logger._shouldLog("warn")) return;
+    console.log("%c[WARN][TornPDA.Racing+]: ", "color:#f9ab00;font-weight:600", ...args);
+  }
+  /**
+   *  error - Logs an error-level message.
+   */
+  static error(...args) {
+    if (!Logger._shouldLog("error")) return;
+    console.log("%c[ERROR][TornPDA.Racing+]: ", "color:#d93025;font-weight:600", ...args);
+  }
+}
+
+Logger.info(`Application starting... ${SCRIPT_START}`);
 
 /* ------------------------------------------------------------------------
  * Constants
@@ -62,7 +117,6 @@ if (!Date.unix) {
     enumerable: false,
   });
 }
-//console.log(`Operation took ${end.getTime() - start.getTime()} msec`);
 
 /**
  * Number.isFloat - returns true for number primitives (excludes NaN).
@@ -233,57 +287,6 @@ class Speed {
 }
 
 /* ------------------------------------------------------------------------
- * Logger
- * --------------------------------------------------------------------- */
-/**
- * Logger
- * @class
- */
-class Logger {
-  /**
-   * private levelOrder - Lowercased name->number lookup derived from LogLevel.
-   */
-  static _levelOrder = Object.freeze(Object.fromEntries(Object.entries(LOG_LEVEL).map(([k, v]) => [k.toLowerCase(), v])));
-
-  /**
-   * private shouldLog - Returns true if the given level passes the current LOG_MODE threshold.
-   */
-  static _shouldLog(level) {
-    const current = Logger._levelOrder[String(LOG_MODE).toLowerCase()] ?? Logger._levelOrder.info;
-    const incoming = Logger._levelOrder[String(level).toLowerCase()] ?? Logger._levelOrder.info;
-    return incoming >= current && current < Logger._levelOrder.silent;
-  }
-  /**
-   *  debug
-   */
-  static debug(...args) {
-    if (!Logger._shouldLog("debug")) return;
-    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#9aa0a6;font-weight:600", ...args);
-  }
-  /**
-   *  info - Logs an info-level message.
-   */
-  static info(...args) {
-    if (!Logger._shouldLog("info")) return;
-    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#1a73e8;font-weight:600", ...args);
-  }
-  /**
-   *  warn - Logs a warning-level message.
-   */
-  static warn(...args) {
-    if (!Logger._shouldLog("warn")) return;
-    console.log("%c[WARN][TornPDA.Racing+]: ", "color:#f9ab00;font-weight:600", ...args);
-  }
-  /**
-   *  error - Logs an error-level message.
-   */
-  static error(...args) {
-    if (!Logger._shouldLog("error")) return;
-    console.log("%c[ERROR][TornPDA.Racing+]: ", "color:#d93025;font-weight:600", ...args);
-  }
-}
-
-/* ------------------------------------------------------------------------
  * Torn racing data
  * --------------------------------------------------------------------- */
 // Colours for car parts.
@@ -340,6 +343,7 @@ const ACCESS_LEVEL = Object.freeze({
  * --------------------------------------------------------------------- */
 (async (w) => {
   ("use strict");
+  Logger.info(`Application started. Loading... ${Date.now() - SCRIPT_START} msec`);
 
   const doc = w.document;
   const loc = w.location;
@@ -1272,13 +1276,14 @@ const ACCESS_LEVEL = Object.freeze({
     ]);
 
     const flex_div = createDiv("flex-col", [api_actions, '<span class="racing-plus-apikey-status"></span>']);
+    const add_links = createCheckbox("rplus_addlinks", "Add profile links");
 
     const rplus_main = createDiv("racing-plus-main");
     rplus_main.appendChild(
       createDiv("racing-plus-settings", [
         '<label for="rplus_apikey">API Key</label>',
         flex_div,
-        createCheckbox("rplus_addlinks", "Add profile links"),
+        add_links,
         createCheckbox("rplus_showskill", "Show racing skill"),
         createCheckbox("rplus_showspeed", "Show current speed"),
         createCheckbox("rplus_showracelink", "Add race link"),
@@ -1394,7 +1399,7 @@ const ACCESS_LEVEL = Object.freeze({
       // Add the Racing+ button to the DOM
       await addRacingPlusButton(header_container);
     } catch (err) {
-      console.log(`Racing+ Error: ${err}`);
+      Logger.error(`Racing+ Error: ${err}`);
     }
 
     // Normalize the top banner structure & update skill snapshot
@@ -1433,7 +1438,7 @@ const ACCESS_LEVEL = Object.freeze({
   /** @type {TornRace} */ let this_race;
   /** @type {MutationObserver|null} */ let page_observer = null;
 
-  Logger.debug("Script loaded. Initializing...");
+  Logger.info(`Application loaded. Initializing. ${Date.now() - SCRIPT_START} msec`);
 
   await addStyles(); // Add CSS
 
@@ -1499,7 +1504,7 @@ const ACCESS_LEVEL = Object.freeze({
 
   // load initial content
   await loadOfficialEvents();
-  Logger.debug("Initialization complete.");
+  Logger.info(`Application initialized. ${Date.now() - SCRIPT_START} msec`);
 })(window);
 
 // End of file: RacingPlus.user.js
