@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA-Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.17
+// @version      0.99.18
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1099,7 +1099,7 @@ const ACCESS_LEVEL = Object.freeze({
    * Creates a div HTML element with the given className.
    * @param {string} className the div class attribute
    * @param {object} innerHTML the elements to inject into the div
-   * @returns {object} DOM Element
+   * @returns {HTMLDivElement} HTMLDivElement
    */
   function createDiv(className = "", innerHTML = null) {
     let el = doc.createElement("div");
