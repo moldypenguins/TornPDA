@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.33
+// @version      0.99.35
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1170,7 +1170,7 @@ const ACCESS_LEVEL = Object.freeze({
       if (typeof innerHTML === "object" && innerHTML instanceof Array) {
         for (const inner of innerHTML) {
           if (typeof inner === "string") {
-            el.innerHTML += innerHTML;
+            el.innerHTML += inner;
           } else {
             el.appendChild(inner);
           }
@@ -1260,31 +1260,32 @@ const ACCESS_LEVEL = Object.freeze({
     rplus_panel.id = "racing-plus-panel";
     rplus_panel.appendChild(createDiv("racing-plus-header", "Racing+"));
 
+    const api_actions = createDiv("nowrap", [
+      IS_PDA
+        ? ""
+        : '<span class="racing-plus-apikey-actions">' +
+          '<button type="button" class="racing-plus-apikey-save" aria-label="Save">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" version="1.1">' +
+          '<path fill-rule="evenodd" clip-rule="evenodd" d="M7 2C4.23858 2 2 4.23858 2 7V17C2 19.7614 4.23858 22 7 22H17C19.7614 22 22 19.7614 22 17V8.82843C22 8.03278 21.6839 7.26972 21.1213 6.70711L17.2929 2.87868C16.7303 2.31607 15.9672 2 15.1716 2H7ZM7 4C6.44772 4 6 4.44772 6 5V7C6 7.55228 6.44772 8 7 8H15C15.5523 8 16 7.55228 16 7V5C16 4.44772 15.5523 4 15 4H7ZM12 17C13.6569 17 15 15.6569 15 14C15 12.3431 13.6569 11 12 11C10.3431 11 9 12.3431 9 14C9 15.6569 10.3431 17 12 17Z" />' +
+          "</svg>" +
+          "</button>" +
+          '<button type="button" class="racing-plus-apikey-reset" aria-label="Reset">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" version="1.1">' +
+          '<path d="M790.2 590.67l105.978 32.29C847.364 783.876 697.86 901 521 901c-216.496 0-392-175.504-392-392s175.504-392 392-392c108.502 0 206.708 44.083 277.685 115.315l-76.64 76.64C670.99 257.13 599.997 225 521.5 225 366.032 225 240 351.032 240 506.5 240 661.968 366.032 788 521.5 788c126.148 0 232.916-82.978 268.7-197.33z"/>' +
+          '<path d="M855.58 173.003L650.426 363.491l228.569 32.285z"/>' +
+          "</svg>" +
+          "</button>" +
+          "</span>",
+      `<input type="text" id="rplus-apikey" maxlength="${API_KEY_LENGTH}" />`,
+    ]);
+
+    const flex_div = createDiv("flex-col", [api_actions, '<span class="racing-plus-apikey-status"></span>']);
+
     const rplus_main = createDiv("racing-plus-main");
     rplus_main.appendChild(
       createDiv("racing-plus-settings", [
         '<label for="rplus_apikey">API Key</label>',
-        createDiv("flex-col", [
-          createDiv("nowrap", [
-            IS_PDA
-              ? ""
-              : '<span class="racing-plus-apikey-actions">' +
-                '<button type="button" class="racing-plus-apikey-save" aria-label="Save">' +
-                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" version="1.1">' +
-                '<path fill-rule="evenodd" clip-rule="evenodd" d="M7 2C4.23858 2 2 4.23858 2 7V17C2 19.7614 4.23858 22 7 22H17C19.7614 22 22 19.7614 22 17V8.82843C22 8.03278 21.6839 7.26972 21.1213 6.70711L17.2929 2.87868C16.7303 2.31607 15.9672 2 15.1716 2H7ZM7 4C6.44772 4 6 4.44772 6 5V7C6 7.55228 6.44772 8 7 8H15C15.5523 8 16 7.55228 16 7V5C16 4.44772 15.5523 4 15 4H7ZM12 17C13.6569 17 15 15.6569 15 14C15 12.3431 13.6569 11 12 11C10.3431 11 9 12.3431 9 14C9 15.6569 10.3431 17 12 17Z" />' +
-                "</svg>" +
-                "</button>" +
-                '<button type="button" class="racing-plus-apikey-reset" aria-label="Reset">' +
-                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" version="1.1">' +
-                '<path d="M790.2 590.67l105.978 32.29C847.364 783.876 697.86 901 521 901c-216.496 0-392-175.504-392-392s175.504-392 392-392c108.502 0 206.708 44.083 277.685 115.315l-76.64 76.64C670.99 257.13 599.997 225 521.5 225 366.032 225 240 351.032 240 506.5 240 661.968 366.032 788 521.5 788c126.148 0 232.916-82.978 268.7-197.33z"/>' +
-                '<path d="M855.58 173.003L650.426 363.491l228.569 32.285z"/>' +
-                "</svg>" +
-                "</button>" +
-                "</span>",
-            `<input type="text" id="rplus-apikey" maxlength="${API_KEY_LENGTH}" />`,
-          ]),
-          '<span class="racing-plus-apikey-status"></span>',
-        ]),
+        flex_div,
         createCheckbox("rplus_addlinks", "Add profile links"),
         createCheckbox("rplus_showskill", "Show racing skill"),
         createCheckbox("rplus_showspeed", "Show current speed"),
@@ -1294,6 +1295,7 @@ const ACCESS_LEVEL = Object.freeze({
         createCheckbox("rplus_showparts", "Show available parts"),
       ])
     );
+
     rplus_panel.appendChild(rplus_main);
     rplus_panel.appendChild(createDiv("racing-plus-footer"));
     main_container.insertAdjacentElement("beforeBegin", rplus_panel);
