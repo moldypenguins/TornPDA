@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.25
+// @version      0.99.26
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -12,6 +12,19 @@
 // @connect      api.torn.com
 // @run-at       document-start
 // ==/UserScript==
+
+/**
+ * Log level enumeration
+ * @readonly
+ * @enum {number}
+ */
+const LOG_LEVEL = Object.freeze({
+  DEBUG: 10,
+  INFO: 20,
+  WARN: 30,
+  ERROR: 40,
+  SILENT: 50,
+});
 
 /* ------------------------------------------------------------------------
  * Constants
@@ -222,19 +235,6 @@ class Speed {
 /* ------------------------------------------------------------------------
  * Logger
  * --------------------------------------------------------------------- */
-/**
- * Log level enumeration
- * @readonly
- * @enum {number}
- */
-const LOG_LEVEL = Object.freeze({
-  DEBUG: 10,
-  INFO: 20,
-  WARN: 30,
-  ERROR: 40,
-  SILENT: 50,
-});
-
 /**
  * Logger
  * @class
