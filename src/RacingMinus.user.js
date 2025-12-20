@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - RacingMinus
 // @namespace    TornPDA
-// @version      0.58
+// @version      0.59
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -14,12 +14,7 @@
 // ==/UserScript==
 
 (async () => {
-  "use strict";
-
-  //TODO:
-  // fix xmlhttp monkey
-  // fix export link
-  // test fix best lap
+  ("use strict");
 
   // TornPDA
   const API_KEY = "###PDA-APIKEY###";
@@ -118,14 +113,13 @@
       let apikey = PDA.isTornPDA(API_KEY) ?? apiinput.value;
       if (apikey) {
         // Attempt to call the API to retrieve the server time
-        let servertime = await torn_api(apikey, "user/timestamp", { timestamp: Math.floor(Date.now() / 1000).toString() });
+        let servertime = await torn_api(apikey, "user/timestamp", {
+          timestamp: Math.floor(Date.now() / 1000).toString(),
+        });
         if (servertime) {
           // Save API key
           if (save) {
             PDA.setValue("rplus_apikey", `${document.querySelector("#rplus_apikey").value}`);
-            if (DEBUG_MODE) {
-              console.log("Racing+: rplus_apikey saved.");
-            }
           }
           // Lock text input
           await setAPIKeyDisplay({ valid: true });
@@ -184,10 +178,51 @@
     }
   };
 
-  const initializeRacingPlus = async () => {
-    if (DEBUG_MODE) {
-      console.log("Racing+: Initializing...");
+  const addRacingPlusButton = async () => {
+    // Check if button already exists
+    if (document.querySelector("#racing-plus-button")) {
+      return;
     }
+
+    let links_container = document.querySelector("#racing-leaderboard-header-root div[class^='linksContainer']");
+
+    if (!links_container) {
+      return;
+    }
+
+    let city_button = links_container.firstChild;
+    if (!city_button) {
+      return;
+    }
+
+    let city_label = city_button.querySelector(`#${city_button.getAttribute("aria-labelledby")}`);
+    let city_icon_wrap = city_button.querySelector(`:not([id])`);
+
+    if (!city_label || !city_icon_wrap) {
+      return;
+    }
+
+    let rplus_button_html = `<a id="racing-plus-button" aria-labelledby="racing-plus-link-label" class="${city_button.className}">
+        <span id="racing-plus-button-icon" class="${city_icon_wrap.className}">
+          <svg xmlns="http://www.w3.org/2000/svg" stroke="transparent" stroke-width="0" width="15" height="14" viewBox="0 0 15 14"><path d="m14.02,11.5c.65-1.17.99-2.48.99-3.82,0-2.03-.78-3.98-2.2-5.44-2.83-2.93-7.49-3.01-10.42-.18-.06.06-.12.12-.18.18C.78,3.7,0,5.66,0,7.69c0,1.36.35,2.69,1.02,3.88.36.64.82,1.22,1.35,1.73l.73.7,1.37-1.5-.73-.7c-.24-.23-.45-.47-.64-.74l1.22-.72-.64-1.14-1.22.72c-.6-1.42-.6-3.03,0-4.45l1.22.72.64-1.14-1.22-.72c.89-1.23,2.25-2.04,3.76-2.23v1.44h1.29v-1.44c1.51.19,2.87.99,3.76,2.23l-1.22.72.65,1.14,1.22-.72c.68,1.63.58,3.48-.28,5.02-.06.11-.12.21-.19.31l-1.14-.88.48,3.5,3.41-.49-1.15-.89c.12-.18.23-.35.33-.53Zm-6.51-4.97c-.64-.02-1.17.49-1.18,1.13s.49,1.17,1.13,1.18,1.17-.49,1.18-1.13c0,0,0-.01,0-.02l1.95-1.88-2.56.85c-.16-.09-.34-.13-.52-.13h0Z"/></svg>
+        </span>
+        <span id="racing-plus-button-label" class="${city_label.className}">Racing+</span>
+      </a>`;
+
+    links_container.insertAdjacentHTML("afterBegin", rplus_button_html);
+
+    // Add click event handler to the newly added button
+    let button = document.querySelector("#racing-plus-button");
+    if (button) {
+      button.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        // Toggle show/hide racing-plus-window
+        document.querySelector("div.racing-plus-window").classList.toggle("show");
+      });
+    }
+  };
+
+  const initializeRacingPlus = async () => {
     let mainpage = await defer("#racingMainContainer");
     // Add the Racing+ window to the DOM
     if (!document.querySelector("div.racing-plus-window")) {
@@ -234,31 +269,8 @@
     }
 
     // Add the Racing+ button to the DOM
-    if (!document.querySelector("#racing-plus-button")) {
-      let links_container = await defer("#racing-leaderboard-header-root div[class^='linksContainer']");
+    await addRacingPlusButton();
 
-      let city_button = links_container.firstChild;
-      let city_label = city_button.querySelector(`#${city_button.getAttribute("aria-labelledby")}`);
-      let city_icon_wrap = city_button.querySelector(`:not([id])`);
-
-      let rplus_button_html = `<a id="racing-plus-button" aria-labelledby="racing-plus-link-label" class="${city_button.className}">
-          <span id="racing-plus-button-icon" class="${city_icon_wrap.className}">
-            <svg xmlns="http://www.w3.org/2000/svg" stroke="transparent" stroke-width="0" width="15" height="14" viewBox="0 0 15 14"><path d="m14.02,11.5c.65-1.17.99-2.48.99-3.82,0-2.03-.78-3.98-2.2-5.44-2.83-2.93-7.49-3.01-10.42-.18-.06.06-.12.12-.18.18C.78,3.7,0,5.66,0,7.69c0,1.36.35,2.69,1.02,3.88.36.64.82,1.22,1.35,1.73l.73.7,1.37-1.5-.73-.7c-.24-.23-.45-.47-.64-.74l1.22-.72-.64-1.14-1.22.72c-.6-1.42-.6-3.03,0-4.45l1.22.72.64-1.14-1.22-.72c.89-1.23,2.25-2.04,3.76-2.23v1.44h1.29v-1.44c1.51.19,2.87.99,3.76,2.23l-1.22.72.65,1.14,1.22-.72c.68,1.63.58,3.48-.28,5.02-.06.11-.12.21-.19.31l-1.14-.88.48,3.5,3.41-.49-1.15-.89c.12-.18.23-.35.33-.53Zm-6.51-4.97c-.64-.02-1.17.49-1.18,1.13s.49,1.17,1.13,1.18,1.17-.49,1.18-1.13c0,0,0-.01,0-.02l1.95-1.88-2.56.85c-.16-.09-.34-.13-.52-.13h0Z"/></svg>
-          </span>
-          <span id="racing-plus-button-label" class="${city_label.className}">Racing+</span>
-        </a>`;
-
-      links_container.insertAdjacentHTML("afterBegin", rplus_button_html);
-      if (DEBUG_MODE) {
-        console.log("Racing+: Settings button added.");
-      }
-    }
-    // Add the Racing+ button click event handler
-    document.querySelector("#racing-plus-button").addEventListener("click", (ev) => {
-      ev.preventDefault();
-      // Toggle show/hide racing-plus-window
-      document.querySelector("div.racing-plus-window").classList.toggle("show");
-    });
     // Add the Racing+ API key stored value
     let stored_apikey = PDA.isTornPDA(API_KEY) ?? PDA.getValue("rplus_apikey");
     if (stored_apikey) {
@@ -267,47 +279,50 @@
     } else {
       await setAPIKeyDisplay();
     }
-    if (PDA.isTornPDA(API_KEY)) {
-      // Add the Racing+ API key save button click event handler
-      document.querySelector(".racing-plus-apikey-save").addEventListener("click", async (ev) => {
-        ev.preventDefault();
-        await validateKey(true);
-      });
-      // Add the Racing+ API key reset button click event handler
-      document.querySelector(".racing-plus-apikey-reset").addEventListener("click", async (ev) => {
-        ev.preventDefault();
-        // Clear API key
-        PDA.deleteValue("rplus_apikey");
-        // Clear text input
-        document.querySelector("#rplus_apikey").value = "";
-        await setAPIKeyDisplay();
-      });
-    }
+
+    // Add the Racing+ API key save button click event handler
+    document.querySelector(".racing-plus-apikey-save").addEventListener("click", async (ev) => {
+      ev.preventDefault();
+      await validateKey(true);
+    });
+    // Add the Racing+ API key reset button click event handler
+    document.querySelector(".racing-plus-apikey-reset").addEventListener("click", async (ev) => {
+      ev.preventDefault();
+      // Clear API key
+      PDA.deleteValue("rplus_apikey");
+      // Clear text input
+      document.querySelector("#rplus_apikey").value = "";
+      await setAPIKeyDisplay();
+    });
     // Add checkbox stored values and click events.
     let chkbxs = await deferAll(".d .racing-plus-settings input[type=checkbox]");
     Array.from(chkbxs).forEach((el) => {
       el.checked = PDA.getValue(el.id) === "1";
       el.addEventListener("click", (ev) => {
         PDA.setValue(ev.target.id, ev.target.checked ? "1" : "0");
-        if (DEBUG_MODE) {
-          console.log(`Racing+: ${ev.target.id} saved.`);
-        }
       });
     });
-    if (DEBUG_MODE) {
-      console.log("Racing+: Initialized.");
-    }
   };
 
   // ##############################################################################################
 
   const addRacingPlusStyles = async () => {
-    if (DEBUG_MODE) {
-      console.log("Racing+: Adding styles...");
-    }
-
     // Add styles
     PDA.addStyle(`
+      /* Ensure left-banner and lastgain are visible */
+      .banner .left-banner {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        z-index: 1 !important;
+      }
+      .banner .lastgain {
+        display: inline-block !important;
+        visibility: visible !important;
+        color: #00ff00 !important;
+        margin-left: 5px;
+        font-size: 0.8rem !important;
+      }
       .d .racing-plus-window {
         margin:10px 0;
         padding:0;
@@ -832,9 +847,6 @@
       });
       PDA.addStyle(partsCSS);
     }
-    if (DEBUG_MODE) {
-      console.log("Racing+: Styles added.");
-    }
   };
 
   const defer = (selector) => {
@@ -842,16 +854,13 @@
     return new Promise((resolve, reject) => {
       try {
         const check = () => {
-          if (count > DEFERRAL_LIMIT) {
+          if (count++ > DEFERRAL_LIMIT) {
             throw new Error("Deferral timed out.");
           }
           const result = document.querySelector(selector);
           if (result) {
             resolve(result);
           } else {
-            if (DEBUG_MODE) {
-              console.log("Racing+: Deferring...");
-            }
             setTimeout(check, DEFERRAL_INTERVAL);
           }
         };
@@ -868,16 +877,13 @@
     return new Promise((resolve, reject) => {
       try {
         const check = () => {
-          if (count > DEFERRAL_LIMIT) {
+          if (count++ > DEFERRAL_LIMIT) {
             throw new Error("Deferral timed out.");
           }
           const result = document.querySelectorAll(selector);
           if (result && result.length > 0) {
             resolve(result);
           } else {
-            if (DEBUG_MODE) {
-              console.log("Racing+: Deferring...");
-            }
             setTimeout(check, DEFERRAL_INTERVAL);
           }
         };
@@ -912,37 +918,47 @@
 
   // Cache race results
   let raceResults = [];
+  // Cache fetched racing skills to avoid repeated API calls
+  let fetchedSkills = new Map();
+
   const parseRaceData = async (response) => {
     try {
       // Exit if not JSON
       if (!response.trim().startsWith("{")) {
         return;
       }
-      if (DEBUG_MODE) {
-        console.log("Racing+: Parsing Race Data...");
-      }
       let data = JSON.parse(response);
       // update driver skill
       let lastSkill = PDA.getValue("rplus_racingskill");
       let currSkill = Number(data.user.racinglevel).toFixed(5);
       if (currSkill > lastSkill) {
-        let skillBanner = await defer(".banner .skill");
+        // Try to get skill banner - check both restructured and original locations
+        let skillBanner = document.querySelector(".left-banner .skill") || document.querySelector(".banner .skill");
+        if (!skillBanner) {
+          // Try deferred lookup for restructured banner first
+          try {
+            skillBanner = await defer(".left-banner .skill");
+          } catch {
+            // Fallback to original banner location
+            skillBanner = await defer(".banner .skill");
+          }
+        }
         let lastInc = Number(currSkill - lastSkill).toFixed(5);
         if (lastInc) {
-          skillBanner.insertAdjacentHTML("afterEnd", `<div class="lastgain">+${lastInc}</div>`);
+          // Check if lastgain already exists and update it, otherwise create it
+          let existingLastGain = document.querySelector(".left-banner .lastgain") || document.querySelector(".banner .lastgain");
+          if (existingLastGain) {
+            existingLastGain.textContent = `+${lastInc}`;
+          } else {
+            skillBanner.insertAdjacentHTML("afterEnd", `<div class="lastgain">+${lastInc}</div>`);
+          }
         }
         PDA.setValue("rplus_racingskill", `${currSkill}`);
-        if (DEBUG_MODE) {
-          console.log("Racing+: rplus_racingskill saved.");
-        }
         skillBanner.textContent = currSkill;
       }
       // calc, sort & show race results
       if (raceResults.length <= 0 && data.timeData.status >= 3) {
         // Populate results
-        if (DEBUG_MODE) {
-          console.log("Racing+: Populating Race Results...");
-        }
         let carsData = data.raceData.cars;
         let carInfo = data.raceData.carInfo;
         let trackIntervals = data.raceData.trackData.intervals.length;
@@ -1004,8 +1020,8 @@
       let driverResult = raceResults.find((r) => {
         return Number(r[0]) === driverId;
       });
-      let bestLap = driverResult[4] ? formatTime(driverResult[4] * 1000) : null;
-      if (bestLap) {
+      if (driverResult && driverResult[4]) {
+        let bestLap = formatTime(driverResult[4] * 1000);
         document.querySelector("li.pd-besttime").textContent = bestLap;
       }
     }
@@ -1028,14 +1044,17 @@
     }
   };
 
+  // Track last status to avoid spam logging
+  let lastRaceStatus = null;
+
   const updateLeaderboard = async () => {
-    if (DEBUG_MODE) {
-      console.log("Racing+: Updating Leaderboard...");
-    }
     let apikey = PDA.isTornPDA(API_KEY) ?? PDA.getValue("rplus_apikey");
     // Get race status
     let racestatus = await getStatus();
-    console.log(`Racing+: Race Status -> ${racestatus}`);
+    if (DEBUG_MODE && racestatus !== lastRaceStatus) {
+      console.log(`Racing+: Status=${racestatus}`);
+      lastRaceStatus = racestatus;
+    }
     // Get track data
     let racingupdates = await defer("#racingupdates .drivers-list .title-black");
     let trackData = {
@@ -1064,25 +1083,27 @@
             if (racestatus === "finished" || (racestatus === "racing" && PDA.getValue("rplus_showresults") === "1" && raceResults.length > 0)) {
               // set race result
               let ind = raceResults.findIndex((res) => {
-                res[0] === drvr.id;
+                return Number(res[0]) === Number(driverId);
               });
               let place = ind + 1;
               let result = raceResults[ind];
-              if (result[2] === "crashed") {
-                driverStatus.className = "status crash";
-                driverStatus.textContent = "";
-              } else if (place == 1) {
-                driverStatus.className = "status gold";
-                driverStatus.textContent = "";
-              } else if (place == 2) {
-                driverStatus.className = "status silver";
-                driverStatus.textContent = "";
-              } else if (place == 3) {
-                driverStatus.className = "status bronze";
-                driverStatus.textContent = "";
-              } else {
-                driverStatus.className = `finished-${place} finished`;
-                driverStatus.textContent = `${place}`;
+              if (ind >= 0 && result) {
+                if (result[2] === "crashed") {
+                  driverStatus.className = "status crash";
+                  driverStatus.textContent = "";
+                } else if (place == 1) {
+                  driverStatus.className = "status gold";
+                  driverStatus.textContent = "";
+                } else if (place == 2) {
+                  driverStatus.className = "status silver";
+                  driverStatus.textContent = "";
+                } else if (place == 3) {
+                  driverStatus.className = "status bronze";
+                  driverStatus.textContent = "";
+                } else {
+                  driverStatus.className = `finished-${place} finished`;
+                  driverStatus.textContent = `${place}`;
+                }
               }
             } else if (racestatus === "racing") {
               driverStatus.className = "status racing";
@@ -1100,8 +1121,9 @@
       if (PDA.getValue("rplus_addlinks") === "1") {
         // Add links
         if (!drvr.querySelector("li.name a")) {
-          drvr.querySelector("li.name span").outerHTML =
-            `<a target="_blank" href="/profiles.php?XID=${driverId}">${drvr.querySelector("li.name span").outerHTML}</a>`;
+          drvr.querySelector("li.name span").outerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${
+            drvr.querySelector("li.name span").outerHTML
+          }</a>`;
         }
       } else {
         // Remove links
@@ -1131,27 +1153,51 @@
           stats.insertAdjacentHTML("beforeEnd", '<div class="speed">0.00mph</div>');
         }
         if (!["joined", "finished"].includes(racestatus) && !speedIntervalByDriverId.has(driverId)) {
-          if (DEBUG_MODE) {
-            console.log(`Racing+: Adding speed interval for driver ${driverId}.`);
-          }
           speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId));
         }
       }
       // Show driver skill
       if (PDA.getValue("rplus_showskill") === "1") {
-        if (!drvr.querySelector(".skill")) {
+        let skillElement = drvr.querySelector(".skill");
+
+        if (!skillElement) {
           stats.insertAdjacentHTML("afterBegin", '<div class="skill">RS: ?</div>');
+          skillElement = drvr.querySelector(".skill");
         }
-        if (apikey) {
+
+        // Check if we've already fetched and set this driver's skill
+        if (fetchedSkills.has(driverId)) {
+          // Use cached value
+          const cachedSkill = fetchedSkills.get(driverId);
+          if (skillElement && skillElement.textContent === "RS: ?") {
+            skillElement.textContent = `RS: ${cachedSkill}`;
+          }
+        } else if (apikey) {
           // Fetch racing skill data from the Torn API for the given driver id
           try {
             let user = await torn_api(apikey, `user/${driverId}/personalStats`, "stat=racingskill");
-            if (user) {
-              let skill = stats.querySelector(".skill");
-              skill.textContent = `RS: ${user.personalstats.racing.skill}`;
+            if (user && user.personalstats) {
+              // API v2 returns personalstats as an array
+              if (Array.isArray(user.personalstats)) {
+                // Find the racing skill stat in the array
+                const racingSkillStat = user.personalstats.find((stat) => stat.name === "racingskill");
+                if (racingSkillStat && racingSkillStat.value !== undefined) {
+                  skillElement.textContent = `RS: ${racingSkillStat.value}`;
+                  // Cache the skill value
+                  fetchedSkills.set(driverId, racingSkillStat.value);
+                }
+              } else {
+                // Fallback for v1 API structure (if it exists)
+                const skillValue = user.personalstats.racing.skill;
+                skillElement.textContent = `RS: ${skillValue}`;
+                // Cache the skill value
+                fetchedSkills.set(driverId, skillValue);
+              }
             }
           } catch (err) {
-            console.error(`Racing+ Error: ${err.error ?? err}`);
+            if (DEBUG_MODE) {
+              console.error(`Racing+ Error: Skill fetch failed for ${driverId}`);
+            }
           }
         }
       }
@@ -1269,9 +1315,6 @@
     // Load leaderboard
     await updateLeaderboard();
     // Watch leaderboard for changes
-    if (DEBUG_MODE) {
-      console.log("Racing+: Adding Leaderboard Observer...");
-    }
     let leaderboardObserver = new MutationObserver(async (mutations) => {
       await updateLeaderboard();
     });
@@ -1281,9 +1324,6 @@
   let originalOpen;
   const loadXMLHttpRequestMonkey = async () => {
     if (!originalOpen) {
-      if (DEBUG_MODE) {
-        console.log("Racing+: Adding XMLHttpRequest Monkey...");
-      }
       originalOpen = XMLHttpRequest.prototype.open;
       XMLHttpRequest.prototype.open = function (...args) {
         this.addEventListener("load", async (ev) => {
@@ -1303,9 +1343,6 @@
 
   const unloadXMLHttpRequestMonkey = async () => {
     if (originalOpen) {
-      if (DEBUG_MODE) {
-        console.log("Racing+: Removing XMLHttpRequest Monkey...");
-      }
       XMLHttpRequest.prototype.open = originalOpen;
       originalOpen = null;
     }
@@ -1413,15 +1450,29 @@
   };
 
   const restructureBanner = async () => {
-    if (DEBUG_MODE) {
-      console.log("Racing+: Fixing top banner...");
+    const banner = document.querySelector(".banner");
+    if (!banner) return; // Exit if banner doesn't exist (e.g., custom events)
+
+    // Check if already restructured
+    if (banner.querySelector(".left-banner")) {
+      return; // Already restructured
     }
-    const banner = await defer(".banner");
+
     // update driver skill
     let savedSkill = PDA.getValue("rplus_racingskill");
-    if (savedSkill) {
-      document.querySelector(".banner .skill").textContent = savedSkill;
+    let skillEl = banner.querySelector(".skill");
+    if (savedSkill && skillEl) {
+      skillEl.textContent = savedSkill;
     }
+
+    // Only restructure if we have the expected elements
+    const hasSkillElements = banner.querySelector(".skill-desc") || banner.querySelector(".skill");
+    const hasClassElements = banner.querySelector(".class-desc") || banner.querySelector(".class-letter");
+
+    if (!hasSkillElements && !hasClassElements) {
+      return; // Not the right banner structure
+    }
+
     // Create new containers
     const leftBanner = document.createElement("div");
     leftBanner.className = "left-banner";
@@ -1453,6 +1504,7 @@
     // Verify nodes have been added and they do not include the loader
     if (addedNodes.length > 0 && !Array.from(addedNodes).some((node) => node.classList?.contains("ajax-preloader"))) {
       if (Array.from(addedNodes).some((node) => node.id === "racingupdates")) {
+        await restructureBanner();
         await officialEvents();
         await loadXMLHttpRequestMonkey();
       } else if (Array.from(addedNodes).some((node) => node.classList?.contains("enlist-wrap")) && PDA.getValue("rplus_showwinrate") === "1") {
@@ -1470,9 +1522,18 @@
   await initializeRacingPlus();
   // Fix top banner
   await restructureBanner();
-  if (DEBUG_MODE) {
-    console.log("Racing+: Adding Page Observer...");
-  }
+
+  // Set up observer to re-add Racing+ button if it gets removed
+  const buttonObserver = new MutationObserver(() => {
+    if (!document.querySelector("#racing-plus-button")) {
+      addRacingPlusButton();
+    }
+  });
+
+  // Watch the header for changes
+  const headerRoot = await defer("#racing-leaderboard-header-root");
+  buttonObserver.observe(headerRoot, { childList: true, subtree: true });
+
   let innerpage = await defer("#racingAdditionalContainer");
   pageObserver.observe(innerpage, { childList: true });
   // Load default page
