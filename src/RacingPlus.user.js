@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         TornPDA-Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.21
+// @version      0.99.22
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
-// @updateURL    https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/RacingPlus.user.js
-// @downloadURL  https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/RacingPlus.user.js
+// @updateURL    https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/dist/RacingPlus.user.js
+// @downloadURL  https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/dist/RacingPlus.user.js
 // @connect      api.torn.com
 // @run-at       document-start
 // ==/UserScript==
