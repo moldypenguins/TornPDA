@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.31
+// @version      0.99.32
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1198,7 +1198,7 @@ const ACCESS_LEVEL = Object.freeze({
     chk.id = id;
     div.appendChild(chk);
 
-    return { lbl, div };
+    return [lbl, div];
   }
 
   /**
