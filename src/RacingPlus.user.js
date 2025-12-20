@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.27
+// @version      0.99.28
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1271,11 +1271,13 @@ const ACCESS_LEVEL = Object.freeze({
       `<input type="text" id="rplus-apikey" maxlength="${API_KEY_LENGTH}" />`,
     ]);
 
+    const flex_div = createDiv("flex-col", [api_actions, '<span class="racing-plus-apikey-status"></span>']);
+
     const rplus_main = createDiv("racing-plus-main");
     rplus_main.appendChild(
       createDiv("racing-plus-settings", [
         '<label for="rplus_apikey">API Key</label>',
-        createDiv("flex-col", [api_actions, '<span class="racing-plus-apikey-status"></span>']),
+        flex_div,
         createCheckbox("rplus_addlinks", "Add profile links"),
         createCheckbox("rplus_showskill", "Show racing skill"),
         createCheckbox("rplus_showspeed", "Show current speed"),
