@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA-Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.11
+// @version      0.99.13
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -12,6 +12,21 @@
 // @connect      api.torn.com
 // @run-at       document-start
 // ==/UserScript==
+
+/**
+ * Number.isFloat - returns true for number primitives (excludes NaN).
+ * @returns {boolean}
+ */
+if (!Number.isFloat) {
+  Object.defineProperty(Number, "isFloat", {
+    value: function (n) {
+      return typeof n === "number" && !Number.isNaN(Number.parseFloat(n));
+    },
+    writable: true,
+    configurable: true,
+    enumerable: false,
+  });
+}
 
 (async (w) => {
   ("use strict");
@@ -33,26 +48,29 @@
   const DEFERRAL_LIMIT = 250; // Maximum amount of times the script will defer.
   const DEFERRAL_INTERVAL = 100; // Amount of time in milliseconds deferrals will last.
 
+  const API_FETCH_TIMEOUT = 10000; // API request timeout in milliseconds
+  const MIN_API_KEY_LENGTH = 8; // Minimum valid API key length
+
+  const HOURS_PER_SECOND = 3600; // Seconds in an hour for speed calculations
+
   /* Common Utilities */
   /**
    * Returns the current Unix timestamp (seconds since epoch).
-   * @returns {number}
+   * @returns {number} Current Unix timestamp
    */
   const unixTimestamp = () => Math.floor(Date.now() / 1000);
 
   /**
-   * setClipboard - Copies text to the clipboard if document is focused.
-   * (Kept global on window for convenience across script)
-   * @param {string} text
-   * @returns {boolean} true if a write operation was attempted without throwing.
+   * Copies text to the clipboard if document is focused.
+   * @param {string} text - Text to copy to clipboard
+   * @returns {boolean} True if write operation succeeded
+   * @throws {DOMException} If document is not focused
    */
   const setClipboard = (text) => {
     if (!doc.hasFocus()) {
       throw new DOMException("Document is not focused");
     }
     try {
-      // Optional chaining on call is supported in modern engines.
-      // Will no-op silently if Clipboard API is unavailable.
       w.navigator.clipboard?.writeText?.(text);
       if (DEBUG_MODE) console.log(`[TornPDA+]: Text copied.`);
       return true;
@@ -64,8 +82,9 @@
   /**
    * Wait for a single element matching selector to appear.
    * Times out after DEFERRAL_LIMIT * DEFERRAL_INTERVAL ms.
-   * @param {string} selector
-   * @returns {Promise<Element>}
+   * @param {string} selector - CSS selector to match
+   * @returns {Promise<Element>} Resolved element
+   * @throws {Error} If deferral times out
    */
   const defer = (selector) => {
     let count = 0;
@@ -73,7 +92,7 @@
       const check = () => {
         count++;
         if (count > DEFERRAL_LIMIT) {
-          reject(new Error("Deferral timed out."));
+          reject(new Error(`Deferral timed out waiting for: ${selector}`));
           return;
         }
         const result = doc.querySelector(selector);
@@ -90,15 +109,16 @@
 
   /**
    * Wait for all elements matching selector to appear.
-   * @param {string} selector
-   * @returns {Promise<NodeListOf<Element>>}
+   * @param {string} selector - CSS selector to match
+   * @returns {Promise<NodeListOf<Element>>} NodeList of matching elements
+   * @throws {Error} If deferral times out
    */
   const deferAll = (selector) => {
     let count = 0;
     return new Promise((resolve, reject) => {
       const check = () => {
         if (count > DEFERRAL_LIMIT) {
-          reject(new Error("Deferral timed out."));
+          reject(new Error(`Deferral timed out waiting for: ${selector}`));
           return;
         }
         const result = doc.querySelectorAll(selector);
@@ -116,21 +136,39 @@
 
   /* LocalStorage Wrapper */
   const STORE = {
-    // Function: getValue - Get a value by key (string or null).
+    /**
+     * Get a value by key from localStorage
+     * @param {string} key - Storage key
+     * @returns {string|null} Stored value or null
+     */
     getValue: (key) => localStorage.getItem(key),
 
-    // Function: setValue - Set a value by key (string).
+    /**
+     * Set a value by key in localStorage
+     * @param {string} key - Storage key
+     * @param {string} value - Value to store
+     */
     setValue: (key, value) => localStorage.setItem(key, value),
 
-    // Function: deleteValue - Delete a value by key.
+    /**
+     * Delete a value by key from localStorage
+     * @param {string} key - Storage key
+     */
     deleteValue: (key) => localStorage.removeItem(key),
 
-    // Function: listValues - List stored values (strings). Mainly for debugging.
+    /**
+     * List all stored values (for debugging)
+     * @returns {Array<string>} Array of stored values
+     */
     listValues() {
       return Object.values(localStorage);
     },
 
-    // Function: getKey - Map logical toggle IDs to persistent keys.
+    /**
+     * Map logical toggle IDs to persistent storage keys
+     * @param {string} id - Feature toggle ID
+     * @returns {string|undefined} Corresponding storage key
+     */
     getKey(id) {
       return {
         rplus_units: "RACINGPLUS_DISPLAYUNITS",
@@ -151,34 +189,51 @@
    * Distance and Speed Helpers
    * --------------------------------------------------------------------- */
   /**
-   * Class Distance - stores distance and formats value based on preferred units.
-   * @param {object} [args]
-   * @param {number} [args.miles=null]
-   * @param {number} [args.kilometers=null]
+   * Distance class - Stores distance and formats value based on preferred units
+   * @class
    */
   class Distance {
-    // Constructor: ensures given distance is a finite number and captures unit preference.
+    /**
+     * Creates a Distance instance
+     * @param {object} [args={}] - Constructor arguments
+     * @param {number} [args.miles=null] - Distance in miles
+     * @param {number} [args.kilometers=null] - Distance in kilometers
+     * @throws {TypeError} If miles is not a finite number
+     */
     constructor(args = {}) {
       const { miles, kilometers } = args;
-      const mi = miles || kilometers * KMS_PER_MI;
-      if (typeof mi !== "number" || !Number.isNaN(mi)) {
-        throw new TypeError("miles must be a number.");
+      if (!miles || !kilometers) {
+        throw new TypeError("Miles or Kilometers must be specified.");
+      }
+
+      const mi = miles || (kilometers ? kilometers * KMS_PER_MI : 0);
+      if (!Number.isFloat(mi)) {
+        throw new TypeError("Miles or Kilometers must be a number.");
       }
       this._mi = mi;
       this._units = STORE.getValue(STORE.getKey("rplus_units")) ?? (kilometers ? "km" : "mi");
     }
 
-    // Getter: mi - return miles
+    /**
+     * Get distance in miles
+     * @returns {number} Distance in miles
+     */
     get mi() {
       return this._mi;
     }
 
-    // Getter: km - return kilometers (computed)
+    /**
+     * Get distance in kilometers
+     * @returns {number} Distance in kilometers
+     */
     get km() {
       return this._mi * KMS_PER_MI;
     }
 
-    // Function: toString - Format as string according to chosen units.
+    /**
+     * Format distance as string according to chosen units
+     * @returns {string} Formatted distance with units
+     */
     toString() {
       const val = this._units === "km" ? this.km : this.mi;
       return `${val.toFixed(2)} ${this._units}`;
@@ -186,36 +241,49 @@
   }
 
   /**
-   * Class Speed - computes mph from a Distance and elapsed seconds; formats to preferred units.
-   * @param {object} args
-   * @param {Distance} args.distance distance traveled
-   * @param {number} args.seconds elapsed time in seconds (> 0)
+   * Speed class - Computes speed from Distance and elapsed time
+   * @class
    */
   class Speed {
-    // Constructor: distance must be Distance instance; seconds must be > 0.
+    /**
+     * Creates a Speed instance
+     * @param {object} args - Constructor arguments
+     * @param {Distance} args.distance - Distance traveled
+     * @param {number} args.seconds - Elapsed time in seconds (> 0)
+     * @throws {TypeError} If distance is not a Distance instance or seconds invalid
+     */
     constructor(args = {}) {
       const { distance, seconds } = args;
       if (!(distance instanceof Distance)) {
         throw new TypeError("distance must be a Distance instance.");
       }
-      if (!Number.isFinite(seconds) || seconds <= 0) {
-        throw new TypeError("seconds must be a finite number > 0.");
+      if (!Number.isInteger(seconds) || seconds <= 0) {
+        throw new TypeError("seconds must be an integer > 0.");
       }
-      this._mph = distance.mi / (seconds / 3600);
+      this._mph = distance.mi / (seconds / HOURS_PER_SECOND);
       this._units = STORE.getValue(STORE.getKey("rplus_units")) ?? "mph";
     }
 
-    // Getter: mph - return miles per hour
+    /**
+     * Get speed in miles per hour
+     * @returns {number} Speed in mph
+     */
     get mph() {
       return this._mph;
     }
 
-    // Getter: kph - return kilometers per hour converted from mph
+    /**
+     * Get speed in kilometers per hour
+     * @returns {number} Speed in kph
+     */
     get kph() {
       return this._mph * KMS_PER_MI;
     }
 
-    // Function: toString - Format speed according to preferred units.
+    /**
+     * Format speed according to preferred units
+     * @returns {string} Formatted speed with units
+     */
     toString() {
       const val = this._units === "kph" ? this.kph : this.mph;
       return `${val.toFixed(2)} ${this._units}`;
@@ -247,26 +315,31 @@
     "Wheels & Tires": ["Tyres", "Wheels"],
   };
 
-  // Tracks meta: uses Distance instances for known distances.
+  // Tracks metadata with Distance instances
   const TRACKS = {
     6: { name: "Uptown", distance: new Distance({ miles: 2.25 }), laps: 7 },
-    7: { name: "Withdrawal", distance: new Distance({ miles: 0 }), laps: 0 },
-    8: { name: "Underdog", distance: new Distance({ miles: 0 }), laps: 0 },
-    9: { name: "Parkland", distance: new Distance({ miles: 0 }), laps: 5 },
+    7: { name: "Withdrawal", distance: new Distance({ miles: 3.4 }), laps: 0 },
+    8: { name: "Underdog", distance: new Distance({ miles: 1.73 }), laps: 0 },
+    9: { name: "Parkland", distance: new Distance({ miles: 3.43 }), laps: 5 },
     10: { name: "Docks", distance: new Distance({ miles: 3.81 }), laps: 5 },
     11: { name: "Commerce", distance: new Distance({ miles: 1.09 }), laps: 15 },
-    12: { name: "Two Islands", distance: new Distance({ miles: 0 }), laps: 6 },
-    15: { name: "Industrial", distance: new Distance({ miles: 0 }), laps: 0 },
-    16: { name: "Vector", distance: new Distance({ miles: 0 }), laps: 14 },
+    12: { name: "Two Islands", distance: new Distance({ miles: 2.71 }), laps: 6 },
+    15: { name: "Industrial", distance: new Distance({ miles: 1.35 }), laps: 0 },
+    16: { name: "Vector", distance: new Distance({ miles: 1.16 }), laps: 14 },
     17: { name: "Mudpit", distance: new Distance({ miles: 1.06 }), laps: 15 },
-    18: { name: "Hammerhead", distance: new Distance({ miles: 0 }), laps: 14 },
+    18: { name: "Hammerhead", distance: new Distance({ miles: 1.16 }), laps: 14 },
     19: { name: "Sewage", distance: new Distance({ miles: 1.5 }), laps: 11 },
-    20: { name: "Meltdown", distance: new Distance({ miles: 0 }), laps: 13 },
-    21: { name: "Speedway", distance: new Distance({ miles: 0 }), laps: 0 },
-    23: { name: "Stone Park", distance: new Distance({ miles: 0 }), laps: 8 },
-    24: { name: "Convict", distance: new Distance({ miles: 0 }), laps: 10 },
+    20: { name: "Meltdown", distance: new Distance({ miles: 1.2 }), laps: 13 },
+    21: { name: "Speedway", distance: new Distance({ miles: 0.9 }), laps: 0 },
+    23: { name: "Stone Park", distance: new Distance({ miles: 2.08 }), laps: 8 },
+    24: { name: "Convict", distance: new Distance({ miles: 1.64 }), laps: 10 },
   };
 
+  /**
+   * API access level enumeration
+   * @readonly
+   * @enum {number}
+   */
   const ACCESS_LEVEL = Object.freeze({
     Public: 0,
     Minimal: 1,
@@ -278,9 +351,13 @@
    * Torn API helper
    * --------------------------------------------------------------------- */
   /**
-   * Class TornAPI - Wrapper to make authenticated Torn API calls with caching and timeouts.
+   * TornAPI class - Wrapper for authenticated Torn API calls with caching and timeouts
+   * @class
    */
   class TornAPI {
+    /**
+     * Creates a TornAPI instance
+     */
     constructor() {
       /** @type {Map<string, {data:any, timestamp:number}>} */
       this.cache = new Map();
@@ -289,10 +366,11 @@
     }
 
     /**
-     * Function: request - Makes a Torn API request and caches the response.
-     * @param {string} path - e.g. 'key/info' or '/user/stats'
-     * @param {object|string} [args] - query parameters or prebuilt query string.
-     * @returns {Promise<object>}
+     * Makes a Torn API request with caching
+     * @param {string} path - API path (e.g., 'key/info' or '/user/stats')
+     * @param {object|string} [args={}] - Query parameters or prebuilt query string
+     * @returns {Promise<object>} API response data
+     * @throws {Error} If API key invalid, path invalid, or request fails
      */
     async request(path, args = {}) {
       if (!this.key) throw new Error("Invalid API key.");
@@ -323,8 +401,7 @@
 
       const controller = new AbortController();
       const options = { signal: controller.signal };
-      const timeout = 10000;
-      const timer = setTimeout(() => controller.abort(), timeout);
+      const timer = setTimeout(() => controller.abort(), API_FETCH_TIMEOUT);
 
       let response;
       try {
@@ -350,13 +427,12 @@
     }
 
     /**
-     * Function: validateKey - Validates a Torn API key by calling /key/info.
-     * On success, stores the key in this instance (not persisted).
-     * @param {string} api_key
-     * @returns {Promise<boolean>} true if valid, false otherwise.
+     * Validates a Torn API key by calling /key/info
+     * @param {string} api_key - API key to validate
+     * @returns {Promise<boolean>} True if valid with sufficient access
      */
     async validateKey(api_key) {
-      if (!api_key || typeof api_key !== "string" || api_key.length < 8) {
+      if (!api_key || typeof api_key !== "string" || api_key.length < MIN_API_KEY_LENGTH) {
         if (DEBUG_MODE) console.log("[Racing+]: API key rejected by local validation.");
         return false;
       }
@@ -380,14 +456,18 @@
       }
     }
 
-    // Function: saveKey - Stores API key in local settings (idempotent).
+    /**
+     * Stores API key in local settings (idempotent)
+     */
     saveKey() {
       if (!this.key) return;
       STORE.setValue("RACINGPLUS_APIKEY", this.key);
       if (DEBUG_MODE) console.log("[Racing+]: API Key saved.");
     }
 
-    // Function: deleteKey - Removes API key from settings and memory.
+    /**
+     * Removes API key from settings and memory
+     */
     deleteKey() {
       this.key = null;
       STORE.deleteValue("RACINGPLUS_APIKEY");
@@ -399,10 +479,19 @@
    * Models
    * --------------------------------------------------------------------- */
   /**
-   * Class TornRace - helper to compile race meta and compute status.
-   * @param {object} args
+   * TornRace class - Helper to compile race metadata and compute status
+   * @class
    */
   class TornRace {
+    /**
+     * Creates a TornRace instance
+     * @param {object} [args={}] - Race properties
+     * @param {string} [args.id] - Race ID
+     * @param {number} [args.trackid] - Track ID
+     * @param {string} [args.title] - Race title
+     * @param {number} [args.distance] - Race distance
+     * @param {number} [args.laps] - Number of laps
+     */
     constructor(args = {}) {
       this.id = args.id ?? null;
       this.track = args.trackid ? TRACKS[args.trackid] : null;
@@ -413,9 +502,9 @@
     }
 
     /**
-     * Function: updateStatus - Updates the track status from the info spot text.
-     * @param {string} info_spot
-     * @returns {'unknown'|'racing'|'finished'|'waiting'|'joined'}
+     * Updates race status from info spot text
+     * @param {string} info_spot - Info spot text content
+     * @returns {'unknown'|'racing'|'finished'|'waiting'|'joined'} Updated status
      */
     updateStatus(info_spot) {
       const text = (info_spot ?? "").toLowerCase();
@@ -432,17 +521,16 @@
           break;
         default:
           // Case-insensitive check for "Starts:" marker
-          if (text.includes("starts:")) {
-            this.status = "waiting";
-          } else {
-            this.status = "joined";
-          }
+          this.status = text.includes("starts: ") ? "waiting" : "joined";
           break;
       }
       return this.status;
     }
 
-    // Function: updateLeaderBoard - Normalize leaderboard DOM entries and optionally add info.
+    /**
+     * Normalizes leaderboard DOM entries and adds driver info
+     * @param {NodeList|Array} drivers - List of driver DOM elements
+     */
     updateLeaderBoard(drivers) {
       if (DEBUG_MODE) console.log("[Racing+]: Updating Leaderboard...");
 
@@ -452,8 +540,9 @@
         const driverId = (drvr.id || "").substring(4);
         const driverStatus = drvr.querySelector(".status");
         const drvrName = drvr.querySelector("li.name");
-        const nameLink = drvrName.querySelector("a");
-        const nameSpan = drvrName.querySelector("span");
+        // TODO: better null safety check
+        const nameLink = drvrName?.querySelector("a");
+        const nameSpan = drvrName?.querySelector("span");
         const drvrColour = drvr.querySelector("li.color");
 
         // Update status icon classes
@@ -559,7 +648,8 @@
   }
 
   /**
-   * Class TornDriver - Stores skill and per-track best records for current user.
+   * TornDriver class - Stores skill and per-track best records for current user
+   * @class
    */
   class TornDriver {
     constructor(driver_id) {
@@ -569,7 +659,9 @@
       this.cars = {};
     }
 
-    // Function: load - Load cached driver data from localStorage (idempotent).
+    /**
+     * Load cached driver data from localStorage (idempotent)
+     */
     load() {
       const raw = STORE.getValue("RACINGPLUS_DRIVER");
       if (!raw) return;
@@ -580,12 +672,15 @@
           this.records = driver.records || {};
           this.cars = driver.cars || {};
         }
-      } catch {
-        // Ignore corrupt cache
+      } catch (err) {
+        // Log parse errors in debug mode
+        if (DEBUG_MODE) console.warn("[Racing+]: Failed to load driver cache:", err);
       }
     }
 
-    // Function: save - Persist driver data to localStorage.
+    /**
+     * Persist driver data to localStorage
+     */
     save() {
       const payload = JSON.stringify({
         id: this.id,
@@ -597,21 +692,20 @@
     }
 
     /**
-     * Function: updateSkill - Update stored skill if newer value is higher (skill increases only).
-     * @param {number|string} skill
+     * Update stored skill if newer value is higher (skill increases only)
+     * @param {number|string} skill - New skill value
      */
     updateSkill(skill) {
       const v = Number(skill);
-      if (Number.isFinite(v)) {
+      if (Number.isFloat(v)) {
         this.skill = Math.max(this.skill, v);
         this.save();
       }
     }
 
     /**
-     * Function: updateRecords - Fetch racing records from API and store best lap per car.
-     * Store the best lap record for a given track.
-     * Keeps the smallest lap_time; ties can be handled elsewhere if needed.
+     * Fetch racing records from API and store best lap per car/track
+     * @returns {Promise<void>}
      */
     async updateRecords() {
       try {
@@ -642,7 +736,10 @@
       }
     }
 
-    // Function: updateCars - Fetch and store enlisted cars. Hooks win-rate calc if feature flag is enabled.
+    /**
+     * Fetch and store enlisted cars with win rate calculation
+     * @returns {Promise<void>}
+     */
     async updateCars() {
       try {
         const results = await torn_api.request("user/enlistedcars", {
@@ -698,7 +795,11 @@
    * Helper Methods
    * --------------------------------------------------------------------- */
 
-  // Function: addRaceLinkCopyButton - Add a copy-link button for the current race.
+  /**
+   * Add a copy-link button for the current race
+   * @param {string|number} raceId - Current race ID
+   * @returns {Promise<void>}
+   */
   async function addRaceLinkCopyButton(raceId) {
     // Check if the race link already exists
     if (!doc.querySelector(".racing-plus-link-wrap .race-link")) {
@@ -744,7 +845,10 @@
    * Feature loaders
    * --------------------------------------------------------------------- */
 
-  // Function: loadPartsAndModifications - Injects/updates the Parts and Modifications tab content.
+  /**
+   * Injects/updates the Parts and Modifications tab content
+   * @returns {Promise<void>}
+   */
   async function loadPartsAndModifications() {
     const categories = {};
     // Get category elements (exclude empty/clear)
@@ -752,6 +856,8 @@
     Array.from(elems).forEach((category) => {
       // Get the category id
       const cat = category.getAttribute("data-category");
+      // TODO: better null check (see others)
+      if (!cat) return;
       // Get the category name from classList (excluding 'unlock')
       const categoryName = [...category.classList].find((c) => c !== "unlock");
       // Initialize bought and unbought arrays for this category
@@ -760,6 +866,8 @@
       const parts = doc.querySelectorAll(`.pm-items li.${categoryName}[data-part]:not([data-part=""])`);
       parts.forEach((part) => {
         const groupName = part.getAttribute("data-part");
+        // TODO: better null check (see others)
+        if (!groupName) return;
         if (part.classList.contains("bought")) {
           // Add to bought if not already included
           if (!categories[cat].bought.includes(groupName)) {
@@ -804,6 +912,8 @@
     const links = await deferAll(".pm-categories li a.link");
     Array.from(links).forEach(async (link) => {
       const catId = link.parentElement?.getAttribute("data-category");
+      // TODO: better null check (see others)
+      if (!catId) return;
       const partscat = await defer(`.pm-items-wrap[category="${catId}"]`);
       // Remove existing parts available section.
       const existing = partscat.querySelectorAll(".racing-plus-parts-available");
@@ -829,9 +939,10 @@
       const propName = prop.querySelector(".name");
       const wrap = prop.querySelector(".progress-bar .progressbar-wrap[title]");
       if (!propName || !wrap) return;
+      // TODO: better null check (see others)
       const propVal = wrap
         .getAttribute("title")
-        .replace(/\s/g, "")
+        ?.replace(/\s/g, "")
         .match(/[+-]\d+/);
       if (propVal) {
         const propNum = parseInt(propVal[0], 10);
@@ -840,7 +951,10 @@
     });
   }
 
-  // Function: loadOfficialEvents - Injects/updates the Official Events tab content.
+  /**
+   * Injects/updates the Official Events tab content
+   * @returns {Promise<void>}
+   */
   async function loadOfficialEvents() {
     if (DEBUG_MODE) console.log("[Racing+]: Loading Official Events tab...");
 
@@ -867,10 +981,10 @@
 
       // Create TornRace with compatible keys.
       this_race = new TornRace({
-        raceid: raceId,
+        id: raceId,
         title: trackInfo?.getAttribute("title") ?? "",
-        distance: Number.isFinite(distNum) ? distNum : null,
-        laps: Number.isFinite(lapsNum) ? lapsNum : null,
+        distance: Number.isFloat(distNum) ? distNum : null,
+        laps: Number.isInteger(lapsNum) ? lapsNum : null,
       });
     }
 
@@ -918,9 +1032,14 @@
     }
   }
 
-  // Function: loadEnlistedCars - Injects/updates the Enlisted Cars tab content.
+  /**
+   * Injects/updates the Enlisted Cars tab content
+   * @returns {Promise<void>}
+   */
   async function loadEnlistedCars() {
     doc.querySelectorAll(".enlist-list .enlist-info .enlisted-stat").forEach((ul) => {
+      // TODO: better null checks
+      if (!ul.children[0] || !ul.children[1]) return;
       const wonRaces = ul.children[0].textContent.replace(/[\n\s]/g, "").replace("•Raceswon:", "");
       const totalRaces = ul.children[1].textContent.replace(/[\n\s]/g, "").replace("•Racesentered:", "");
       ul.children[0].textContent = `• Races won: ${wonRaces} / ${totalRaces}`;
@@ -928,7 +1047,10 @@
     });
   }
 
-  // Function: addStyles - Injects Racing+ CSS into document head (dynamic rules generated for categories).
+  /**
+   * Injects Racing+ CSS into document head
+   * @returns {Promise<void>}
+   */
   async function addStyles() {
     if (DEBUG_MODE) console.log("[Racing+]: Adding styles...");
     if (!doc.head) await new Promise((r) => w.addEventListener("DOMContentLoaded", r, { once: true }));
@@ -952,7 +1074,10 @@
     if (DEBUG_MODE) console.log("[Racing+]: Styles added.");
   }
 
-  // Function: loadRacingPlus - Builds the Racing+ settings UI, binds events, wires API, adjusts header banner, and primes initial content.
+  /**
+   * Builds Racing+ settings UI, binds events, wires API, adjusts header
+   * @returns {Promise<void>}
+   */
   async function loadRacingPlus() {
     // Load Torn API key (from PDA or local storage)
     let api_key = IS_PDA ? PDA_KEY : STORE.getValue("RACINGPLUS_APIKEY");
@@ -1098,7 +1223,7 @@
           const key = STORE.getKey(el.id);
           el.checked = STORE.getValue(key) === "1";
           el.addEventListener("click", (ev) => {
-            const t = /** @type {HTMLInputElement} */ ev.currentTarget;
+            const t = /** @type {HTMLInputElement} */ (ev.currentTarget);
             STORE.setValue(key, t.checked ? "1" : "0");
             if (DEBUG_MODE) console.log(`[Racing+]: ${el.id} saved.`);
           });
@@ -1162,8 +1287,10 @@
   /* ------------------------------------------------------------------------
    * App lifecycle
    * --------------------------------------------------------------------- */
-
-  // Function: init - Main entry point for Racing+ userscript.
+  /**
+   * Main entry point for Racing+ userscript
+   * @returns {Promise<void>}
+   */
   async function init() {
     if (DEBUG_MODE) console.log("[Racing+]: Initializing...");
 
@@ -1225,7 +1352,8 @@
     );
     w.addEventListener(
       "beforeunload",
-      (e) => {
+      //(e) => {
+      () => {
         disconnectRacingPlusObserver();
         if (DEBUG_MODE) console.log("[Racing+]: beforeunload fired.");
       },
@@ -1237,7 +1365,9 @@
     if (DEBUG_MODE) console.log("[Racing+]: Initialized.");
   }
 
-  // Function: disconnectRacingPlusObserver - Safely disconnect the page MutationObserver.
+  /**
+   * Safely disconnect the page MutationObserver
+   */
   function disconnectRacingPlusObserver() {
     try {
       pageObserver?.disconnect();
