@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         TornPDA-Racing+
+// @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.22
+// @version      0.99.25
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -16,8 +16,8 @@
 /* ------------------------------------------------------------------------
  * Constants
  * --------------------------------------------------------------------- */
-const DEBUG_MODE = true; // Turn on to log to console.
-const DEFERRAL_LIMIT = 250; // Maximum amount of times the script will defer.
+const LOG_MODE = LOG_LEVEL.Debug; // Log level threshold (debug|info|warn|error|silent).
+const DEFERRAL_LIMIT = 100; // Maximum amount of times the script will defer.
 const DEFERRAL_INTERVAL = 100; // Amount of time in milliseconds deferrals will last.
 
 const API_FETCH_TIMEOUT = 10000; // API request timeout in milliseconds
@@ -220,6 +220,70 @@ class Speed {
 }
 
 /* ------------------------------------------------------------------------
+ * Logger
+ * --------------------------------------------------------------------- */
+/**
+ * Log level enumeration
+ * @readonly
+ * @enum {number}
+ */
+const LOG_LEVEL = Object.freeze({
+  DEBUG: 10,
+  INFO: 20,
+  WARN: 30,
+  ERROR: 40,
+  SILENT: 50,
+});
+
+/**
+ * Logger
+ * @class
+ */
+class Logger {
+  /**
+   * private levelOrder - Lowercased name->number lookup derived from LogLevel.
+   */
+  static _levelOrder = Object.freeze(Object.fromEntries(Object.entries(LOG_LEVEL).map(([k, v]) => [k.toLowerCase(), v])));
+
+  /**
+   * private shouldLog - Returns true if the given level passes the current LOG_MODE threshold.
+   */
+  static _shouldLog(level) {
+    const current = Logger._levelOrder[String(LOG_MODE).toLowerCase()] ?? Logger._levelOrder.info;
+    const incoming = Logger._levelOrder[String(level).toLowerCase()] ?? Logger._levelOrder.info;
+    return incoming >= current && current < Logger._levelOrder.silent;
+  }
+  /**
+   *  debug
+   */
+  static debug(...args) {
+    if (!Logger._shouldLog("debug")) return;
+    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#9aa0a6;font-weight:600", ...args);
+  }
+  /**
+   *  info - Logs an info-level message.
+   */
+  static info(...args) {
+    if (!Logger._shouldLog("info")) return;
+    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#1a73e8;font-weight:600", ...args);
+  }
+  /**
+   *  warn - Logs a warning-level message.
+   */
+  static warn(...args) {
+    if (!Logger._shouldLog("warn")) return;
+    console.log("%c[WARN][TornPDA.Racing+]: ", "color:#f9ab00;font-weight:600", ...args);
+  }
+  /**
+   *  error - Logs an error-level message.
+   */
+  static error(...args) {
+    if (!Logger._shouldLog("error")) return;
+    console.log("%c[ERROR][TornPDA.Racing+]: ", "color:#d93025;font-weight:600", ...args);
+  }
+}
+
+/* ------------------------------------------------------------------------
  * Torn racing data
  * --------------------------------------------------------------------- */
 // Colours for car parts.
@@ -302,7 +366,7 @@ const ACCESS_LEVEL = Object.freeze({
     }
     try {
       nav.clipboard?.writeText?.(text);
-      if (DEBUG_MODE) console.log(`[TornPDA+]: Text copied.`);
+      Logger.debug(`Text copied.`);
       return true;
     } catch {
       return false;
@@ -329,7 +393,7 @@ const ACCESS_LEVEL = Object.freeze({
         if (result) {
           resolve(result);
         } else {
-          if (DEBUG_MODE) console.log(`[TornPDA+]: '${selector}' - Deferring...`);
+          Logger.debug(`'${selector}' - Deferring...`);
           setTimeout(check, DEFERRAL_INTERVAL);
         }
       };
@@ -355,7 +419,7 @@ const ACCESS_LEVEL = Object.freeze({
         if (result && result.length > 0) {
           resolve(result);
         } else {
-          if (DEBUG_MODE) console.log(`[TornPDA+]: '${selector}' - Deferring...`);
+          Logger.debug(`'${selector}' - Deferring...`);
           count++;
           setTimeout(check, DEFERRAL_INTERVAL);
         }
@@ -363,8 +427,6 @@ const ACCESS_LEVEL = Object.freeze({
       check();
     });
   };
-
-  if (DEBUG_MODE) console.log(`[TornPDA+]: Init loaded.`);
 
   /* ------------------------------------------------------------------------
    * Torn API helper
@@ -452,7 +514,7 @@ const ACCESS_LEVEL = Object.freeze({
      */
     async validateKey(api_key) {
       if (!api_key || typeof api_key !== "string" || api_key.length != API_KEY_LENGTH) {
-        if (DEBUG_MODE) console.log("[Racing+]: API key rejected by local validation.");
+        Logger.debug("API key rejected by local validation.");
         return false;
       }
       const prevKey = this.key;
@@ -462,14 +524,14 @@ const ACCESS_LEVEL = Object.freeze({
           timestamp: `${Date.unix()}`,
         });
         if (data?.info?.access && Number(data.info.access.level) >= ACCESS_LEVEL.Minimal) {
-          if (DEBUG_MODE) console.log("[Racing+]: API key validated.");
+          Logger.debug("API key validated.");
           return true;
         }
-        if (DEBUG_MODE) console.log("[Racing+]: API key invalid (unexpected response).");
+        Logger.warn("API key invalid (unexpected response).");
         this.key = prevKey;
         return false;
       } catch (err) {
-        if (DEBUG_MODE) console.log(`Racing+ ${err}`);
+        Logger.error(err);
         this.key = prevKey;
         return false;
       }
@@ -481,7 +543,7 @@ const ACCESS_LEVEL = Object.freeze({
     saveKey() {
       if (!this.key) return;
       STORE.setValue("RACINGPLUS_APIKEY", this.key);
-      if (DEBUG_MODE) console.log("[Racing+]: API Key saved.");
+      Logger.info("API Key saved.");
     }
 
     /**
@@ -490,7 +552,7 @@ const ACCESS_LEVEL = Object.freeze({
     deleteKey() {
       this.key = null;
       STORE.deleteValue("RACINGPLUS_APIKEY");
-      if (DEBUG_MODE) console.log("[Racing+]: API Key deleted.");
+      Logger.info("API Key deleted.");
     }
   }
 
@@ -551,7 +613,7 @@ const ACCESS_LEVEL = Object.freeze({
      * @param {NodeList|Array} drivers - List of driver DOM elements
      */
     updateLeaderBoard(drivers) {
-      if (DEBUG_MODE) console.log("[Racing+]: Updating Leaderboard...");
+      Logger.debug("Updating Leaderboard...");
 
       // Fix driver status
       Array.from(drivers).forEach(async (drvr) => {
@@ -625,19 +687,9 @@ const ACCESS_LEVEL = Object.freeze({
           if (!drvr.querySelector(".speed")) {
             stats.insertAdjacentHTML("afterEnd", '<div class="speed">0.00mph</div>');
           }
-          // if (
-          //   !["joined", "finished"].includes(racestatus) &&
-          //   !speedIntervalByDriverId.has(driverId)
-          // ) {
-          //   if (DEBUG_MODE) {
-          //     console.log(
-          //       `Racing+: Adding speed interval for driver ${driverId}.`,
-          //     );
-          //   }
-          //   speedIntervalByDriverId.set(
-          //     driverId,
-          //     setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId),
-          //   );
+          // if (!["joined", "finished"].includes(racestatus) && !speedIntervalByDriverId.has(driverId)) {
+          //   Logger.debug(`Adding speed interval for driver ${driverId}.`);
+          //   speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId));
           // }
         }
         // Show driver skill
@@ -658,7 +710,7 @@ const ACCESS_LEVEL = Object.freeze({
           //       skill.textContent = `RS: ${user.personalstats.racing.skill}`;
           //     }
           //   } catch (err) {
-          //     console.log(`Racing+ Error: ${err.error ?? err}`);
+          //     console.log(`[TornPDA.Racing+]: ${err.error ?? err}`);
           //   }
           // }
         }
@@ -693,7 +745,7 @@ const ACCESS_LEVEL = Object.freeze({
         }
       } catch (err) {
         // Log parse errors in debug mode
-        if (DEBUG_MODE) console.warn("[Racing+]: Failed to load driver cache:", err);
+        Logger.warn(`Failed to load driver cache.\n${err}`);
       }
     }
 
@@ -751,7 +803,7 @@ const ACCESS_LEVEL = Object.freeze({
           this.save();
         }
       } catch (err) {
-        if (DEBUG_MODE) console.warn("[Racing+]: racing records fetch failed:", err);
+        Logger.debug(`Racing records fetch failed.\n${err}`);
       }
     }
 
@@ -789,7 +841,7 @@ const ACCESS_LEVEL = Object.freeze({
           this.save();
         }
       } catch (err) {
-        if (DEBUG_MODE) console.warn("[Racing+]: enlisted cars fetch failed:", err);
+        Logger.error(`Enlisted cars fetch failed.\n${err}`);
       }
     }
   }
@@ -975,7 +1027,7 @@ const ACCESS_LEVEL = Object.freeze({
    * @returns {Promise<void>}
    */
   async function loadOfficialEvents() {
-    if (DEBUG_MODE) console.log("[Racing+]: Loading Official Events tab...");
+    Logger.debug("Loading Official Events tab...");
 
     // Fix active tab highlighting
     doc.querySelectorAll("#racingMainContainer ul.categories li").forEach((c) => {
@@ -989,7 +1041,7 @@ const ACCESS_LEVEL = Object.freeze({
 
     // If new race track, capture the track meta
     if (!this_race || this_race.id !== raceId) {
-      if (DEBUG_MODE) console.log("[Racing+]: Loading Race Data...");
+      Logger.debug("Loading race data...");
       const racingupdates = await defer("#racingupdates .drivers-list .title-black");
       const trackInfo = racingupdates.querySelector(".track-info");
 
@@ -1071,7 +1123,7 @@ const ACCESS_LEVEL = Object.freeze({
    * @returns {Promise<void>}
    */
   async function addStyles() {
-    if (DEBUG_MODE) console.log("[Racing+]: Adding styles...");
+    Logger.debug("Adding styles...");
 
     const s = doc.createElement("style");
     s.innerHTML = `__MINIFIED_CSS__`;
@@ -1091,7 +1143,7 @@ const ACCESS_LEVEL = Object.freeze({
       s.innerHTML += dynRules.join("");
     }
     doc.head.appendChild(s);
-    if (DEBUG_MODE) console.log("[Racing+]: Styles added.");
+    Logger.debug("Styles added.");
   }
 
   /**
@@ -1174,7 +1226,7 @@ const ACCESS_LEVEL = Object.freeze({
       doc.querySelector("#racing-plus-panel")?.classList.toggle("show");
     });
 
-    if (DEBUG_MODE) console.log("[Racing+]: Settings button added.");
+    Logger.debug("Settings button added.");
   }
 
   /**
@@ -1188,7 +1240,7 @@ const ACCESS_LEVEL = Object.freeze({
     // Load Torn API key (from PDA or local storage)
     let api_key = IS_PDA ? PDA_KEY : STORE.getValue("RACINGPLUS_APIKEY");
     if (api_key) {
-      if (DEBUG_MODE) console.log("[Racing+]: Loading Torn API...");
+      Logger.debug("Loading Torn API...");
       // validate torn api key; if invalid, we'll leave the input editable
       if (!(await torn_api.validateKey(api_key))) {
         torn_api.deleteKey();
@@ -1315,11 +1367,11 @@ const ACCESS_LEVEL = Object.freeze({
       el.addEventListener("click", (ev) => {
         const t = /** @type {HTMLInputElement} */ (ev.currentTarget);
         STORE.setValue(key, t.checked ? "1" : "0");
-        if (DEBUG_MODE) console.log(`[Racing+]: ${el.id} saved.`);
+        Logger.debug(`${el.id} saved.`);
       });
     });
 
-    if (DEBUG_MODE) console.log("[Racing+]: Settings panel added.");
+    Logger.debug("Settings panel added.");
   }
 
   /**
@@ -1327,13 +1379,13 @@ const ACCESS_LEVEL = Object.freeze({
    * @returns {Promise<void>}
    */
   async function loadRacingPlus(header_container, main_container) {
-    if (DEBUG_MODE) console.log("[Racing+]: Loading Driver Data...");
+    Logger.debug("Loading Driver Data...");
     // Load driver data - Typically a hidden input with JSON { id, ... }
     const scriptData = await defer("#torn-user");
     this_driver = new TornDriver(JSON.parse(scriptData.value).id);
     this_driver.load();
 
-    if (DEBUG_MODE) console.log("[Racing+]: Loading DOM...");
+    Logger.debug("Loading DOM...");
     try {
       // Add the Racing+ panel to the DOM
       await addRacingPlusPanel(main_container);
@@ -1344,7 +1396,7 @@ const ACCESS_LEVEL = Object.freeze({
     }
 
     // Normalize the top banner structure & update skill snapshot
-    if (DEBUG_MODE) console.log("[Racing+]: Fixing top banner...");
+    Logger.debug("Fixing top banner...");
     const banner = await defer(".banner");
     const leftBanner = doc.createElement("div");
     leftBanner.className = "left-banner";
@@ -1367,7 +1419,7 @@ const ACCESS_LEVEL = Object.freeze({
     banner.innerHTML = "";
     banner.appendChild(leftBanner);
     banner.appendChild(rightBanner);
-    if (DEBUG_MODE) console.log("[Racing+]: DOM loaded.");
+    Logger.debug("DOM loaded.");
   }
 
   /* ------------------------------------------------------------------------
@@ -1379,7 +1431,7 @@ const ACCESS_LEVEL = Object.freeze({
   /** @type {TornRace} */ let this_race;
   /** @type {MutationObserver|null} */ let page_observer = null;
 
-  if (DEBUG_MODE) console.log("[Racing+]: Script loaded. Initializing...");
+  Logger.debug("Script loaded. Initializing...");
 
   await addStyles(); // Add CSS
 
@@ -1394,7 +1446,7 @@ const ACCESS_LEVEL = Object.freeze({
   await this_driver.updateCars(); // Update available cars from API
 
   // Add Page observer (track tab changes, race updates, etc.)
-  if (DEBUG_MODE) console.log("[Racing+]: Adding Page Observer...");
+  Logger.debug("Adding Page Observer...");
 
   // Use the outer-scoped page_observer.
   page_observer = new MutationObserver(async (mutations) => {
@@ -1406,11 +1458,11 @@ const ACCESS_LEVEL = Object.freeze({
         const el = tNode.nodeType === Node.ELEMENT_NODE ? tNode : tNode.parentElement;
         if (el && el.id === "infoSpot") {
           this_race?.updateStatus(el.textContent || "");
-          // if (DEBUG_MODE) console.log(`[Racing+]: Race Status Update -> ${this_race.status}.`);
+          // if (DEBUG_MODE) console.log(`[TornPDA.Racing+]: Race Status Update -> ${this_race.status}.`);
         }
         if (el && el.id === "leaderBoard") {
           this_race?.updateLeaderBoard(el.childNodes || []);
-          // if (DEBUG_MODE) console.log(`[Racing+]: Leader Board Update.`);
+          // if (DEBUG_MODE) console.log(`[TornPDA.Racing+]: Leader Board Update.`);
         }
       }
       // Handle injected subtrees (new tab content loaded)
@@ -1445,7 +1497,7 @@ const ACCESS_LEVEL = Object.freeze({
 
   // load initial content
   await loadOfficialEvents();
-  if (DEBUG_MODE) console.log("[Racing+]: Initialized.");
+  Logger.debug("Initialization complete.");
 })(window);
 
 // End of file: RacingPlus.user.js
