@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA - Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.9
+// @version      0.99.10
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -161,8 +161,8 @@
     constructor(args = {}) {
       const { miles, kilometers } = args;
       const mi = miles || kilometers * KMS_PER_MI;
-      if (!Number.isFinite(mi)) {
-        throw new TypeError("miles must be a finite number.");
+      if (typeof mi !== "number" || Number.isNaN(mi)) {
+        throw new TypeError("miles must be a number.");
       }
       this._mi = mi;
       this._units = STORE.getValue(STORE.getKey("rplus_units")) ?? (kilometers ? "km" : "mi");
