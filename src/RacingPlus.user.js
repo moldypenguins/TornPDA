@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA-Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.14
+// @version      0.99.15
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -29,55 +29,6 @@ const API_COMMENT = "RacingPlus"; // Comment shown in Torn API recent usage.
 const CACHE_TTL = 60 * 60 * 1000; // Cache duration for API responses (ms). Default = 1 hour.
 const SPEED_INTERVAL = 1000; // (Reserved) Sample rate for speed updates (ms).
 const KMS_PER_MI = 1.609344; // Number of kilometers in 1 mile.
-
-// Colours for car parts.
-const COLOURS = ["#5D9CEC", "#48CFAD", "#FFCE54", "#ED5565", "#EC87C0", "#AC92EC", "#FC6E51", "#A0D468", "#4FC1E9"];
-
-// Car part categories (used by the CSS injector).
-const CATEGORIES = {
-  Aerodynamics: ["Spoiler", "Engine Cooling", "Brake Cooling", "Front Diffuser", "Rear Diffuser"],
-  Brakes: ["Pads", "Discs", "Fluid", "Brake Accessory", "Brake Control", "Callipers"],
-  Engine: ["Gasket", "Engine Porting", "Engine Cleaning", "Fuel Pump", "Camshaft", "Turbo", "Pistons", "Computer", "Intercooler"],
-  Exhaust: ["Exhaust", "Air Filter", "Manifold"],
-  Fuel: ["Fuel"],
-  Safety: ["Overalls", "Helmet", "Fire Extinguisher", "Safety Accessory", "Roll cage", "Cut-off", "Seat"],
-  Suspension: ["Springs", "Front Bushes", "Rear Bushes", "Upper Front Brace", "Lower Front Brace", "Rear Brace", "Front Tie Rods", "Rear Control Arms"],
-  Transmission: ["Shifting", "Differential", "Clutch", "Flywheel", "Gearbox"],
-  "Weight Reduction": ["Strip out", "Steering wheel", "Interior", "Windows", "Roof", "Boot", "Hood"],
-  "Wheels & Tires": ["Tyres", "Wheels"],
-};
-
-// Tracks metadata with Distance instances
-const TRACKS = {
-  6: { name: "Uptown", distance: new Distance({ miles: 2.25 }), laps: 7 },
-  7: { name: "Withdrawal", distance: new Distance({ miles: 3.4 }), laps: 0 },
-  8: { name: "Underdog", distance: new Distance({ miles: 1.73 }), laps: 0 },
-  9: { name: "Parkland", distance: new Distance({ miles: 3.43 }), laps: 5 },
-  10: { name: "Docks", distance: new Distance({ miles: 3.81 }), laps: 5 },
-  11: { name: "Commerce", distance: new Distance({ miles: 1.09 }), laps: 15 },
-  12: { name: "Two Islands", distance: new Distance({ miles: 2.71 }), laps: 6 },
-  15: { name: "Industrial", distance: new Distance({ miles: 1.35 }), laps: 0 },
-  16: { name: "Vector", distance: new Distance({ miles: 1.16 }), laps: 14 },
-  17: { name: "Mudpit", distance: new Distance({ miles: 1.06 }), laps: 15 },
-  18: { name: "Hammerhead", distance: new Distance({ miles: 1.16 }), laps: 14 },
-  19: { name: "Sewage", distance: new Distance({ miles: 1.5 }), laps: 11 },
-  20: { name: "Meltdown", distance: new Distance({ miles: 1.2 }), laps: 13 },
-  21: { name: "Speedway", distance: new Distance({ miles: 0.9 }), laps: 0 },
-  23: { name: "Stone Park", distance: new Distance({ miles: 2.08 }), laps: 8 },
-  24: { name: "Convict", distance: new Distance({ miles: 1.64 }), laps: 10 },
-};
-
-/**
- * API access level enumeration
- * @readonly
- * @enum {number}
- */
-const ACCESS_LEVEL = Object.freeze({
-  Public: 0,
-  Minimal: 1,
-  Limited: 2,
-  Full: 3,
-});
 
 /* ------------------------------------------------------------------------
  * Static Type Methods
@@ -263,6 +214,58 @@ class Speed {
     return `${val.toFixed(2)} ${this._units}`;
   }
 }
+
+/* ------------------------------------------------------------------------
+ * Torn racing data
+ * --------------------------------------------------------------------- */
+// Colours for car parts.
+const COLOURS = ["#5D9CEC", "#48CFAD", "#FFCE54", "#ED5565", "#EC87C0", "#AC92EC", "#FC6E51", "#A0D468", "#4FC1E9"];
+
+// Car part categories (used by the CSS injector).
+const CATEGORIES = {
+  Aerodynamics: ["Spoiler", "Engine Cooling", "Brake Cooling", "Front Diffuser", "Rear Diffuser"],
+  Brakes: ["Pads", "Discs", "Fluid", "Brake Accessory", "Brake Control", "Callipers"],
+  Engine: ["Gasket", "Engine Porting", "Engine Cleaning", "Fuel Pump", "Camshaft", "Turbo", "Pistons", "Computer", "Intercooler"],
+  Exhaust: ["Exhaust", "Air Filter", "Manifold"],
+  Fuel: ["Fuel"],
+  Safety: ["Overalls", "Helmet", "Fire Extinguisher", "Safety Accessory", "Roll cage", "Cut-off", "Seat"],
+  Suspension: ["Springs", "Front Bushes", "Rear Bushes", "Upper Front Brace", "Lower Front Brace", "Rear Brace", "Front Tie Rods", "Rear Control Arms"],
+  Transmission: ["Shifting", "Differential", "Clutch", "Flywheel", "Gearbox"],
+  "Weight Reduction": ["Strip out", "Steering wheel", "Interior", "Windows", "Roof", "Boot", "Hood"],
+  "Wheels & Tires": ["Tyres", "Wheels"],
+};
+
+// Tracks metadata with Distance instances
+const TRACKS = {
+  6: { name: "Uptown", distance: new Distance({ miles: 2.25 }), laps: 7 },
+  7: { name: "Withdrawal", distance: new Distance({ miles: 3.4 }), laps: 0 },
+  8: { name: "Underdog", distance: new Distance({ miles: 1.73 }), laps: 0 },
+  9: { name: "Parkland", distance: new Distance({ miles: 3.43 }), laps: 5 },
+  10: { name: "Docks", distance: new Distance({ miles: 3.81 }), laps: 5 },
+  11: { name: "Commerce", distance: new Distance({ miles: 1.09 }), laps: 15 },
+  12: { name: "Two Islands", distance: new Distance({ miles: 2.71 }), laps: 6 },
+  15: { name: "Industrial", distance: new Distance({ miles: 1.35 }), laps: 0 },
+  16: { name: "Vector", distance: new Distance({ miles: 1.16 }), laps: 14 },
+  17: { name: "Mudpit", distance: new Distance({ miles: 1.06 }), laps: 15 },
+  18: { name: "Hammerhead", distance: new Distance({ miles: 1.16 }), laps: 14 },
+  19: { name: "Sewage", distance: new Distance({ miles: 1.5 }), laps: 11 },
+  20: { name: "Meltdown", distance: new Distance({ miles: 1.2 }), laps: 13 },
+  21: { name: "Speedway", distance: new Distance({ miles: 0.9 }), laps: 0 },
+  23: { name: "Stone Park", distance: new Distance({ miles: 2.08 }), laps: 8 },
+  24: { name: "Convict", distance: new Distance({ miles: 1.64 }), laps: 10 },
+};
+
+/**
+ * API access level enumeration
+ * @readonly
+ * @enum {number}
+ */
+const ACCESS_LEVEL = Object.freeze({
+  Public: 0,
+  Minimal: 1,
+  Limited: 2,
+  Full: 3,
+});
 
 /* ------------------------------------------------------------------------
  * Script entry point
