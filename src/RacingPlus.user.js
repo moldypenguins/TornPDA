@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA-Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.15
+// @version      0.99.16
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -37,9 +37,9 @@ const KMS_PER_MI = 1.609344; // Number of kilometers in 1 mile.
  * Returns the current Unix timestamp (seconds since epoch).
  * @returns {number} Current Unix timestamp
  */
-if (!Date.getUnixTime) {
-  Object.defineProperty(Date, "getUnixTime", {
-    value: () => Math.floor(Date.getTime() / 1000),
+if (!Date.unix) {
+  Object.defineProperty(Date, "unix", {
+    value: () => Math.floor(Date.now() / 1000),
     writable: true,
     configurable: true,
     enumerable: false,
@@ -455,7 +455,7 @@ const ACCESS_LEVEL = Object.freeze({
       this.key = api_key; // use candidate key for the probe call
       try {
         const data = await this.request("key/info", {
-          timestamp: `${Date.getUnixTime()}`,
+          timestamp: `${Date.unix()}`,
         });
         if (data?.info?.access && Number(data.info.access.level) >= ACCESS_LEVEL.Minimal) {
           if (DEBUG_MODE) console.log("[Racing+]: API key validated.");
@@ -725,7 +725,7 @@ const ACCESS_LEVEL = Object.freeze({
     async updateRecords() {
       try {
         const results = await torn_api.request("user/racingrecords", {
-          timestamp: `${Date.getUnixTime()}`,
+          timestamp: `${Date.unix()}`,
         });
         if (Array.isArray(results?.racingrecords)) {
           results.racingrecords.forEach(({ track, records }) => {
@@ -758,7 +758,7 @@ const ACCESS_LEVEL = Object.freeze({
     async updateCars() {
       try {
         const results = await torn_api.request("user/enlistedcars", {
-          timestamp: `${Date.getUnixTime()}`,
+          timestamp: `${Date.unix()}`,
         });
         if (Array.isArray(results?.enlistedcars)) {
           this.cars = results.enlistedcars
