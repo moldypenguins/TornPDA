@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         TornPDA - Racing+
+// @name         TornPDA-Racing+
 // @namespace    TornPDA.RacingPlus
 // @version      0.99.10
 // @license      MIT
@@ -161,7 +161,7 @@
     constructor(args = {}) {
       const { miles, kilometers } = args;
       const mi = miles || kilometers * KMS_PER_MI;
-      if (typeof mi !== "number" || Number.isNaN(mi)) {
+      if (typeof mi !== "number" || !Number.isNaN(mi)) {
         throw new TypeError("miles must be a number.");
       }
       this._mi = mi;
