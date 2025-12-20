@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.26
+// @version      0.99.27
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -29,7 +29,7 @@ const LOG_LEVEL = Object.freeze({
 /* ------------------------------------------------------------------------
  * Constants
  * --------------------------------------------------------------------- */
-const LOG_MODE = LOG_LEVEL.Debug; // Log level threshold (debug|info|warn|error|silent).
+const LOG_MODE = LOG_LEVEL.DEBUG; // Log level threshold (debug|info|warn|error|silent).
 const DEFERRAL_LIMIT = 100; // Maximum amount of times the script will defer.
 const DEFERRAL_INTERVAL = 100; // Amount of time in milliseconds deferrals will last.
 
