@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.39
+// @version      0.99.41
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -458,62 +458,64 @@ const ACCESS_LEVEL = Object.freeze({
      * Makes a Torn API request with caching
      * @param {string} path - API path (e.g., 'key/info' or '/user/stats')
      * @param {object|string} [args={}] - Query parameters or prebuilt query string
-     * @returns {Promise<object>} API response data
-     * @throws {Error} If API key invalid, path invalid, or request fails
+     * @returns {Promise<object|null>} API response data if available
      */
-    async request(path, args = {}) {
-      //TODO: log error
-      if (!this.key) throw new Error("Invalid API key.");
-      const validRoots = ["user", "faction", "market", "racing", "forum", "property", "key", "torn"];
-      if (typeof path !== "string") throw new Error("Invalid path. Must be a string.");
-      const pathPrefixed = path.startsWith("/") ? path : `/${path}`;
-      const root = pathPrefixed.split("/")[1];
-      if (!validRoots.includes(root)) {
-        throw new Error(`Invalid API path. Must start with one of: ${validRoots.join(", ")}`);
-      }
+    request(path, args = {}) {
+      return new Promise((resolve, reject) => {
+        const fail = (err) => reject(err);
+        void (async () => {
+          if (!this.key) return fail(new Error("Invalid API key."));
+          const validRoots = ["user", "faction", "market", "racing", "forum", "property", "key", "torn"];
+          if (typeof path !== "string") return fail(new Error("Invalid path. Must be a string."));
+          const pathPrefixed = path.startsWith("/") ? path : `/${path}`;
+          const root = pathPrefixed.split("/")[1];
+          if (!validRoots.includes(root)) {
+            return fail(new Error(`Invalid API path. Must start with one of: ${validRoots.join(", ")}`));
+          }
 
-      let queryString = "";
-      if (typeof args === "object" && args !== null) {
-        queryString = Object.entries(args)
-          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-          .join("&");
-      } else if (typeof args === "string") {
-        queryString = args;
-      } else {
-        throw new Error("Invalid args. Must be an object or a query string.");
-      }
+          let queryString = "";
+          if (typeof args === "object" && args !== null) {
+            queryString = Object.entries(args)
+              .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+              .join("&");
+          } else if (typeof args === "string") {
+            queryString = args;
+          } else {
+            return fail(new Error("Invalid args. Must be an object or a query string."));
+          }
 
-      const queryPrefixed = queryString && !queryString.startsWith("&") ? `&${queryString}` : queryString;
-      const queryURL = `https://api.torn.com/v2${pathPrefixed}?comment=${API_COMMENT}&key=${this.key}${queryPrefixed}`;
+          const queryPrefixed = queryString && !queryString.startsWith("&") ? `&${queryString}` : queryString;
+          const queryURL = `https://api.torn.com/v2${pathPrefixed}?comment=${API_COMMENT}&key=${this.key}${queryPrefixed}`;
 
-      const cached = this.cache.get(queryURL);
-      if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
+          const cached = this.cache.get(queryURL);
+          if (cached && Date.now() - cached.timestamp < CACHE_TTL) return resolve(cached.data);
 
-      const controller = new AbortController();
-      const options = { signal: controller.signal };
-      const timer = setTimeout(() => controller.abort(), API_FETCH_TIMEOUT);
+          const controller = new AbortController();
+          const options = { signal: controller.signal };
+          const timer = setTimeout(() => controller.abort(), API_FETCH_TIMEOUT);
+          const cleanup = () => clearTimeout(timer);
 
-      let response;
-      try {
-        response = await fetch(queryURL, options);
-      } catch (err) {
-        clearTimeout(timer);
-        if (err?.name === "AbortError") throw new Error("Fetch timeout");
-        throw err;
-      }
-      clearTimeout(timer);
+          try {
+            const response = await fetch(queryURL, options);
+            cleanup();
+            if (!response.ok) return fail(new Error(`HTTP error: ${response.status}`));
 
-      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+            const result = await response.json();
+            if (result?.error) {
+              const code = result.error?.code ?? "API_ERROR";
+              const msg = result.error?.error ?? "Unknown error";
+              return fail(new Error(`[TornAPI] ${code}: ${msg}`));
+            }
 
-      const result = await response.json();
-      if (result?.error) {
-        const code = result.error?.code ?? "API_ERROR";
-        const msg = result.error?.error ?? "Unknown error";
-        throw new Error(`[TornAPI] ${code}: ${msg}`);
-      }
-
-      this.cache.set(queryURL, { data: result, timestamp: Date.now() });
-      return result;
+            this.cache.set(queryURL, { data: result, timestamp: Date.now() });
+            return resolve(result ?? null);
+          } catch (err) {
+            cleanup();
+            if (err?.name === "AbortError") return fail(new Error("Fetch timeout"));
+            return fail(err);
+          }
+        })();
+      });
     }
 
     /**
@@ -1268,7 +1270,7 @@ const ACCESS_LEVEL = Object.freeze({
           "</svg>" +
           "</button>" +
           "</span>",
-      `<input type="text" id="rplus_apikey" maxlength="${API_KEY_LENGTH}" />`,
+      `<input type="text" id="rplus-apikey" maxlength="${API_KEY_LENGTH}" />`,
     ]);
 
     const flex_div = createDiv("flex-col", [api_actions, '<span class="racing-plus-apikey-status"></span>']);
@@ -1276,7 +1278,7 @@ const ACCESS_LEVEL = Object.freeze({
     const rplus_main = createDiv("racing-plus-main");
     rplus_main.appendChild(
       createDiv("racing-plus-settings", [
-        '<label for="rplus_apikey">API Key</label>',
+        '<label for="rplus-apikey">API Key</label>',
         flex_div,
         createCheckbox("rplus_addlinks", "Add profile links"),
         createCheckbox("rplus_showskill", "Show racing skill"),
@@ -1293,7 +1295,7 @@ const ACCESS_LEVEL = Object.freeze({
     main_container.insertAdjacentElement("beforeBegin", rplus_panel);
 
     /** @type {HTMLInputElement} */
-    const apiInput = doc.querySelector("#rplus_apikey");
+    const apiInput = doc.querySelector("#rplus-apikey");
     const apiSave = doc.querySelector(".racing-plus-apikey-save");
     const apiReset = doc.querySelector(".racing-plus-apikey-reset");
     const apiStatus = doc.querySelector(".racing-plus-apikey-status");

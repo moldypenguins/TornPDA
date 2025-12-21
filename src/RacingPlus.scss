@@ -106,18 +106,16 @@
   border-bottom: 0;
 }
 .d .racing-plus-settings div input[type=checkbox] {
-  vertical-align: middle;
-  height: 11px;
+  height: 12px;
   margin: 5px 0;
 }
 #rplus-apikey {
   text-align: right;
-  vertical-align: middle;
   width: 120px;
   height: 13px;
   margin: 0;
-  padding: 0 4px;
-  border-radius: 3px;
+  padding: 2px 5px;
+  border-radius: 2px;
   border: 1px solid #ccc;
   border-color: var(--input-disabled-border-color);
   .valid {
@@ -143,16 +141,15 @@
   color: red;
   padding: 5px;
   font-size: 0.6rem;
-  display: none;
 }
 .d .racing-plus-apikey-reset,
 .d .racing-plus-apikey-save {
   cursor: pointer;
   vertical-align: middle;
-  margin: 0 0 2px;
+  margin: 0 0 3px;
   padding: 0;
-  height: 15px;
-  width: 15px;
+  height: 16px;
+  width: 16px;
   display: none;
 }
 .d .racing-plus-apikey-reset.show,
