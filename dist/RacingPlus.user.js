@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.42
+// @version      0.99.40
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -464,13 +464,14 @@ const ACCESS_LEVEL = Object.freeze({
       return new Promise((resolve, reject) => {
         const fail = (err) => reject(err);
         void (async () => {
-          if (!this.key) return fail(new Error("Invalid API key."));
+          //TODO: log error
+          if (!this.key) return fail("Invalid API key.");
           const validRoots = ["user", "faction", "market", "racing", "forum", "property", "key", "torn"];
-          if (typeof path !== "string") return fail(new Error("Invalid path. Must be a string."));
+          if (typeof path !== "string") return fail("Invalid path. Must be a string.");
           const pathPrefixed = path.startsWith("/") ? path : `/${path}`;
           const root = pathPrefixed.split("/")[1];
           if (!validRoots.includes(root)) {
-            return fail(new Error(`Invalid API path. Must start with one of: ${validRoots.join(", ")}`));
+            return fail(`Invalid API path. Must start with one of: ${validRoots.join(", ")}`);
           }
 
           let queryString = "";
@@ -481,40 +482,41 @@ const ACCESS_LEVEL = Object.freeze({
           } else if (typeof args === "string") {
             queryString = args;
           } else {
-            return fail(new Error("Invalid args. Must be an object or a query string."));
+            return fail("Invalid args. Must be an object or a query string.");
           }
 
           const queryPrefixed = queryString && !queryString.startsWith("&") ? `&${queryString}` : queryString;
           const queryURL = `https://api.torn.com/v2${pathPrefixed}?comment=${API_COMMENT}&key=${this.key}${queryPrefixed}`;
 
           const cached = this.cache.get(queryURL);
-          if (cached && Date.now() - cached.timestamp < CACHE_TTL) return resolve(cached.data);
+          if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
 
           const controller = new AbortController();
           const options = { signal: controller.signal };
           const timer = setTimeout(() => controller.abort(), API_FETCH_TIMEOUT);
-          const cleanup = () => clearTimeout(timer);
 
+          let response;
           try {
-            const response = await fetch(queryURL, options);
-            cleanup();
-            if (!response.ok) return fail(new Error(`HTTP error: ${response.status}`));
-
-            const result = await response.json();
-            if (result?.error) {
-              const code = result.error?.code ?? "API_ERROR";
-              const msg = result.error?.error ?? "Unknown error";
-              return fail(new Error(`[TornAPI] ${code}: ${msg}`));
-            }
-
-            this.cache.set(queryURL, { data: result, timestamp: Date.now() });
-            return resolve(result ?? null);
+            response = await fetch(queryURL, options);
           } catch (err) {
-            cleanup();
-            if (err?.name === "AbortError") return fail(new Error("Fetch timeout"));
-            return fail(err);
+            clearTimeout(timer);
+            if (err?.name === "AbortError") return fail("Fetch timeout");
+            throw err;
           }
-        })();
+          clearTimeout(timer);
+
+          if (!response.ok) return fail(`HTTP error: ${response.status}`);
+
+          const result = await response.json();
+          if (result?.error) {
+            const code = result.error?.code ?? "API_ERROR";
+            const msg = result.error?.error ?? "Unknown error";
+            return fail(`${code}: ${msg}`);
+          }
+
+          this.cache.set(queryURL, { data: result, timestamp: Date.now() });
+          return resolve(result);
+        });
       });
     }
 
