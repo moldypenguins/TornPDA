@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.43
+// @version      0.99.44
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -93,7 +93,7 @@ const DEFERRAL_LIMIT = 100; // Maximum amount of times the script will defer.
 const DEFERRAL_INTERVAL = 100; // Amount of time in milliseconds deferrals will last.
 
 const API_FETCH_TIMEOUT = 10000; // API request timeout in milliseconds
-const API_KEY_LENGTH = 8; // Minimum valid API key length
+const API_KEY_LENGTH = 16; // Minimum valid API key length
 
 const HOURS_PER_SECOND = 3600; // Seconds in an hour for speed calculations
 

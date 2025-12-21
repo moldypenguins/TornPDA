@@ -108,21 +108,21 @@
 .d .racing-plus-settings div input[type=checkbox] {
   height: 12px;
   margin: 5px 0;
+  accent-color: #c00;
 }
 #rplus-apikey {
   text-align: right;
   width: 120px;
-  height: 13px;
+  height: 12px;
   margin: 0;
-  padding: 2px 5px;
-  border-radius: 2px;
-  border: 1px solid #ccc;
-  border-color: var(--input-disabled-border-color);
+  padding: 1px 2px;
+  border-radius: 3px;
+  border: 1px solid #767676;
   .valid {
-    border-color: #0c0 !important;
+    border-color: #090 !important;
   }
   .invalid {
-    border-color: red !important;
+    border-color: #c00 !important;
   }
 }
 .d .flex-col {
@@ -134,20 +134,17 @@
 }
 .d .racing-plus-apikey-actions {
   margin-right: 10px;
-  vertical-align: middle;
 }
 .d .racing-plus-apikey-status {
-  vertical-align: middle;
   color: red;
-  padding: 5px;
+  padding: 2px 5px;
   font-size: 0.6rem;
   display: none;
 }
 .d .racing-plus-apikey-reset,
 .d .racing-plus-apikey-save {
   cursor: pointer;
-  vertical-align: middle;
-  margin: 0 0 3px;
+  margin: 0 0 2px 0;
   padding: 0;
   height: 16px;
   width: 16px;
