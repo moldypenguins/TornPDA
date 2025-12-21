@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.37
+// @version      0.99.38
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1187,21 +1187,10 @@ const ACCESS_LEVEL = Object.freeze({
    * Creates a label and checkbox with the given id and text.
    * @param {string} id the div class attribute
    * @param {string} label the element(s) to inject into the div
-   * @returns {object<HTMLElement>}
+   * @returns {string}
    */
   function createCheckbox(id, label) {
-    let lbl = doc.createElement("label");
-    lbl.for = id;
-    if (label && typeof label === "string") {
-      lbl.innerText = label;
-    }
-    let div = doc.createElement("div");
-    let chk = doc.createElement("input");
-    chk.type = "checkbox";
-    chk.id = id;
-    div.appendChild(chk);
-
-    return [lbl, div];
+    return `<label for="${id}">${label}</label><div><input type="checkbox" id="${id}" /></div>`;
   }
 
   /**
