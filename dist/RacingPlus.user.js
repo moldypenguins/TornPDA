@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.36
+// @version      0.99.37
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -812,7 +812,7 @@ const ACCESS_LEVEL = Object.freeze({
           this.save();
         }
       } catch (err) {
-        Logger.debug(`Racing records fetch failed.\n${err}`);
+        Logger.warn(`Racing records fetch failed.\n${err}`);
       }
     }
 
@@ -850,7 +850,7 @@ const ACCESS_LEVEL = Object.freeze({
           this.save();
         }
       } catch (err) {
-        Logger.error(`Enlisted cars fetch failed.\n${err}`);
+        Logger.warn(`Enlisted cars fetch failed.\n${err}`);
       }
     }
   }
