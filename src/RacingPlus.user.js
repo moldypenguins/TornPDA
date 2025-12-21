@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.46
+// @version      0.99.48
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -12,6 +12,8 @@
 // @connect      api.torn.com
 // @run-at       document-start
 // ==/UserScript==
+
+"use strict";
 
 const SCRIPT_START = Date.now();
 
@@ -42,44 +44,40 @@ const LOG_MODE = LOG_LEVEL.DEBUG;
  */
 class Logger {
   /**
-   * private levelOrder - Lowercased name->number lookup derived from LogLevel.
-   */
-  static _levelOrder = Object.freeze(Object.fromEntries(Object.entries(LOG_LEVEL).map(([k, v]) => [k.toLowerCase(), v])));
-
-  /**
    * private shouldLog - Returns true if the given level passes the current LOG_MODE threshold.
+   * @param {LOG_LEVEL} level
    */
   static _shouldLog(level) {
-    const current = Logger._levelOrder[String(LOG_MODE).toLowerCase()] ?? Logger._levelOrder.info;
-    const incoming = Logger._levelOrder[String(level).toLowerCase()] ?? Logger._levelOrder.info;
-    return incoming >= current && current < Logger._levelOrder.silent;
+    const current = typeof LOG_MODE === "number" ? LOG_MODE : LOG_LEVEL.INFO;
+    const incoming = typeof level === "number" ? level : (LOG_LEVEL[String(level).toUpperCase()] ?? LOG_LEVEL.INFO);
+    return incoming >= current && current < LOG_LEVEL.SILENT;
   }
   /**
    *  debug
    */
   static debug(...args) {
-    if (!Logger._shouldLog("debug")) return;
+    if (!Logger._shouldLog(LOG_LEVEL.DEBUG)) return;
     console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#9aa0a6;font-weight:600", ...args);
   }
   /**
    *  info - Logs an info-level message.
    */
   static info(...args) {
-    if (!Logger._shouldLog("info")) return;
+    if (!Logger._shouldLog(LOG_LEVEL.INFO)) return;
     console.log("%c[INFO][TornPDA.Racing+]: ", "color:#1a73e8;font-weight:600", ...args);
   }
   /**
    *  warn - Logs a warning-level message.
    */
   static warn(...args) {
-    if (!Logger._shouldLog("warn")) return;
+    if (!Logger._shouldLog(LOG_LEVEL.WARN)) return;
     console.log("%c[WARN][TornPDA.Racing+]: ", "color:#f9ab00;font-weight:600", ...args);
   }
   /**
    *  error - Logs an error-level message.
    */
   static error(...args) {
-    if (!Logger._shouldLog("error")) return;
+    if (!Logger._shouldLog(LOG_LEVEL.ERROR)) return;
     console.log("%c[ERROR][TornPDA.Racing+]: ", "color:#d93025;font-weight:600", ...args);
   }
 }
@@ -95,7 +93,7 @@ const DEFERRAL_INTERVAL = 100; // Amount of time in milliseconds deferrals will 
 const API_FETCH_TIMEOUT = 10000; // API request timeout in milliseconds
 const API_KEY_LENGTH = 16; // Minimum valid API key length
 
-const HOURS_PER_SECOND = 3600; // Seconds in an hour for speed calculations
+const SECONDS_PER_HOUR = 3600; // Seconds in an hour for speed calculations
 
 const API_COMMENT = "RacingPlus"; // Comment shown in Torn API recent usage.
 const CACHE_TTL = 60 * 60 * 1000; // Cache duration for API responses (ms). Default = 1 hour.
@@ -123,12 +121,12 @@ if (!Date.unix) {
 }
 
 /**
- * Number.isFloat - returns true for number primitives (excludes NaN).
+ * Number.isValid - returns true for number primitives (excludes NaN).
  * @returns {boolean}
  */
-if (!Number.isFloat) {
-  Object.defineProperty(Number, "isFloat", {
-    value: (n) => typeof n === "number" && !Number.isNaN(Number.parseFloat(n)),
+if (!Number.isValid) {
+  Object.defineProperty(Number, "isValid", {
+    value: (n) => typeof n === "number" && Number.isFinite(n),
     writable: true,
     configurable: true,
     enumerable: false,
@@ -163,27 +161,21 @@ const STORE = {
    * List all stored values (for debugging)
    * @returns {Array<string>} Array of stored values
    */
-  listValues() {
-    return Object.values(localStorage);
-  },
+  listValues: () => Object.values(localStorage),
 
   /**
-   * Map logical toggle IDs to persistent storage keys
-   * @param {string} id - Feature toggle ID
-   * @returns {string|undefined} Corresponding storage key
+   * Map from toggle/control ids to persistent localStorage keys.
    */
-  getKey(id) {
-    return {
-      rplus_units: "RACINGPLUS_DISPLAYUNITS",
-      rplus_addlinks: "RACINGPLUS_ADDPROFILELINKS",
-      rplus_showskill: "RACINGPLUS_SHOWRACINGSKILL",
-      rplus_showspeed: "RACINGPLUS_SHOWCARSPEED",
-      rplus_showracelink: "RACINGPLUS_SHOWRACELINK",
-      rplus_showexportlink: "RACINGPLUS_SHOWEXPORTLINK",
-      rplus_showwinrate: "RACINGPLUS_SHOWCARWINRATE",
-      rplus_showparts: "RACINGPLUS_SHOWCARPARTS",
-    }[id];
-  },
+  keys: Object.freeze({
+    rplus_units: "RACINGPLUS_DISPLAYUNITS",
+    rplus_addlinks: "RACINGPLUS_ADDPROFILELINKS",
+    rplus_showskill: "RACINGPLUS_SHOWRACINGSKILL",
+    rplus_showspeed: "RACINGPLUS_SHOWCARSPEED",
+    rplus_showracelink: "RACINGPLUS_SHOWRACELINK",
+    rplus_showexportlink: "RACINGPLUS_SHOWEXPORTLINK",
+    rplus_showwinrate: "RACINGPLUS_SHOWCARWINRATE",
+    rplus_showparts: "RACINGPLUS_SHOWCARPARTS",
+  }),
 };
 
 /* ------------------------------------------------------------------------
@@ -203,15 +195,15 @@ class Distance {
    */
   constructor(args = {}) {
     const { miles, kilometers } = args;
-    if (!miles && !kilometers) {
+    if (miles == null && kilometers == null) {
       throw new TypeError("One of miles or kilometers must be specified.");
     }
-    const mi = miles || (kilometers ? kilometers * KMS_PER_MI : 0);
-    if (!Number.isFloat(mi)) {
+    const mi = miles ?? (kilometers != null ? kilometers / KMS_PER_MI : 0);
+    if (!Number.isValid(mi)) {
       throw new TypeError("Miles or Kilometers must be a number.");
     }
     this._mi = mi;
-    this._units = kilometers ? "km" : "mi";
+    this._units = kilometers != null ? "km" : "mi";
   }
 
   /**
@@ -260,8 +252,8 @@ class Speed {
     if (!Number.isInteger(seconds) || seconds <= 0) {
       throw new TypeError("seconds must be an integer > 0.");
     }
-    this._mph = distance.mi / (seconds / HOURS_PER_SECOND);
-    this._units = STORE.getValue(STORE.getKey("rplus_units")) ?? "mph";
+    this._mph = distance.mi / (seconds / SECONDS_PER_HOUR);
+    this._units = STORE.getValue(STORE.keys.rplus_units) ?? "mph";
   }
 
   /**
@@ -346,7 +338,6 @@ const ACCESS_LEVEL = Object.freeze({
  * Script entry point
  * --------------------------------------------------------------------- */
 (async (w) => {
-  ("use strict");
   Logger.info(`Application started. Loading... ${Date.now() - SCRIPT_START} msec`);
 
   const doc = w.document;
@@ -368,12 +359,12 @@ const ACCESS_LEVEL = Object.freeze({
    * @returns {boolean} True if write operation succeeded
    * @throws {DOMException} If document is not focused
    */
-  const setClipboard = (text) => {
+  const setClipboard = async (text) => {
     if (!doc.hasFocus()) {
       throw new DOMException("Document is not focused");
     }
     try {
-      nav.clipboard?.writeText?.(text);
+      await nav.clipboard?.writeText?.(text);
       Logger.debug(`Text copied.`);
       return true;
     } catch {
@@ -460,64 +451,58 @@ const ACCESS_LEVEL = Object.freeze({
      * @param {object|string} [args={}] - Query parameters or prebuilt query string
      * @returns {Promise<object|null>} API response data if available
      */
-    request(path, args = {}) {
-      return new Promise((resolve, reject) => {
-        const fail = (err) => reject(err);
-        void (async () => {
-          //TODO: log error
-          if (!this.key) return fail("Invalid API key.");
-          const validRoots = ["user", "faction", "market", "racing", "forum", "property", "key", "torn"];
-          if (typeof path !== "string") return fail("Invalid path. Must be a string.");
-          const pathPrefixed = path.startsWith("/") ? path : `/${path}`;
-          const root = pathPrefixed.split("/")[1];
-          if (!validRoots.includes(root)) {
-            return fail(`Invalid API path. Must start with one of: ${validRoots.join(", ")}`);
-          }
+    async request(path, args = {}) {
+      //TODO: handle errors properly
+      if (!this.key) throw new Error("Invalid API key.");
 
-          let queryString = "";
-          if (typeof args === "object" && args !== null) {
-            queryString = Object.entries(args)
-              .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-              .join("&");
-          } else if (typeof args === "string") {
-            queryString = args;
-          } else {
-            return fail("Invalid args. Must be an object or a query string.");
-          }
+      const validRoots = ["user", "faction", "market", "racing", "forum", "property", "key", "torn"];
+      if (typeof path !== "string") throw new Error("Invalid path. Must be a string.");
 
-          const queryPrefixed = queryString && !queryString.startsWith("&") ? `&${queryString}` : queryString;
-          const queryURL = `https://api.torn.com/v2${pathPrefixed}?comment=${API_COMMENT}&key=${this.key}${queryPrefixed}`;
+      const pathPrefixed = path.startsWith("/") ? path : `/${path}`;
+      const root = pathPrefixed.split("/")[1];
+      if (!validRoots.includes(root)) {
+        throw new Error(`Invalid API path. Must start with one of: ${validRoots.join(", ")}`);
+      }
 
-          const cached = this.cache.get(queryURL);
-          if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
+      let queryString = "";
+      if (typeof args === "object" && args !== null) {
+        queryString = Object.entries(args)
+          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+          .join("&");
+      } else if (typeof args === "string") {
+        queryString = args.replace(/^\?/, "").replace(/^&/, "");
+      } else {
+        throw new Error("Invalid args. Must be an object or a query string.");
+      }
 
-          const controller = new AbortController();
-          const options = { signal: controller.signal };
-          const timer = setTimeout(() => controller.abort(), API_FETCH_TIMEOUT);
+      const queryExtra = queryString ? `&${queryString}` : "";
+      const queryURL = `https://api.torn.com/v2${pathPrefixed}?comment=${API_COMMENT}&key=${this.key}${queryExtra}`;
 
-          let response;
-          try {
-            response = await fetch(queryURL, options);
-          } catch (err) {
-            clearTimeout(timer);
-            if (err?.name === "AbortError") return fail("Fetch timeout");
-            throw err;
-          }
-          clearTimeout(timer);
+      const cached = this.cache.get(queryURL);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
 
-          if (!response.ok) return fail(`HTTP error: ${response.status}`);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), API_FETCH_TIMEOUT);
 
-          const result = await response.json();
-          if (result?.error) {
-            const code = result.error?.code ?? "API_ERROR";
-            const msg = result.error?.error ?? "Unknown error";
-            return fail(`${code}: ${msg}`);
-          }
+      try {
+        const response = await fetch(queryURL, { signal: controller.signal });
+        if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
 
-          this.cache.set(queryURL, { data: result, timestamp: Date.now() });
-          return resolve(result);
-        });
-      });
+        const results = await response.json();
+        if (results?.error) {
+          const code = results.error?.code ?? "API_ERROR";
+          const msg = results.error?.error ?? "Unknown error";
+          throw new Error(`${code}: ${msg}`);
+        }
+
+        this.cache.set(queryURL, { data: results, timestamp: Date.now() });
+        return results;
+      } catch (err) {
+        if (err?.name === "AbortError") throw new Error("Fetch timeout");
+        throw err;
+      } finally {
+        clearTimeout(timer);
+      }
     }
 
     /**
@@ -525,15 +510,15 @@ const ACCESS_LEVEL = Object.freeze({
      * @param {string} api_key - API key to validate
      * @returns {Promise<boolean>} True if valid with sufficient access
      */
-    validateKey(api_key) {
-      if (!api_key || typeof api_key !== "string" || api_key.length != API_KEY_LENGTH) {
+    async validateKey(api_key) {
+      if (!api_key || typeof api_key !== "string" || api_key.length !== API_KEY_LENGTH) {
         Logger.debug("API key rejected by local validation.");
         return false;
       }
       const prevKey = this.key;
       this.key = api_key; // use candidate key for the probe call
       try {
-        const data = this.request("key/info", {
+        const data = await this.request("key/info", {
           timestamp: `${Date.unix()}`,
         });
         if (data?.info?.access && Number(data.info.access.level) >= ACCESS_LEVEL.Minimal) {
@@ -628,8 +613,13 @@ const ACCESS_LEVEL = Object.freeze({
     updateLeaderBoard(drivers) {
       Logger.debug("Updating Leaderboard...");
 
+      const addLinks = STORE.getValue(STORE.keys.rplus_addlinks) === "1";
+      const showSpeed = STORE.getValue(STORE.keys.rplus_showspeed) === "1";
+      const showSkill = STORE.getValue(STORE.keys.rplus_showskill) === "1";
+
       // Fix driver status
-      Array.from(drivers).forEach(async (drvr) => {
+      for (const drvr of Array.from(drivers)) {
+        //Array.from(drivers).forEach(async (drvr) => {
         // Cache frequently used lookups to avoid repeated DOM queries.
         const driverId = (drvr.id || "").substring(4);
         const driverStatus = drvr.querySelector(".status");
@@ -667,8 +657,8 @@ const ACCESS_LEVEL = Object.freeze({
         }
 
         // Add driver profile links
-        if (STORE.getValue(STORE.getKey("rplus_addlinks")) === "1") {
-          if (!nameLink) {
+        if (addLinks) {
+          if (!nameLink && nameSpan) {
             nameSpan.outerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${nameSpan.outerHTML}</a>`;
           }
         } else {
@@ -696,7 +686,7 @@ const ACCESS_LEVEL = Object.freeze({
         }
 
         // Show driver speed
-        if (STORE.getValue(STORE.getKey("rplus_showspeed")) === "1") {
+        if (showSpeed) {
           if (!drvr.querySelector(".speed")) {
             stats.insertAdjacentHTML("afterEnd", '<div class="speed">0.00mph</div>');
           }
@@ -706,7 +696,7 @@ const ACCESS_LEVEL = Object.freeze({
           // }
         }
         // Show driver skill
-        if (STORE.getValue(STORE.getKey("rplus_showskill")) === "1") {
+        if (showSkill) {
           if (!drvr.querySelector(".skill")) {
             stats.insertAdjacentHTML("afterBegin", '<div class="skill">RS: ?</div>');
           }
@@ -727,7 +717,7 @@ const ACCESS_LEVEL = Object.freeze({
           //   }
           // }
         }
-      });
+      } //);
     }
   }
 
@@ -781,7 +771,7 @@ const ACCESS_LEVEL = Object.freeze({
      */
     updateSkill(skill) {
       const v = Number(skill);
-      if (Number.isFloat(v)) {
+      if (Number.isValid(v)) {
         this.skill = Math.max(this.skill, v);
         this.save();
       }
@@ -793,7 +783,7 @@ const ACCESS_LEVEL = Object.freeze({
      */
     async updateRecords() {
       try {
-        if (!torn_api) return;
+        if (!torn_api || !torn_api.key) throw new Error("TornAPI not initialized.");
         const results = await torn_api.request("user/racingrecords", {
           timestamp: `${Date.unix()}`,
         });
@@ -827,6 +817,7 @@ const ACCESS_LEVEL = Object.freeze({
      */
     async updateCars() {
       try {
+        if (!torn_api || !torn_api.key) throw new Error("TornAPI not initialized.");
         const results = await torn_api.request("user/enlistedcars", {
           timestamp: `${Date.unix()}`,
         });
@@ -905,7 +896,7 @@ const ACCESS_LEVEL = Object.freeze({
         event.preventDefault();
         try {
           // Copy the race link to clipboard using setClipboard
-          setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}`);
+          await setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}`);
         } catch {
           // swallow clipboard focus errors
         }
@@ -1068,7 +1059,7 @@ const ACCESS_LEVEL = Object.freeze({
       this_race = new TornRace({
         id: raceId,
         title: trackInfo?.getAttribute("title") ?? "",
-        distance: Number.isFloat(distNum) ? distNum : null,
+        distance: Number.isValid(distNum) ? distNum : null,
         laps: Number.isInteger(lapsNum) ? lapsNum : null,
       });
     }
@@ -1086,7 +1077,7 @@ const ACCESS_LEVEL = Object.freeze({
     this_race.updateLeaderBoard(drivers || []);
 
     // Add race link copy button
-    if (STORE.getValue(STORE.getKey("rplus_showracelink")) === "1") {
+    if (STORE.getValue(STORE.keys.rplus_showracelink) === "1") {
       await addRaceLinkCopyButton(this_race.id);
     }
 
@@ -1143,7 +1134,7 @@ const ACCESS_LEVEL = Object.freeze({
     s.innerHTML = `__MINIFIED_CSS__`;
 
     // Dynamic per-part color hints (batched for fewer string writes).
-    if (STORE.getValue(STORE.getKey("rplus_showparts")) === "1") {
+    if (STORE.getValue(STORE.keys.rplus_showparts) === "1") {
       const dynRules = [];
       Object.entries(CATEGORIES).forEach(([, parts]) => {
         parts.forEach((g, i) => {
@@ -1387,7 +1378,8 @@ const ACCESS_LEVEL = Object.freeze({
 
     // Initialize toggles from storage & persist on click.
     doc.querySelectorAll(".racing-plus-settings input[type=checkbox]").forEach((el) => {
-      const key = STORE.getKey(el.id);
+      const key = STORE.keys[el.id];
+      if (!key) return;
       el.checked = STORE.getValue(key) === "1";
       el.addEventListener("click", (ev) => {
         const t = /** @type {HTMLInputElement} */ (ev.currentTarget);
@@ -1457,72 +1449,76 @@ const ACCESS_LEVEL = Object.freeze({
   /** @type {MutationObserver|null} */ let page_observer = null;
 
   Logger.info(`Application loaded. Initializing. ${Date.now() - SCRIPT_START} msec`);
+  try {
+    await addStyles(); // Add CSS
 
-  await addStyles(); // Add CSS
+    if (!doc.head) await new Promise((r) => w.addEventListener("DOMContentLoaded", r, { once: true }));
+    const header_container = await defer(RACING_HEADER_SELECTOR);
+    const main_container = await defer(RACING_MAIN_SELECTOR);
+    const race_container = await defer(RACING_ADDITIONAL_SELECTOR); // race is a child of main
 
-  if (!doc.head) await new Promise((r) => w.addEventListener("DOMContentLoaded", r, { once: true }));
-  const header_container = await defer(RACING_HEADER_SELECTOR);
-  const main_container = await defer(RACING_MAIN_SELECTOR);
-  const race_container = await defer(RACING_ADDITIONAL_SELECTOR); // race is a child of main
+    await loadRacingPlus(header_container, main_container); // Verify API and build UI
 
-  await loadRacingPlus(header_container, main_container); // Verify API and build UI
+    await this_driver.updateRecords(); // Update track records from API
+    await this_driver.updateCars(); // Update available cars from API
 
-  await this_driver.updateRecords(); // Update track records from API
-  await this_driver.updateCars(); // Update available cars from API
+    // Add Page observer (track tab changes, race updates, etc.)
+    Logger.debug("Adding Page Observer...");
 
-  // Add Page observer (track tab changes, race updates, etc.)
-  Logger.debug("Adding Page Observer...");
-
-  // Use the outer-scoped page_observer.
-  page_observer = new MutationObserver(async (mutations) => {
-    for (const mutation of mutations) {
-      // If infospot text changed, update status
-      if (mutation.type === "characterData" || mutation.type === "childList") {
-        /** @type {Node} */
-        const tNode = mutation.target;
-        const el = tNode.nodeType === Node.ELEMENT_NODE ? tNode : tNode.parentElement;
-        if (el && el.id === "infoSpot") {
-          this_race?.updateStatus(el.textContent || "");
-          // if (DEBUG_MODE) console.log(`[TornPDA.Racing+]: Race Status Update -> ${this_race.status}.`);
+    // Use the outer-scoped page_observer.
+    page_observer = new MutationObserver(async (mutations) => {
+      for (const mutation of mutations) {
+        // If infospot text changed, update status
+        if (mutation.type === "characterData" || mutation.type === "childList") {
+          /** @type {Node} */
+          const tNode = mutation.target;
+          const el = tNode.nodeType === Node.ELEMENT_NODE ? tNode : tNode.parentElement;
+          if (el && el.id === "infoSpot") {
+            this_race?.updateStatus(el.textContent || "");
+            // if (DEBUG_MODE) console.log(`[TornPDA.Racing+]: Race Status Update -> ${this_race.status}.`);
+          }
+          if (el && el.id === "leaderBoard") {
+            this_race?.updateLeaderBoard(el.childNodes || []);
+            // if (DEBUG_MODE) console.log(`[TornPDA.Racing+]: Leader Board Update.`);
+          }
         }
-        if (el && el.id === "leaderBoard") {
-          this_race?.updateLeaderBoard(el.childNodes || []);
-          // if (DEBUG_MODE) console.log(`[TornPDA.Racing+]: Leader Board Update.`);
+        //TODO: node.classList?.contains? is unsafe as node may be text
+        // Handle injected subtrees (new tab content loaded)
+        const addedNodes = mutation.addedNodes && mutation.addedNodes.length > 0 ? Array.from(mutation.addedNodes) : [];
+        if (addedNodes.length > 0 && !addedNodes.some((node) => node.classList?.contains?.("ajax-preloader"))) {
+          if (addedNodes.some((node) => node.id === "racingupdates")) {
+            await loadOfficialEvents();
+          } else if (addedNodes.some((node) => node.classList?.contains?.("enlist-wrap"))) {
+            await loadEnlistedCars();
+          } else if (addedNodes.some((node) => node.classList?.contains?.("pm-categories-wrap")) && STORE.getValue(STORE.keys.rplus_showparts) === "1") {
+            await loadPartsAndModifications();
+          }
         }
       }
-      // Handle injected subtrees (new tab content loaded)
-      const addedNodes = mutation.addedNodes && mutation.addedNodes.length > 0 ? Array.from(mutation.addedNodes) : [];
-      if (addedNodes.length > 0 && !addedNodes.some((node) => node.classList?.contains?.("ajax-preloader"))) {
-        if (addedNodes.some((node) => node.id === "racingupdates")) {
-          await loadOfficialEvents();
-        } else if (addedNodes.some((node) => node.classList?.contains?.("enlist-wrap"))) {
-          await loadEnlistedCars();
-        } else if (addedNodes.some((node) => node.classList?.contains?.("pm-categories-wrap")) && STORE.getValue(STORE.getKey("rplus_showparts")) === "1") {
-          await loadPartsAndModifications();
-        }
-      }
-    }
-  });
+    });
 
-  page_observer.observe(race_container, {
-    characterData: true,
-    childList: true,
-    subtree: true,
-  });
+    page_observer.observe(race_container, {
+      characterData: true,
+      childList: true,
+      subtree: true,
+    });
 
-  page_observer.observe(header_container, {
-    characterData: true,
-    childList: true,
-    subtree: true,
-  });
+    page_observer.observe(header_container, {
+      characterData: true,
+      childList: true,
+      subtree: true,
+    });
 
-  /** Safely disconnect the page MutationObserver */
-  w.addEventListener("pagehide", () => page_observer.disconnect(), { once: true });
-  w.addEventListener("beforeunload", () => page_observer.disconnect(), { once: true });
+    /** Safely disconnect the page MutationObserver */
+    w.addEventListener("pagehide", () => page_observer.disconnect(), { once: true });
+    w.addEventListener("beforeunload", () => page_observer.disconnect(), { once: true });
 
-  // load initial content
-  await loadOfficialEvents();
-  Logger.info(`Application initialized. ${Date.now() - SCRIPT_START} msec`);
+    // load initial content
+    await loadOfficialEvents();
+    Logger.info(`Application initialized. ${Date.now() - SCRIPT_START} msec`);
+  } catch (err) {
+    Logger.error(err);
+  }
 })(window);
 
 // End of file: RacingPlus.user.js
