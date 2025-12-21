@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.44
+// @version      0.99.45
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1466,8 +1466,8 @@ const ACCESS_LEVEL = Object.freeze({
 
   await loadRacingPlus(header_container, main_container); // Verify API and build UI
 
-  await this_driver.updateRecords(); // Update track records from API
-  await this_driver.updateCars(); // Update available cars from API
+  //await this_driver.updateRecords(); // Update track records from API
+  //await this_driver.updateCars(); // Update available cars from API
 
   // Add Page observer (track tab changes, race updates, etc.)
   Logger.debug("Adding Page Observer...");
