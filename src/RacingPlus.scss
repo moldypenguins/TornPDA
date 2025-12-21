@@ -90,7 +90,8 @@
   position: relative;
 }
 .d .racing-plus-settings div.flex-col {
-  padding: 6px 0 0 0;
+  padding: 0;
+  margin-top: 2px;
 }
 .d .racing-plus-settings div,
 .d .racing-plus-settings label {
@@ -142,6 +143,7 @@
   color: red;
   padding: 5px;
   font-size: 0.6rem;
+  display: none;
 }
 .d .racing-plus-apikey-reset,
 .d .racing-plus-apikey-save {
