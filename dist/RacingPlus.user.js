@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.35
+// @version      0.99.36
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -462,6 +462,7 @@ const ACCESS_LEVEL = Object.freeze({
      * @throws {Error} If API key invalid, path invalid, or request fails
      */
     async request(path, args = {}) {
+      //TODO: log error
       if (!this.key) throw new Error("Invalid API key.");
       const validRoots = ["user", "faction", "market", "racing", "forum", "property", "key", "torn"];
       if (typeof path !== "string") throw new Error("Invalid path. Must be a string.");
@@ -1155,28 +1156,30 @@ const ACCESS_LEVEL = Object.freeze({
   }
 
   /**
-   * Creates a div HTML element with the given className.
-   * @param {string} className the div class attribute
-   * @param {string|object} innerHTML the element(s) to inject into the div
-   * @returns {HTMLDivElement} HTMLDivElement
+   * createDiv — build a div with a class and optional content (string, Node, or array of either).
+   * @param {string} className class attribute for the div
+   * @param {string|Node|(string|Node)[]|null} innerHTML content to insert/append
+   * @returns {HTMLDivElement} the constructed div
    */
   function createDiv(className = "", innerHTML = null) {
-    let el = doc.createElement("div");
+    const el = doc.createElement("div");
     el.className = className;
-    if (innerHTML) {
-      if (typeof innerHTML === "string") {
-        el.innerHTML = innerHTML;
+
+    const append = (item) => {
+      if (item == null) return;
+      if (typeof item === "string") {
+        el.insertAdjacentHTML("beforeend", item);
+      } else if (item instanceof Node) {
+        el.appendChild(item);
       }
-      if (typeof innerHTML === "object" && innerHTML instanceof Array) {
-        for (const inner of innerHTML) {
-          if (typeof inner === "string") {
-            el.innerHTML += inner;
-          } else {
-            el.appendChild(inner);
-          }
-        }
-      }
+    };
+
+    if (Array.isArray(innerHTML)) {
+      innerHTML.forEach(append);
+    } else {
+      append(innerHTML);
     }
+
     return el;
   }
 
