@@ -141,6 +141,7 @@
   color: red;
   padding: 5px;
   font-size: 0.6rem;
+  display: none;
 }
 .d .racing-plus-apikey-reset,
 .d .racing-plus-apikey-save {
@@ -152,6 +153,7 @@
   width: 16px;
   display: none;
 }
+.d .racing-plus-apikey-status.show,
 .d .racing-plus-apikey-reset.show,
 .d .racing-plus-apikey-save.show {
   display: inline-block !important;

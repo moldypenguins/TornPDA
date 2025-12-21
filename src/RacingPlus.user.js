@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.41
+// @version      0.99.42
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1307,7 +1307,10 @@ const ACCESS_LEVEL = Object.freeze({
         apiInput.disabled = true;
         apiInput.readOnly = true;
       }
-      if (apiStatus) apiStatus.textContent = "Edit in TornPDA settings.";
+      if (apiStatus) {
+        apiStatus.textContent = "Edit in TornPDA settings.";
+        apiStatus.classList.toggle("show", true);
+      }
       apiSave?.classList.toggle("show", false);
       apiReset?.classList.toggle("show", false);
     } else {
@@ -1315,7 +1318,10 @@ const ACCESS_LEVEL = Object.freeze({
         apiInput.value = api_key;
         apiInput.disabled = true;
         apiInput.readOnly = true;
-        if (apiStatus) apiStatus.textContent = "";
+        if (apiStatus) {
+          apiStatus.textContent = "";
+          apiStatus.classList.toggle("show", false);
+        }
         apiSave?.classList.toggle("show", false);
         apiReset?.classList.toggle("show", true);
       } else {
@@ -1323,7 +1329,10 @@ const ACCESS_LEVEL = Object.freeze({
           apiInput.disabled = false;
           apiInput.readOnly = false;
         }
-        if (apiStatus) apiStatus.textContent = "";
+        if (apiStatus) {
+          apiStatus.textContent = "";
+          apiStatus.classList.toggle("show", false);
+        }
         apiSave?.classList.toggle("show", true);
         apiReset?.classList.toggle("show", false);
       }
@@ -1342,10 +1351,16 @@ const ACCESS_LEVEL = Object.freeze({
           apiInput.readOnly = true;
           apiSave.classList.toggle("show", false);
           apiReset?.classList.toggle("show", true);
-          if (apiStatus) apiStatus.textContent = "";
+          if (apiStatus) {
+            apiStatus.textContent = "";
+            apiStatus.classList.toggle("show", false);
+          }
         } else {
           apiInput.classList.add("invalid");
-          if (apiStatus) apiStatus.textContent = "Invalid API key.";
+          if (apiStatus) {
+            apiStatus.textContent = "Invalid API key.";
+            apiStatus.classList.toggle("show", false);
+          }
         }
       });
 
@@ -1360,7 +1375,10 @@ const ACCESS_LEVEL = Object.freeze({
         torn_api.deleteKey();
         apiSave?.classList.toggle("show", true);
         apiReset.classList.toggle("show", false);
-        if (apiStatus) apiStatus.textContent = "";
+        if (apiStatus) {
+          apiStatus.textContent = "";
+          apiStatus.classList.toggle("show", false);
+        }
       });
     }
 
