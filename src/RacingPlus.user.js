@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.45
+// @version      0.99.46
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -525,7 +525,7 @@ const ACCESS_LEVEL = Object.freeze({
      * @param {string} api_key - API key to validate
      * @returns {Promise<boolean>} True if valid with sufficient access
      */
-    async validateKey(api_key) {
+    validateKey(api_key) {
       if (!api_key || typeof api_key !== "string" || api_key.length != API_KEY_LENGTH) {
         Logger.debug("API key rejected by local validation.");
         return false;
@@ -533,7 +533,7 @@ const ACCESS_LEVEL = Object.freeze({
       const prevKey = this.key;
       this.key = api_key; // use candidate key for the probe call
       try {
-        const data = await this.request("key/info", {
+        const data = this.request("key/info", {
           timestamp: `${Date.unix()}`,
         });
         if (data?.info?.access && Number(data.info.access.level) >= ACCESS_LEVEL.Minimal) {
@@ -793,6 +793,7 @@ const ACCESS_LEVEL = Object.freeze({
      */
     async updateRecords() {
       try {
+        if (!torn_api) return;
         const results = await torn_api.request("user/racingrecords", {
           timestamp: `${Date.unix()}`,
         });
@@ -1466,8 +1467,8 @@ const ACCESS_LEVEL = Object.freeze({
 
   await loadRacingPlus(header_container, main_container); // Verify API and build UI
 
-  //await this_driver.updateRecords(); // Update track records from API
-  //await this_driver.updateCars(); // Update available cars from API
+  await this_driver.updateRecords(); // Update track records from API
+  await this_driver.updateCars(); // Update available cars from API
 
   // Add Page observer (track tab changes, race updates, etc.)
   Logger.debug("Adding Page Observer...");
