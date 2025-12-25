@@ -1,11 +1,7 @@
 # TornPDA UserScripts
 
 ```json
-TornPDA {
-  ExecutePlus,
-  FriendsPlus
-  RacingPlus
-}
+TornPDA { ExecutePlus, RacingPlus }
 ```
 
 ## Execute+ v0.99.0
