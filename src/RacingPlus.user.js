@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.53
+// @version      0.99.54
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -533,8 +533,8 @@ const ACCESS_LEVEL = Object.freeze({
      */
     async validateKey(api_key) {
       if (!api_key || typeof api_key !== "string" || api_key.length !== API_KEY_LENGTH) {
-        Logger.debug("API key rejected by local validation.");
-        return false;
+        Logger.warn("Invalid API key: local validation.");
+        throw new Error("Invalid API key: local validation.");
       }
       const prevKey = this.key;
       this.key = api_key; // use candidate key for the probe call
@@ -543,16 +543,16 @@ const ACCESS_LEVEL = Object.freeze({
           timestamp: `${Date.unix()}`,
         });
         if (data?.info?.access && Number(data.info.access.level) >= ACCESS_LEVEL.Minimal) {
-          Logger.debug("API key validated.");
+          Logger.debug("Valid API key.");
           return true;
         }
-        Logger.warn("API key invalid (unexpected response).");
         this.key = prevKey;
-        return false;
+        Logger.warn("Invalid API key: unexpected response.");
+        throw new Error("Invalid API key: unexpected response.");
       } catch (err) {
-        Logger.error(err);
         this.key = prevKey;
-        return false;
+        Logger.error(err);
+        throw new Error(err);
       }
     }
 
@@ -1274,15 +1274,15 @@ const ACCESS_LEVEL = Object.freeze({
     if (doc.querySelector("#racing-plus-panel")) return;
 
     // Load Torn API key (from PDA or local storage)
-    let api_key = IS_PDA ? PDA_KEY : STORE.getValue("RACINGPLUS_APIKEY");
-    if (api_key) {
-      Logger.debug("Loading Torn API...");
-      // validate torn api key; if invalid, we'll leave the input editable
-      if (!(await torn_api.validateKey(api_key))) {
-        torn_api.deleteKey();
-        api_key = "";
-      }
-    }
+    let api_key = IS_PDA ? PDA_KEY : (STORE.getValue("RACINGPLUS_APIKEY") ?? "");
+    // if (api_key) {
+    //   Logger.debug("Loading Torn API...");
+    //   // validate torn api key; if invalid, we'll leave the input editable
+    //   if (!(await torn_api.validateKey(api_key))) {
+    //     torn_api.deleteKey();
+    //     api_key = "";
+    //   }
+    // }
 
     const rplus_panel = doc.createElement("div");
     rplus_panel.id = "racing-plus-panel";
@@ -1375,9 +1375,20 @@ const ACCESS_LEVEL = Object.freeze({
       apiSave?.addEventListener("click", async (ev) => {
         ev.preventDefault();
         if (!apiInput) return;
-        const candidate = apiInput.value.trim();
-        const ok = await torn_api.validateKey(candidate);
+
         apiInput.classList.remove("valid", "invalid");
+
+        const candidate = apiInput.value.trim();
+        const ok = await torn_api.validateKey(candidate).catch((err) => {
+          Logger.error(err);
+          apiInput.classList.add("invalid");
+          if (apiStatus) {
+            apiStatus.textContent = err;
+            apiStatus.classList.toggle("show", true);
+          }
+          return false;
+        });
+
         if (ok) {
           apiInput.classList.add("valid");
           torn_api.saveKey();
@@ -1393,7 +1404,7 @@ const ACCESS_LEVEL = Object.freeze({
           apiInput.classList.add("invalid");
           if (apiStatus) {
             apiStatus.textContent = "Invalid API key.";
-            apiStatus.classList.toggle("show", false);
+            apiStatus.classList.toggle("show", true);
           }
         }
       });
