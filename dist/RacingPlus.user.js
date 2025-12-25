@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.50
+// @version      0.99.51
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1060,7 +1060,7 @@ const ACCESS_LEVEL = Object.freeze({
    * loadOfficialEvents - Injects/updates the Official Events tab content.
    * @returns {Promise<void>}
    */
-  async function loadOfficialEvents(main_container, race_container) {
+  async function loadOfficialEvents(main_container) {
     Logger.debug("Loading Official Events tab...");
 
     // Fix active tab highlighting
@@ -1069,8 +1069,12 @@ const ACCESS_LEVEL = Object.freeze({
     });
 
     // Resolve the current race ID for this driver
-    const me = race_container.querySelector(`.drivers-list #leaderBoard #lbr-${this_driver.id}`);
-    //const thisDriverBoard = await defer(`.drivers-list #leaderBoard #lbr-${this_driver.id}`);
+    const leaderboard = await defer(`.drivers-list #leaderBoard`);
+    const me = leaderboard.querySelector(`.drivers-list #leaderBoard #lbr-${this_driver.id}`);
+    if (!me) {
+      Logger.error("Driver not found in leaderboard.");
+      return;
+    }
     const dataId = me.getAttribute("data-id") || "";
     //const dataId = thisDriverBoard.getAttribute("data-id") || "";
     const raceId = dataId.split("-")[0];
@@ -1578,7 +1582,7 @@ const ACCESS_LEVEL = Object.freeze({
     w.addEventListener("beforeunload", disconnectObserver, { once: true });
 
     // load initial content
-    await loadOfficialEvents(main_container, race_container);
+    await loadOfficialEvents(main_container);
 
     Logger.info(`Application initialized. ${Date.now() - SCRIPT_START} msec`);
   } catch (err) {
