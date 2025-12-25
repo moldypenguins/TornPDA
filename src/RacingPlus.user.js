@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.49
+// @version      0.99.50
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1060,17 +1060,19 @@ const ACCESS_LEVEL = Object.freeze({
    * loadOfficialEvents - Injects/updates the Official Events tab content.
    * @returns {Promise<void>}
    */
-  async function loadOfficialEvents() {
+  async function loadOfficialEvents(main_container, race_container) {
     Logger.debug("Loading Official Events tab...");
 
     // Fix active tab highlighting
-    doc.querySelectorAll("#racingMainContainer ul.categories li").forEach((c) => {
+    main_container.querySelectorAll("ul.categories li").forEach((c) => {
       c.classList.toggle("active", !!c.querySelector(".official-events"));
     });
 
     // Resolve the current race ID for this driver
-    const thisDriverBoard = await defer(`.drivers-list #leaderBoard #lbr-${this_driver.id}`);
-    const dataId = thisDriverBoard.getAttribute("data-id") || "";
+    const me = race_container.querySelector(`.drivers-list #leaderBoard #lbr-${this_driver.id}`);
+    //const thisDriverBoard = await defer(`.drivers-list #leaderBoard #lbr-${this_driver.id}`);
+    const dataId = me.getAttribute("data-id") || "";
+    //const dataId = thisDriverBoard.getAttribute("data-id") || "";
     const raceId = dataId.split("-")[0];
 
     // If new race track, capture the track meta
@@ -1533,7 +1535,7 @@ const ACCESS_LEVEL = Object.freeze({
         if (addedNodes.length > 0 && !addedNodes.some((node) => node?.classList?.contains?.("ajax-preloader"))) {
           try {
             if (addedNodes.some((node) => node?.id === "racingupdates")) {
-              await loadOfficialEvents();
+              await loadOfficialEvents(main_container, race_container);
             } else if (addedNodes.some((node) => node?.classList?.contains?.("enlist-wrap"))) {
               await loadEnlistedCars();
             } else if (addedNodes.some((node) => node?.classList?.contains?.("pm-categories-wrap")) && STORE.getValue(STORE.keys.rplus_showparts) === "1") {
@@ -1576,7 +1578,8 @@ const ACCESS_LEVEL = Object.freeze({
     w.addEventListener("beforeunload", disconnectObserver, { once: true });
 
     // load initial content
-    await loadOfficialEvents();
+    await loadOfficialEvents(main_container, race_container);
+
     Logger.info(`Application initialized. ${Date.now() - SCRIPT_START} msec`);
   } catch (err) {
     Logger.error(err);
