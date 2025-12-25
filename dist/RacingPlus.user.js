@@ -512,8 +512,8 @@ const ACCESS_LEVEL = Object.freeze({
         const results = await response.json().catch((err) => {
           throw new Error(`Invalid JSON response: ${err}`);
         });
-        if (results?.error) {
-          throw new Error(`${results?.status ?? 500}: ${results?.statusText ?? "Unknown error"}`);
+        if (results && results.error) {
+          throw new Error(`${results.code ? `${results.code}: ` : ""}: ${results.statusText ?? "Unknown error"}`);
         }
         this.cache.set(queryURL, { data: results, timestamp: Date.now() });
         return results;
