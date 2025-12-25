@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.57
+// @version      0.99.59
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -100,9 +100,11 @@ const CACHE_TTL = 60 * 60 * 1000; // Cache duration for API responses (ms). Defa
 const SPEED_INTERVAL = 1000; // (Reserved) Sample rate for speed updates (ms).
 const KMS_PER_MI = 1.609344; // Number of kilometers in 1 mile.
 
-const RACING_HEADER_SELECTOR = "#racing-leaderboard-header-root";
+const RACING_LINKS_SELECTOR = "#racing-leaderboard-header-root div[class^='linksContainer']";
 const RACING_MAIN_SELECTOR = "#racingMainContainer";
 const RACING_ADDITIONAL_SELECTOR = "#racingAdditionalContainer";
+const RACING_TITLE_SELECTOR = "#racingupdates .drivers-list div[class^='title']";
+const RACING_BOARD_SELECTOR = "#racingupdates .drivers-list #leaderBoard";
 
 /* ------------------------------------------------------------------------
  * Static Type Methods
@@ -473,7 +475,7 @@ const ACCESS_LEVEL = Object.freeze({
      */
     async request(path, args = {}) {
       //TODO: handle errors properly
-      if (!this.key) throw new Error("Invalid API key.");
+      //if (!this.key) throw new Error("Invalid API key."); - you don't need an apikey for public requests
 
       const validRoots = ["user", "faction", "market", "racing", "forum", "property", "key", "torn"];
       if (typeof path !== "string") throw new Error("Invalid path. Must be a string.");
@@ -495,8 +497,7 @@ const ACCESS_LEVEL = Object.freeze({
         throw new Error("Invalid args. Must be an object or a query string.");
       }
 
-      const queryExtra = queryString ? `&${queryString}` : "";
-      const queryURL = `https://api.torn.com/v2${pathPrefixed}?comment=${API_COMMENT}&key=${this.key}${queryExtra}`;
+      const queryURL = `https://api.torn.com/v2${pathPrefixed}?comment=${API_COMMENT}${this.key ? `&key=${this.key}` : ""}${queryString ? `&${queryString}` : ""}`;
 
       const cached = this.cache.get(queryURL);
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
@@ -1064,7 +1065,7 @@ const ACCESS_LEVEL = Object.freeze({
     });
 
     // Resolve the current race ID for this driver
-    const me = await defer(`.drivers-list #leaderBoard #lbr-${this_driver.id}`);
+    const me = await defer(`${RACING_BOARD_SELECTOR} #lbr-${this_driver.id}`);
     if (!me) {
       Logger.error("Driver not found in leaderboard.");
       return;
@@ -1076,7 +1077,7 @@ const ACCESS_LEVEL = Object.freeze({
     // If new race track, capture the track meta
     if (!this_race || this_race.id !== raceId) {
       Logger.debug("Loading race data...");
-      const racingupdates = await defer("#racingupdates .drivers-list .title-black");
+      const racingupdates = await defer(RACING_TITLE_SELECTOR);
       const trackInfo = racingupdates.querySelector(".track-info");
 
       const distRaw = (trackInfo?.getAttribute("data-length") ?? "").trim(); // e.g., "2.42mi"
@@ -1227,11 +1228,11 @@ const ACCESS_LEVEL = Object.freeze({
    * @param {Element} header_container - Header container element
    * @returns {Promise<void>}
    */
-  async function addRacingPlusButton(header_container) {
+  async function addRacingPlusButton() {
     // Check if button already exists
     if (doc.querySelector("#racing-plus-button")) return;
 
-    const links_container = header_container.querySelector("div[class^='linksContainer']");
+    const links_container = doc.querySelector(RACING_LINKS_SELECTOR);
     if (!links_container) return;
 
     let city_label = links_container.firstChild.querySelector(`#${links_container.firstChild.getAttribute("aria-labelledby")}`);
@@ -1433,11 +1434,10 @@ const ACCESS_LEVEL = Object.freeze({
 
   /**
    * loadRacingPlus - Builds Racing+ settings UI, binds events, wires API, adjusts header.
-   * @param {Element} header_container - Header container element
    * @param {Element} main_container - Main container element
    * @returns {Promise<void>}
    */
-  async function loadRacingPlus(header_container, main_container) {
+  async function loadRacingPlus(main_container) {
     Logger.debug("Loading Driver Data...");
     // Load driver data - Typically a hidden input with JSON { id, ... }
     const scriptData = await defer("#torn-user");
@@ -1457,7 +1457,7 @@ const ACCESS_LEVEL = Object.freeze({
       // Add the Racing+ panel to the DOM
       await addRacingPlusPanel(main_container);
       // Add the Racing+ button to the DOM
-      await addRacingPlusButton(header_container);
+      await addRacingPlusButton();
     } catch (err) {
       Logger.error(err);
     }
@@ -1503,11 +1503,12 @@ const ACCESS_LEVEL = Object.freeze({
     await addStyles(); // Add CSS
 
     if (!doc.head) await new Promise((r) => w.addEventListener("DOMContentLoaded", r, { once: true }));
-    const header_container = await defer(RACING_HEADER_SELECTOR);
+
     const main_container = await defer(RACING_MAIN_SELECTOR);
     const race_container = await defer(RACING_ADDITIONAL_SELECTOR); // race is a child of main
+    const title_container = await defer(RACING_TITLE_SELECTOR); // title is a child of race
 
-    await loadRacingPlus(header_container, main_container); // Verify API and build UI
+    await loadRacingPlus(main_container); // Verify API and build UI
 
     await this_driver.updateRecords(); // Update track records from API
     await this_driver.updateCars(); // Update available cars from API
@@ -1558,7 +1559,7 @@ const ACCESS_LEVEL = Object.freeze({
       subtree: true,
     });
 
-    page_observer?.observe(header_container, {
+    page_observer?.observe(title_container, {
       characterData: true,
       childList: true,
       subtree: true,
