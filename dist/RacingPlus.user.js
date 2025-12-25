@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.51
+// @version      0.99.52
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1069,8 +1069,7 @@ const ACCESS_LEVEL = Object.freeze({
     });
 
     // Resolve the current race ID for this driver
-    const leaderboard = await defer(`.drivers-list #leaderBoard`);
-    const me = leaderboard.querySelector(`.drivers-list #leaderBoard #lbr-${this_driver.id}`);
+    const me = await defer(`.drivers-list #leaderBoard #lbr-${this_driver.id}`);
     if (!me) {
       Logger.error("Driver not found in leaderboard.");
       return;
