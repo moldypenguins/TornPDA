@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.55
+// @version      0.99.56
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -513,7 +513,7 @@ const ACCESS_LEVEL = Object.freeze({
           throw new Error(`Invalid JSON response: ${err}`);
         });
         if (results && results.error) {
-          throw new Error(`${results.code ? `${results.code}: ` : ""}: ${results.statusText ?? "Unknown error"}`);
+          throw new Error(`${results.error.code ? `${results.error.code}: ` : ""}: ${results.error.error ?? "Unknown error"}`);
         }
         this.cache.set(queryURL, { data: results, timestamp: Date.now() });
         return results;
@@ -1372,17 +1372,18 @@ const ACCESS_LEVEL = Object.freeze({
         if (!apiInput) return;
         apiInput.classList.remove("valid", "invalid");
         const candidate = apiInput.value.trim();
-        const ok = await torn_api.validateKey(candidate).catch((err) => {
-          Logger.warn(err);
-          apiInput.classList.add("invalid");
-          if (apiStatus) {
-            apiStatus.textContent = err.message ?? err;
-            apiStatus.classList.toggle("show", true);
-          }
-          return false;
-        });
 
-        if (ok) {
+        if (
+          await torn_api.validateKey(candidate).catch((err) => {
+            Logger.warn(err);
+            apiInput.classList.add("invalid");
+            if (apiStatus) {
+              apiStatus.textContent = err.message ?? err;
+              apiStatus.classList.toggle("show", true);
+            }
+            return false;
+          })
+        ) {
           Logger.debug("Valid API key.");
           apiInput.classList.add("valid");
           torn_api.saveKey();
