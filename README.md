@@ -2,8 +2,8 @@
 
 ```json
 TornPDA {
-  Common,
   ExecutePlus,
+  FriendsPlus
   RacingPlus
 }
 ```
@@ -17,7 +17,7 @@ Show level when execute will be effective.
 
 ![execute](.github/images/execute.png)
 
-## Racing+ v0.99.1
+## Racing+ v0.99.49
 
 Show racing skill, current speed, race results, precise skill, upgrade parts.
 [Install RacingPlus User Script](https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/RacingPlus.user.js)
