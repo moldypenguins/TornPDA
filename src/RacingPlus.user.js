@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.54
+// @version      0.99.55
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -533,27 +533,22 @@ const ACCESS_LEVEL = Object.freeze({
      */
     async validateKey(api_key) {
       if (!api_key || typeof api_key !== "string" || api_key.length !== API_KEY_LENGTH) {
-        Logger.warn("Invalid API key: local validation.");
+        //Logger.warn("Invalid API key: local validation.");
         throw new Error("Invalid API key: local validation.");
       }
       const prevKey = this.key;
       this.key = api_key; // use candidate key for the probe call
-      try {
-        const data = await this.request("key/info", {
-          timestamp: `${Date.unix()}`,
-        });
-        if (data?.info?.access && Number(data.info.access.level) >= ACCESS_LEVEL.Minimal) {
-          Logger.debug("Valid API key.");
-          return true;
-        }
-        this.key = prevKey;
-        Logger.warn("Invalid API key: unexpected response.");
-        throw new Error("Invalid API key: unexpected response.");
-      } catch (err) {
-        this.key = prevKey;
-        Logger.error(err);
-        throw new Error(err);
+
+      const data = await this.request("key/info", {
+        timestamp: `${Date.unix()}`,
+      });
+      if (data?.info?.access && Number(data.info.access.level) >= ACCESS_LEVEL.Minimal) {
+        //Logger.debug("Valid API key.");
+        return true;
       }
+      this.key = prevKey;
+      //Logger.warn("Invalid API key: unexpected response.");
+      throw new Error("Invalid API key: unexpected response.");
     }
 
     /**
@@ -1278,7 +1273,7 @@ const ACCESS_LEVEL = Object.freeze({
     // if (api_key) {
     //   Logger.debug("Loading Torn API...");
     //   // validate torn api key; if invalid, we'll leave the input editable
-    //   if (!(await torn_api.validateKey(api_key))) {
+    //   if (!(await torn_api.validate Key(api_key))) {
     //     torn_api.deleteKey();
     //     api_key = "";
     //   }
@@ -1375,21 +1370,20 @@ const ACCESS_LEVEL = Object.freeze({
       apiSave?.addEventListener("click", async (ev) => {
         ev.preventDefault();
         if (!apiInput) return;
-
         apiInput.classList.remove("valid", "invalid");
-
         const candidate = apiInput.value.trim();
         const ok = await torn_api.validateKey(candidate).catch((err) => {
-          Logger.error(err);
+          Logger.warn(err);
           apiInput.classList.add("invalid");
           if (apiStatus) {
-            apiStatus.textContent = err;
+            apiStatus.textContent = err.message ?? err;
             apiStatus.classList.toggle("show", true);
           }
           return false;
         });
 
         if (ok) {
+          Logger.debug("Valid API key.");
           apiInput.classList.add("valid");
           torn_api.saveKey();
           apiInput.disabled = true;
@@ -1399,12 +1393,6 @@ const ACCESS_LEVEL = Object.freeze({
           if (apiStatus) {
             apiStatus.textContent = "";
             apiStatus.classList.toggle("show", false);
-          }
-        } else {
-          apiInput.classList.add("invalid");
-          if (apiStatus) {
-            apiStatus.textContent = "Invalid API key.";
-            apiStatus.classList.toggle("show", true);
           }
         }
       });
