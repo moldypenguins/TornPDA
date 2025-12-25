@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.56
+// @version      0.99.57
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -512,8 +512,8 @@ const ACCESS_LEVEL = Object.freeze({
         const results = await response.json().catch((err) => {
           throw new Error(`Invalid JSON response: ${err}`);
         });
-        if (results && results.error) {
-          throw new Error(`${results.error.code ? `${results.error.code}: ` : ""}: ${results.error.error ?? "Unknown error"}`);
+        if (!results || results.error) {
+          throw new Error(`${results?.error?.error ?? "Unknown error."}`);
         }
         this.cache.set(queryURL, { data: results, timestamp: Date.now() });
         return results;
