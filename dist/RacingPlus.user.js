@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.48
+// @version      0.99.49
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -53,28 +53,28 @@ class Logger {
     return incoming >= current && current < LOG_LEVEL.SILENT;
   }
   /**
-   *  debug
+   * debug - Logs a debug-level message.
    */
   static debug(...args) {
     if (!Logger._shouldLog(LOG_LEVEL.DEBUG)) return;
     console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#9aa0a6;font-weight:600", ...args);
   }
   /**
-   *  info - Logs an info-level message.
+   * info - Logs an info-level message.
    */
   static info(...args) {
     if (!Logger._shouldLog(LOG_LEVEL.INFO)) return;
     console.log("%c[INFO][TornPDA.Racing+]: ", "color:#1a73e8;font-weight:600", ...args);
   }
   /**
-   *  warn - Logs a warning-level message.
+   * warn - Logs a warning-level message.
    */
   static warn(...args) {
     if (!Logger._shouldLog(LOG_LEVEL.WARN)) return;
     console.log("%c[WARN][TornPDA.Racing+]: ", "color:#f9ab00;font-weight:600", ...args);
   }
   /**
-   *  error - Logs an error-level message.
+   * error - Logs an error-level message.
    */
   static error(...args) {
     if (!Logger._shouldLog(LOG_LEVEL.ERROR)) return;
@@ -131,6 +131,25 @@ if (!Number.isValid) {
     configurable: true,
     enumerable: false,
   });
+}
+
+/* ------------------------------------------------------------------------
+ * Error helpers
+ * --------------------------------------------------------------------- */
+/**
+ * errorMessage - Extract a readable message from unknown errors.
+ * @param {any} err - Unknown error object
+ * @returns {string} Readable error message
+ */
+function errorMessage(err) {
+  if (!err) return "Unknown error";
+  if (typeof err === "string") return err;
+  if (typeof err?.message === "string") return err.message;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
 }
 
 /* ------------------------------------------------------------------------
@@ -356,7 +375,7 @@ const ACCESS_LEVEL = Object.freeze({
   /**
    * Copies text to the clipboard if document is focused.
    * @param {string} text - Text to copy to clipboard
-   * @returns {boolean} True if write operation succeeded
+   * @returns {Promise<boolean>} True if write operation succeeded
    * @throws {DOMException} If document is not focused
    */
   const setClipboard = async (text) => {
@@ -367,7 +386,8 @@ const ACCESS_LEVEL = Object.freeze({
       await nav.clipboard?.writeText?.(text);
       Logger.debug(`Text copied.`);
       return true;
-    } catch {
+    } catch (err) {
+      Logger.debug(`Clipboard write failed: ${err}`);
       return false;
     }
   };
@@ -486,19 +506,20 @@ const ACCESS_LEVEL = Object.freeze({
 
       try {
         const response = await fetch(queryURL, { signal: controller.signal });
-        if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
-
-        const results = await response.json();
-        if (results?.error) {
-          const code = results.error?.code ?? "API_ERROR";
-          const msg = results.error?.error ?? "Unknown error";
-          throw new Error(`${code}: ${msg}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} ${response.statusText || ""}`.trim());
         }
-
+        const results = await response.json().catch((err) => {
+          throw new Error(`Invalid JSON response: ${err}`);
+        });
+        if (results?.error) {
+          throw new Error(`${results?.status ?? 500}: ${results?.statusText ?? "Unknown error"}`);
+        }
         this.cache.set(queryURL, { data: results, timestamp: Date.now() });
         return results;
       } catch (err) {
         if (err?.name === "AbortError") throw new Error("Fetch timeout");
+        Logger.debug(`API request failed: ${queryURL}\n${err}`);
         throw err;
       } finally {
         clearTimeout(timer);
@@ -726,6 +747,10 @@ const ACCESS_LEVEL = Object.freeze({
    * @class
    */
   class TornDriver {
+    /**
+     * Creates a TornDriver instance for a driver id.
+     * @param {string|number} driver_id - Driver/user ID
+     */
     constructor(driver_id) {
       this.id = driver_id;
       this.skill = 0;
@@ -805,6 +830,8 @@ const ACCESS_LEVEL = Object.freeze({
             }, {});
           });
           this.save();
+        } else {
+          Logger.debug("Racing records response missing 'racingrecords' array.");
         }
       } catch (err) {
         Logger.warn(`Racing records fetch failed.\n${err}`);
@@ -844,6 +871,8 @@ const ACCESS_LEVEL = Object.freeze({
               return acc;
             }, {});
           this.save();
+        } else {
+          Logger.debug("Enlisted cars response missing 'enlistedcars' array.");
         }
       } catch (err) {
         Logger.warn(`Enlisted cars fetch failed.\n${err}`);
@@ -870,9 +899,8 @@ const ACCESS_LEVEL = Object.freeze({
   /* ------------------------------------------------------------------------
    * Helper Methods
    * --------------------------------------------------------------------- */
-
   /**
-   * Add a copy-link button for the current race
+   * addRaceLinkCopyButton - Add a copy-link button for the current race.
    * @param {string|number} raceId - Current race ID
    * @returns {Promise<void>}
    */
@@ -897,8 +925,8 @@ const ACCESS_LEVEL = Object.freeze({
         try {
           // Copy the race link to clipboard using setClipboard
           await setClipboard(`https://www.torn.com/loader.php?sid=racing&tab=log&raceID=${raceId}`);
-        } catch {
-          // swallow clipboard focus errors
+        } catch (err) {
+          Logger.debug(`Copy link failed: ${err}`);
         }
         // Try to find the tooltip and update its content
         const tooltipId = event.currentTarget.getAttribute("aria-describedby");
@@ -920,9 +948,8 @@ const ACCESS_LEVEL = Object.freeze({
   /* ------------------------------------------------------------------------
    * Feature loaders
    * --------------------------------------------------------------------- */
-
   /**
-   * Injects/updates the Parts and Modifications tab content
+   * loadPartsAndModifications - Injects/updates the Parts and Modifications tab content.
    * @returns {Promise<void>}
    */
   async function loadPartsAndModifications() {
@@ -936,6 +963,8 @@ const ACCESS_LEVEL = Object.freeze({
       if (!cat) return;
       // Get the category name from classList (excluding 'unlock')
       const categoryName = [...category.classList].find((c) => c !== "unlock");
+      if (!categoryName) return;
+
       // Initialize bought and unbought arrays for this category
       categories[cat] = { bought: [], unbought: [] };
       // Select all parts that belong to this category and have a valid data-part attribute
@@ -1028,7 +1057,7 @@ const ACCESS_LEVEL = Object.freeze({
   }
 
   /**
-   * Injects/updates the Official Events tab content
+   * loadOfficialEvents - Injects/updates the Official Events tab content.
    * @returns {Promise<void>}
    */
   async function loadOfficialEvents() {
@@ -1109,7 +1138,7 @@ const ACCESS_LEVEL = Object.freeze({
   }
 
   /**
-   * Injects/updates the Enlisted Cars tab content
+   * loadEnlistedCars - Injects/updates the Enlisted Cars tab content.
    * @returns {Promise<void>}
    */
   async function loadEnlistedCars() {
@@ -1124,7 +1153,7 @@ const ACCESS_LEVEL = Object.freeze({
   }
 
   /**
-   * Injects Racing+ CSS into document head
+   * addStyles - Injects Racing+ CSS into document head.
    * @returns {Promise<void>}
    */
   async function addStyles() {
@@ -1152,7 +1181,7 @@ const ACCESS_LEVEL = Object.freeze({
   }
 
   /**
-   * createDiv — build a div with a class and optional content (string, Node, or array of either).
+   * createDiv - Build a div with a class and optional content (string, Node, or array of either).
    * @param {string} className class attribute for the div
    * @param {string|Node|(string|Node)[]|null} innerHTML content to insert/append
    * @returns {HTMLDivElement} the constructed div
@@ -1161,6 +1190,10 @@ const ACCESS_LEVEL = Object.freeze({
     const el = doc.createElement("div");
     el.className = className;
 
+    /**
+     * append - Append a supported item to the container.
+     * @param {string|Node|null|undefined} item - Item to append
+     */
     const append = (item) => {
       if (item == null) return;
       if (typeof item === "string") {
@@ -1180,7 +1213,7 @@ const ACCESS_LEVEL = Object.freeze({
   }
 
   /**
-   * Creates a label and checkbox with the given id and text.
+   * createCheckbox - Creates a label and checkbox with the given id and text.
    * @param {string} id the div class attribute
    * @param {string} label the element(s) to inject into the div
    * @returns {string}
@@ -1190,7 +1223,8 @@ const ACCESS_LEVEL = Object.freeze({
   }
 
   /**
-   * Adds the Racing+ settings button to the UI
+   * addRacingPlusButton - Adds the Racing+ settings button to the UI.
+   * @param {Element} header_container - Header container element
    * @returns {Promise<void>}
    */
   async function addRacingPlusButton(header_container) {
@@ -1226,7 +1260,8 @@ const ACCESS_LEVEL = Object.freeze({
   }
 
   /**
-   * Adds the Racing+ settings panel to the UI
+   * addRacingPlusPanel - Adds the Racing+ settings panel to the UI.
+   * @param {Element} main_container - Main container element
    * @returns {Promise<void>}
    */
   async function addRacingPlusPanel(main_container) {
@@ -1392,14 +1427,24 @@ const ACCESS_LEVEL = Object.freeze({
   }
 
   /**
-   * Builds Racing+ settings UI, binds events, wires API, adjusts header
+   * loadRacingPlus - Builds Racing+ settings UI, binds events, wires API, adjusts header.
+   * @param {Element} header_container - Header container element
+   * @param {Element} main_container - Main container element
    * @returns {Promise<void>}
    */
   async function loadRacingPlus(header_container, main_container) {
     Logger.debug("Loading Driver Data...");
     // Load driver data - Typically a hidden input with JSON { id, ... }
     const scriptData = await defer("#torn-user");
-    this_driver = new TornDriver(JSON.parse(scriptData.value).id);
+    let parsed;
+    try {
+      parsed = JSON.parse(scriptData.value);
+    } catch (err) {
+      throw new Error(`Failed to parse #torn-user JSON: ${err}`);
+    }
+    if (!parsed?.id) throw new Error("Missing driver id in #torn-user payload.");
+
+    this_driver = new TornDriver(parsed.id);
     this_driver.load();
 
     Logger.debug("Loading DOM...");
@@ -1485,13 +1530,18 @@ const ACCESS_LEVEL = Object.freeze({
         //TODO: node.classList?.contains? is unsafe as node may be text
         // Handle injected subtrees (new tab content loaded)
         const addedNodes = mutation.addedNodes && mutation.addedNodes.length > 0 ? Array.from(mutation.addedNodes) : [];
-        if (addedNodes.length > 0 && !addedNodes.some((node) => node.classList?.contains?.("ajax-preloader"))) {
-          if (addedNodes.some((node) => node.id === "racingupdates")) {
-            await loadOfficialEvents();
-          } else if (addedNodes.some((node) => node.classList?.contains?.("enlist-wrap"))) {
-            await loadEnlistedCars();
-          } else if (addedNodes.some((node) => node.classList?.contains?.("pm-categories-wrap")) && STORE.getValue(STORE.keys.rplus_showparts) === "1") {
-            await loadPartsAndModifications();
+        if (addedNodes.length > 0 && !addedNodes.some((node) => node?.classList?.contains?.("ajax-preloader"))) {
+          try {
+            if (addedNodes.some((node) => node?.id === "racingupdates")) {
+              await loadOfficialEvents();
+            } else if (addedNodes.some((node) => node?.classList?.contains?.("enlist-wrap"))) {
+              await loadEnlistedCars();
+            } else if (addedNodes.some((node) => node?.classList?.contains?.("pm-categories-wrap")) && STORE.getValue(STORE.keys.rplus_showparts) === "1") {
+              await loadPartsAndModifications();
+            }
+          } catch (err) {
+            // Prevent observer from dying on transient DOM states.
+            Logger.warn(`Observer handler failed.\n${err}`);
           }
         }
       }
@@ -1509,9 +1559,21 @@ const ACCESS_LEVEL = Object.freeze({
       subtree: true,
     });
 
+    /**
+     * disconnectObserver - Safely disconnect the page MutationObserver.
+     * @returns {void}
+     */
+    const disconnectObserver = () => {
+      try {
+        page_observer?.disconnect();
+      } catch (err) {
+        Logger.debug(`Observer disconnect failed: ${err}`);
+      }
+    };
+
     /** Safely disconnect the page MutationObserver */
-    w.addEventListener("pagehide", () => page_observer.disconnect(), { once: true });
-    w.addEventListener("beforeunload", () => page_observer.disconnect(), { once: true });
+    w.addEventListener("pagehide", disconnectObserver, { once: true });
+    w.addEventListener("beforeunload", disconnectObserver, { once: true });
 
     // load initial content
     await loadOfficialEvents();
