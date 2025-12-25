@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.52
+// @version      0.99.53
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1496,7 +1496,7 @@ const ACCESS_LEVEL = Object.freeze({
   const torn_api = new TornAPI();
   /** @type {TornDriver} */ let this_driver;
   /** @type {TornRace} */ let this_race;
-  /** @type {MutationObserver|null} */ let page_observer = null;
+  /** @type {MutationObserver} */ let page_observer;
 
   Logger.info(`Application loaded. Initializing. ${Date.now() - SCRIPT_START} msec`);
   try {
@@ -1515,7 +1515,7 @@ const ACCESS_LEVEL = Object.freeze({
     // Add Page observer (track tab changes, race updates, etc.)
     Logger.debug("Adding Page Observer...");
 
-    // Use the outer-scoped page_observer.
+    // Add window-scoped page_observer.
     page_observer = new MutationObserver(async (mutations) => {
       for (const mutation of mutations) {
         // If infospot text changed, update status
@@ -1552,13 +1552,13 @@ const ACCESS_LEVEL = Object.freeze({
       }
     });
 
-    page_observer.observe(race_container, {
+    page_observer?.observe(race_container, {
       characterData: true,
       childList: true,
       subtree: true,
     });
 
-    page_observer.observe(header_container, {
+    page_observer?.observe(header_container, {
       characterData: true,
       childList: true,
       subtree: true,
