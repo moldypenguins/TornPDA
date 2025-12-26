@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.66
+// @version      0.99.68
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -366,6 +366,18 @@ const ACCESS_LEVEL = Object.freeze({
   const nav = w.navigator;
 
   if (!doc || !loc || !nav) return;
+
+  w.addEventListener("load", (event) => {
+    console.log(`w.load`);
+  });
+
+  doc.addEventListener("readystatechange", (event) => {
+    console.log(`doc.readystate: ${doc.readyState}`);
+  });
+
+  doc.addEventListener("DOMContentLoaded", (event) => {
+    console.log(`doc.DOMContentLoaded`);
+  });
 
   // TornPDA Integration Stub
   const PDA_KEY = "###PDA-APIKEY###";
@@ -1173,6 +1185,7 @@ const ACCESS_LEVEL = Object.freeze({
       });
       s.innerHTML += dynRules.join("");
     }
+
     doc.head.appendChild(s);
     Logger.debug("Styles added.");
   }
@@ -1497,10 +1510,9 @@ const ACCESS_LEVEL = Object.freeze({
   /** @type {MutationObserver} */ let page_observer;
 
   Logger.info(`Application loaded. Initializing. ${Date.now() - SCRIPT_START} msec`);
+
   try {
     await addStyles(); // Add CSS
-
-    if (!doc.head) await new Promise((r) => w.addEventListener("DOMContentLoaded", r, { once: true }));
 
     const main_container = await defer(RACING_MAIN_SELECTOR);
     const race_container = await defer(RACING_ADDITIONAL_SELECTOR); // race is a child of main
