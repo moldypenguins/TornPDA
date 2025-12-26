@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.70
+// @version      0.99.71
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -12,353 +12,349 @@
 // @connect      api.torn.com
 // @run-at       document-start
 // ==/UserScript==
-
 "use strict";
 
-const SCRIPT_START = Date.now();
-
-/* ------------------------------------------------------------------------
- * Logger
- * --------------------------------------------------------------------- */
-/**
- * Log level enumeration
- * @readonly
- * @enum {number}
- */
-const LOG_LEVEL = Object.freeze({
-  DEBUG: 10,
-  INFO: 20,
-  WARN: 30,
-  ERROR: 40,
-  SILENT: 50,
-});
-
-/**
- * Log level threshold (debug|info|warn|error|silent).
- */
-const LOG_MODE = LOG_LEVEL.DEBUG;
-
-/**
- * Logger
- * @class
- */
-class Logger {
-  /**
-   * private shouldLog - Returns true if the given level passes the current LOG_MODE threshold.
-   * @param {LOG_LEVEL} level
-   */
-  static _shouldLog(level) {
-    const current = typeof LOG_MODE === "number" ? LOG_MODE : LOG_LEVEL.INFO;
-    const incoming = typeof level === "number" ? level : (LOG_LEVEL[String(level).toUpperCase()] ?? LOG_LEVEL.INFO);
-    return incoming >= current && current < LOG_LEVEL.SILENT;
-  }
-  /**
-   * debug - Logs a debug-level message.
-   */
-  static debug(...args) {
-    if (!Logger._shouldLog(LOG_LEVEL.DEBUG)) return;
-    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#9aa0a6;font-weight:600", ...args);
-  }
-  /**
-   * info - Logs an info-level message.
-   */
-  static info(...args) {
-    if (!Logger._shouldLog(LOG_LEVEL.INFO)) return;
-    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#1a73e8;font-weight:600", ...args);
-  }
-  /**
-   * warn - Logs a warning-level message.
-   */
-  static warn(...args) {
-    if (!Logger._shouldLog(LOG_LEVEL.WARN)) return;
-    console.log("%c[WARN][TornPDA.Racing+]: ", "color:#f9ab00;font-weight:600", ...args);
-  }
-  /**
-   * error - Logs an error-level message.
-   */
-  static error(...args) {
-    if (!Logger._shouldLog(LOG_LEVEL.ERROR)) return;
-    console.log("%c[ERROR][TornPDA.Racing+]: ", "color:#d93025;font-weight:600", ...args);
-  }
-}
-
-Logger.info(`Application starting... ${SCRIPT_START}`);
-
-/* ------------------------------------------------------------------------
- * Constants
- * --------------------------------------------------------------------- */
-const DEFERRAL_LIMIT = 100; // Maximum amount of times the script will defer.
-const DEFERRAL_INTERVAL = 100; // Amount of time in milliseconds deferrals will last.
-
-const API_FETCH_TIMEOUT = 10000; // API request timeout in milliseconds
-const API_KEY_LENGTH = 16; // Minimum valid API key length
-
-const SECONDS_PER_HOUR = 3600; // Seconds in an hour for speed calculations
-
-const API_COMMENT = "RacingPlus"; // Comment shown in Torn API recent usage.
-const CACHE_TTL = 60 * 60 * 1000; // Cache duration for API responses (ms). Default = 1 hour.
-const SPEED_INTERVAL = 1000; // (Reserved) Sample rate for speed updates (ms).
-const KMS_PER_MI = 1.609344; // Number of kilometers in 1 mile.
-
-const RACING_LINKS_SELECTOR = "#racing-leaderboard-header-root div[class^='linksContainer']";
-const RACING_MAIN_SELECTOR = "#racingMainContainer";
-const RACING_ADDITIONAL_SELECTOR = "#racingAdditionalContainer";
-const RACING_TITLE_SELECTOR = "#racingupdates .drivers-list div[class^='title']";
-const RACING_BOARD_SELECTOR = "#racingupdates .drivers-list #leaderBoard";
-
-/* ------------------------------------------------------------------------
- * Static Type Methods
- * --------------------------------------------------------------------- */
-/**
- * Returns the current Unix timestamp (seconds since epoch).
- * @returns {number} Current Unix timestamp
- */
-if (!Date.unix) {
-  Object.defineProperty(Date, "unix", {
-    value: () => Math.floor(Date.now() / 1000),
-    writable: true,
-    configurable: true,
-    enumerable: false,
-  });
-}
-
-/**
- * Number.isValid - returns true for number primitives (excludes NaN).
- * @returns {boolean}
- */
-if (!Number.isValid) {
-  Object.defineProperty(Number, "isValid", {
-    value: (n) => typeof n === "number" && Number.isFinite(n),
-    writable: true,
-    configurable: true,
-    enumerable: false,
-  });
-}
-
-/* ------------------------------------------------------------------------
- * Error helpers
- * --------------------------------------------------------------------- */
-/**
- * errorMessage - Extract a readable message from unknown errors.
- * @param {any} err - Unknown error object
- * @returns {string} Readable error message
- */
-function errorMessage(err) {
-  if (!err) return "Unknown error";
-  if (typeof err === "string") return err;
-  if (typeof err?.message === "string") return err.message;
-  try {
-    return JSON.stringify(err);
-  } catch {
-    return String(err);
-  }
-}
-
-/* ------------------------------------------------------------------------
- * LocalStorage Wrapper
- * --------------------------------------------------------------------- */
-const STORE = {
-  /**
-   * Get a value by key from localStorage
-   * @param {string} key - Storage key
-   * @returns {string|null} Stored value or null
-   */
-  getValue: (key) => localStorage.getItem(key),
-
-  /**
-   * Set a value by key in localStorage
-   * @param {string} key - Storage key
-   * @param {string} value - Value to store
-   */
-  setValue: (key, value) => localStorage.setItem(key, value),
-
-  /**
-   * Delete a value by key from localStorage
-   * @param {string} key - Storage key
-   */
-  deleteValue: (key) => localStorage.removeItem(key),
-
-  /**
-   * List all stored values (for debugging)
-   * @returns {Array<string>} Array of stored values
-   */
-  listValues: () => Object.values(localStorage),
-
-  /**
-   * Map from toggle/control ids to persistent localStorage keys.
-   */
-  keys: Object.freeze({
-    rplus_units: "RACINGPLUS_DISPLAYUNITS",
-    rplus_addlinks: "RACINGPLUS_ADDPROFILELINKS",
-    rplus_showskill: "RACINGPLUS_SHOWRACINGSKILL",
-    rplus_showspeed: "RACINGPLUS_SHOWCARSPEED",
-    rplus_showracelink: "RACINGPLUS_SHOWRACELINK",
-    rplus_showexportlink: "RACINGPLUS_SHOWEXPORTLINK",
-    rplus_showwinrate: "RACINGPLUS_SHOWCARWINRATE",
-    rplus_showparts: "RACINGPLUS_SHOWCARPARTS",
-  }),
-};
-
-/* ------------------------------------------------------------------------
- * Distance and Speed Helpers
- * --------------------------------------------------------------------- */
-/**
- * Distance class - Stores distance and formats value based on preferred units
- * @class
- */
-class Distance {
-  /**
-   * Creates a Distance instance
-   * @param {object} [args={}] - Constructor arguments
-   * @param {number} [args.miles=null] - Distance in miles
-   * @param {number} [args.kilometers=null] - Distance in kilometers
-   * @throws {TypeError} If miles is not a finite number
-   */
-  constructor(args = {}) {
-    const { miles, kilometers } = args;
-    if (miles == null && kilometers == null) {
-      throw new TypeError("One of miles or kilometers must be specified.");
-    }
-    const mi = miles ?? (kilometers != null ? kilometers / KMS_PER_MI : 0);
-    if (!Number.isValid(mi)) {
-      throw new TypeError("Miles or Kilometers must be a number.");
-    }
-    this._mi = mi;
-    this._units = kilometers != null ? "km" : "mi";
-  }
-
-  /**
-   * Get distance in miles
-   * @returns {number} Distance in miles
-   */
-  get mi() {
-    return this._mi;
-  }
-
-  /**
-   * Get distance in kilometers
-   * @returns {number} Distance in kilometers
-   */
-  get km() {
-    return this._mi * KMS_PER_MI;
-  }
-
-  /**
-   * Format distance as string according to chosen units
-   * @returns {string} Formatted distance with units
-   */
-  toString() {
-    const val = this._units === "km" ? this.km : this.mi;
-    return `${val.toFixed(2)} ${this._units}`;
-  }
-}
-
-/**
- * Speed class - Computes speed from Distance and elapsed time
- * @class
- */
-class Speed {
-  /**
-   * Creates a Speed instance
-   * @param {object} args - Constructor arguments
-   * @param {Distance} args.distance - Distance traveled
-   * @param {number} args.seconds - Elapsed time in seconds (> 0)
-   * @throws {TypeError} If distance is not a Distance instance or seconds invalid
-   */
-  constructor(args = {}) {
-    const { distance, seconds } = args;
-    if (!(distance instanceof Distance)) {
-      throw new TypeError("distance must be a Distance instance.");
-    }
-    if (!Number.isInteger(seconds) || seconds <= 0) {
-      throw new TypeError("seconds must be an integer > 0.");
-    }
-    this._mph = distance.mi / (seconds / SECONDS_PER_HOUR);
-    this._units = STORE.getValue(STORE.keys.rplus_units) ?? "mph";
-  }
-
-  /**
-   * Get speed in miles per hour
-   * @returns {number} Speed in mph
-   */
-  get mph() {
-    return this._mph;
-  }
-
-  /**
-   * Get speed in kilometers per hour
-   * @returns {number} Speed in kph
-   */
-  get kph() {
-    return this._mph * KMS_PER_MI;
-  }
-
-  /**
-   * Format speed according to preferred units
-   * @returns {string} Formatted speed with units
-   */
-  toString() {
-    const val = this._units === "kph" ? this.kph : this.mph;
-    return `${val.toFixed(2)} ${this._units}`;
-  }
-}
-
-/* ------------------------------------------------------------------------
- * Torn racing data
- * --------------------------------------------------------------------- */
-// Colours for car parts.
-const COLOURS = ["#5D9CEC", "#48CFAD", "#FFCE54", "#ED5565", "#EC87C0", "#AC92EC", "#FC6E51", "#A0D468", "#4FC1E9"];
-
-// Car part categories (used by the CSS injector).
-const CATEGORIES = {
-  Aerodynamics: ["Spoiler", "Engine Cooling", "Brake Cooling", "Front Diffuser", "Rear Diffuser"],
-  Brakes: ["Pads", "Discs", "Fluid", "Brake Accessory", "Brake Control", "Callipers"],
-  Engine: ["Gasket", "Engine Porting", "Engine Cleaning", "Fuel Pump", "Camshaft", "Turbo", "Pistons", "Computer", "Intercooler"],
-  Exhaust: ["Exhaust", "Air Filter", "Manifold"],
-  Fuel: ["Fuel"],
-  Safety: ["Overalls", "Helmet", "Fire Extinguisher", "Safety Accessory", "Roll cage", "Cut-off", "Seat"],
-  Suspension: ["Springs", "Front Bushes", "Rear Bushes", "Upper Front Brace", "Lower Front Brace", "Rear Brace", "Front Tie Rods", "Rear Control Arms"],
-  Transmission: ["Shifting", "Differential", "Clutch", "Flywheel", "Gearbox"],
-  "Weight Reduction": ["Strip out", "Steering wheel", "Interior", "Windows", "Roof", "Boot", "Hood"],
-  "Wheels & Tires": ["Tyres", "Wheels"],
-};
-
-// Tracks metadata with Distance instances
-const TRACKS = {
-  6: { name: "Uptown", distance: new Distance({ miles: 2.25 }), laps: 7 },
-  7: { name: "Withdrawal", distance: new Distance({ miles: 3.4 }), laps: 0 },
-  8: { name: "Underdog", distance: new Distance({ miles: 1.73 }), laps: 0 },
-  9: { name: "Parkland", distance: new Distance({ miles: 3.43 }), laps: 5 },
-  10: { name: "Docks", distance: new Distance({ miles: 3.81 }), laps: 5 },
-  11: { name: "Commerce", distance: new Distance({ miles: 1.09 }), laps: 15 },
-  12: { name: "Two Islands", distance: new Distance({ miles: 2.71 }), laps: 6 },
-  15: { name: "Industrial", distance: new Distance({ miles: 1.35 }), laps: 0 },
-  16: { name: "Vector", distance: new Distance({ miles: 1.16 }), laps: 14 },
-  17: { name: "Mudpit", distance: new Distance({ miles: 1.06 }), laps: 15 },
-  18: { name: "Hammerhead", distance: new Distance({ miles: 1.16 }), laps: 14 },
-  19: { name: "Sewage", distance: new Distance({ miles: 1.5 }), laps: 11 },
-  20: { name: "Meltdown", distance: new Distance({ miles: 1.2 }), laps: 13 },
-  21: { name: "Speedway", distance: new Distance({ miles: 0.9 }), laps: 0 },
-  23: { name: "Stone Park", distance: new Distance({ miles: 2.08 }), laps: 8 },
-  24: { name: "Convict", distance: new Distance({ miles: 1.64 }), laps: 10 },
-};
-
-/**
- * API access level enumeration
- * @readonly
- * @enum {number}
- */
-const ACCESS_LEVEL = Object.freeze({
-  Public: 0,
-  Minimal: 1,
-  Limited: 2,
-  Full: 3,
-});
-
-/* ------------------------------------------------------------------------
- * Script entry point
- * --------------------------------------------------------------------- */
 (async (w) => {
+  const SCRIPT_START = Date.now();
+
+  /* ------------------------------------------------------------------------
+   * Logger
+   * --------------------------------------------------------------------- */
+  /**
+   * Log level enumeration
+   * @readonly
+   * @enum {number}
+   */
+  const LOG_LEVEL = Object.freeze({
+    DEBUG: 10,
+    INFO: 20,
+    WARN: 30,
+    ERROR: 40,
+    SILENT: 50,
+  });
+
+  /**
+   * Log level threshold (debug|info|warn|error|silent).
+   */
+  const LOG_MODE = LOG_LEVEL.DEBUG;
+
+  /**
+   * Logger
+   * @class
+   */
+  class Logger {
+    /**
+     * private shouldLog - Returns true if the given level passes the current LOG_MODE threshold.
+     * @param {LOG_LEVEL} level
+     */
+    static _shouldLog(level) {
+      const current = typeof LOG_MODE === "number" ? LOG_MODE : LOG_LEVEL.INFO;
+      const incoming = typeof level === "number" ? level : (LOG_LEVEL[String(level).toUpperCase()] ?? LOG_LEVEL.INFO);
+      return incoming >= current && current < LOG_LEVEL.SILENT;
+    }
+    /**
+     * debug - Logs a debug-level message.
+     */
+    static debug(...args) {
+      if (!Logger._shouldLog(LOG_LEVEL.DEBUG)) return;
+      console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#9aa0a6;font-weight:600", ...args);
+    }
+    /**
+     * info - Logs an info-level message.
+     */
+    static info(...args) {
+      if (!Logger._shouldLog(LOG_LEVEL.INFO)) return;
+      console.log("%c[INFO][TornPDA.Racing+]: ", "color:#1a73e8;font-weight:600", ...args);
+    }
+    /**
+     * warn - Logs a warning-level message.
+     */
+    static warn(...args) {
+      if (!Logger._shouldLog(LOG_LEVEL.WARN)) return;
+      console.log("%c[WARN][TornPDA.Racing+]: ", "color:#f9ab00;font-weight:600", ...args);
+    }
+    /**
+     * error - Logs an error-level message.
+     */
+    static error(...args) {
+      if (!Logger._shouldLog(LOG_LEVEL.ERROR)) return;
+      console.log("%c[ERROR][TornPDA.Racing+]: ", "color:#d93025;font-weight:600", ...args);
+    }
+  }
+
+  Logger.info(`Application starting... ${SCRIPT_START}`);
+
+  /* ------------------------------------------------------------------------
+   * Constants
+   * --------------------------------------------------------------------- */
+  const DEFERRAL_LIMIT = 100; // Maximum amount of times the script will defer.
+  const DEFERRAL_INTERVAL = 100; // Amount of time in milliseconds deferrals will last.
+
+  const API_FETCH_TIMEOUT = 10000; // API request timeout in milliseconds
+  const API_KEY_LENGTH = 16; // Minimum valid API key length
+
+  const SECONDS_PER_HOUR = 3600; // Seconds in an hour for speed calculations
+
+  const API_COMMENT = "RacingPlus"; // Comment shown in Torn API recent usage.
+  const CACHE_TTL = 60 * 60 * 1000; // Cache duration for API responses (ms). Default = 1 hour.
+  const SPEED_INTERVAL = 1000; // (Reserved) Sample rate for speed updates (ms).
+  const KMS_PER_MI = 1.609344; // Number of kilometers in 1 mile.
+
+  const RACING_LINKS_SELECTOR = "#racing-leaderboard-header-root div[class^='linksContainer']";
+  const RACING_MAIN_SELECTOR = "#racingMainContainer";
+  const RACING_ADDITIONAL_SELECTOR = "#racingAdditionalContainer";
+  const RACING_TITLE_SELECTOR = "#racingupdates .drivers-list div[class^='title']";
+  const RACING_BOARD_SELECTOR = "#racingupdates .drivers-list #leaderBoard";
+
+  /* ------------------------------------------------------------------------
+   * Static Type Methods
+   * --------------------------------------------------------------------- */
+  /**
+   * Returns the current Unix timestamp (seconds since epoch).
+   * @returns {number} Current Unix timestamp
+   */
+  if (!Date.unix) {
+    Object.defineProperty(Date, "unix", {
+      value: () => Math.floor(Date.now() / 1000),
+      writable: true,
+      configurable: true,
+      enumerable: false,
+    });
+  }
+
+  /**
+   * Number.isValid - returns true for number primitives (excludes NaN).
+   * @returns {boolean}
+   */
+  if (!Number.isValid) {
+    Object.defineProperty(Number, "isValid", {
+      value: (n) => typeof n === "number" && Number.isFinite(n),
+      writable: true,
+      configurable: true,
+      enumerable: false,
+    });
+  }
+
+  /* ------------------------------------------------------------------------
+   * Error helpers
+   * --------------------------------------------------------------------- */
+  /**
+   * errorMessage - Extract a readable message from unknown errors.
+   * @param {any} err - Unknown error object
+   * @returns {string} Readable error message
+   */
+  function errorMessage(err) {
+    if (!err) return "Unknown error";
+    if (typeof err === "string") return err;
+    if (typeof err?.message === "string") return err.message;
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return String(err);
+    }
+  }
+
+  /* ------------------------------------------------------------------------
+   * LocalStorage Wrapper
+   * --------------------------------------------------------------------- */
+  const STORE = {
+    /**
+     * Get a value by key from localStorage
+     * @param {string} key - Storage key
+     * @returns {string|null} Stored value or null
+     */
+    getValue: (key) => localStorage.getItem(key),
+
+    /**
+     * Set a value by key in localStorage
+     * @param {string} key - Storage key
+     * @param {string} value - Value to store
+     */
+    setValue: (key, value) => localStorage.setItem(key, value),
+
+    /**
+     * Delete a value by key from localStorage
+     * @param {string} key - Storage key
+     */
+    deleteValue: (key) => localStorage.removeItem(key),
+
+    /**
+     * List all stored values (for debugging)
+     * @returns {Array<string>} Array of stored values
+     */
+    listValues: () => Object.values(localStorage),
+
+    /**
+     * Map from toggle/control ids to persistent localStorage keys.
+     */
+    keys: Object.freeze({
+      rplus_units: "RACINGPLUS_DISPLAYUNITS",
+      rplus_addlinks: "RACINGPLUS_ADDPROFILELINKS",
+      rplus_showskill: "RACINGPLUS_SHOWRACINGSKILL",
+      rplus_showspeed: "RACINGPLUS_SHOWCARSPEED",
+      rplus_showracelink: "RACINGPLUS_SHOWRACELINK",
+      rplus_showexportlink: "RACINGPLUS_SHOWEXPORTLINK",
+      rplus_showwinrate: "RACINGPLUS_SHOWCARWINRATE",
+      rplus_showparts: "RACINGPLUS_SHOWCARPARTS",
+    }),
+  };
+
+  /* ------------------------------------------------------------------------
+   * Distance and Speed Helpers
+   * --------------------------------------------------------------------- */
+  /**
+   * Distance class - Stores distance and formats value based on preferred units
+   * @class
+   */
+  class Distance {
+    /**
+     * Creates a Distance instance
+     * @param {object} [args={}] - Constructor arguments
+     * @param {number} [args.miles=null] - Distance in miles
+     * @param {number} [args.kilometers=null] - Distance in kilometers
+     * @throws {TypeError} If miles is not a finite number
+     */
+    constructor(args = {}) {
+      const { miles, kilometers } = args;
+      if (miles == null && kilometers == null) {
+        throw new TypeError("One of miles or kilometers must be specified.");
+      }
+      const mi = miles ?? (kilometers != null ? kilometers / KMS_PER_MI : 0);
+      if (!Number.isValid(mi)) {
+        throw new TypeError("Miles or Kilometers must be a number.");
+      }
+      this._mi = mi;
+      this._units = kilometers != null ? "km" : "mi";
+    }
+
+    /**
+     * Get distance in miles
+     * @returns {number} Distance in miles
+     */
+    get mi() {
+      return this._mi;
+    }
+
+    /**
+     * Get distance in kilometers
+     * @returns {number} Distance in kilometers
+     */
+    get km() {
+      return this._mi * KMS_PER_MI;
+    }
+
+    /**
+     * Format distance as string according to chosen units
+     * @returns {string} Formatted distance with units
+     */
+    toString() {
+      const val = this._units === "km" ? this.km : this.mi;
+      return `${val.toFixed(2)} ${this._units}`;
+    }
+  }
+
+  /**
+   * Speed class - Computes speed from Distance and elapsed time
+   * @class
+   */
+  class Speed {
+    /**
+     * Creates a Speed instance
+     * @param {object} args - Constructor arguments
+     * @param {Distance} args.distance - Distance traveled
+     * @param {number} args.seconds - Elapsed time in seconds (> 0)
+     * @throws {TypeError} If distance is not a Distance instance or seconds invalid
+     */
+    constructor(args = {}) {
+      const { distance, seconds } = args;
+      if (!(distance instanceof Distance)) {
+        throw new TypeError("distance must be a Distance instance.");
+      }
+      if (!Number.isInteger(seconds) || seconds <= 0) {
+        throw new TypeError("seconds must be an integer > 0.");
+      }
+      this._mph = distance.mi / (seconds / SECONDS_PER_HOUR);
+      this._units = STORE.getValue(STORE.keys.rplus_units) ?? "mph";
+    }
+
+    /**
+     * Get speed in miles per hour
+     * @returns {number} Speed in mph
+     */
+    get mph() {
+      return this._mph;
+    }
+
+    /**
+     * Get speed in kilometers per hour
+     * @returns {number} Speed in kph
+     */
+    get kph() {
+      return this._mph * KMS_PER_MI;
+    }
+
+    /**
+     * Format speed according to preferred units
+     * @returns {string} Formatted speed with units
+     */
+    toString() {
+      const val = this._units === "kph" ? this.kph : this.mph;
+      return `${val.toFixed(2)} ${this._units}`;
+    }
+  }
+
+  /* ------------------------------------------------------------------------
+   * Torn racing data
+   * --------------------------------------------------------------------- */
+  // Colours for car parts.
+  const COLOURS = ["#5D9CEC", "#48CFAD", "#FFCE54", "#ED5565", "#EC87C0", "#AC92EC", "#FC6E51", "#A0D468", "#4FC1E9"];
+
+  // Car part categories (used by the CSS injector).
+  const CATEGORIES = {
+    Aerodynamics: ["Spoiler", "Engine Cooling", "Brake Cooling", "Front Diffuser", "Rear Diffuser"],
+    Brakes: ["Pads", "Discs", "Fluid", "Brake Accessory", "Brake Control", "Callipers"],
+    Engine: ["Gasket", "Engine Porting", "Engine Cleaning", "Fuel Pump", "Camshaft", "Turbo", "Pistons", "Computer", "Intercooler"],
+    Exhaust: ["Exhaust", "Air Filter", "Manifold"],
+    Fuel: ["Fuel"],
+    Safety: ["Overalls", "Helmet", "Fire Extinguisher", "Safety Accessory", "Roll cage", "Cut-off", "Seat"],
+    Suspension: ["Springs", "Front Bushes", "Rear Bushes", "Upper Front Brace", "Lower Front Brace", "Rear Brace", "Front Tie Rods", "Rear Control Arms"],
+    Transmission: ["Shifting", "Differential", "Clutch", "Flywheel", "Gearbox"],
+    "Weight Reduction": ["Strip out", "Steering wheel", "Interior", "Windows", "Roof", "Boot", "Hood"],
+    "Wheels & Tires": ["Tyres", "Wheels"],
+  };
+
+  // Tracks metadata with Distance instances
+  const TRACKS = {
+    6: { name: "Uptown", distance: new Distance({ miles: 2.25 }), laps: 7 },
+    7: { name: "Withdrawal", distance: new Distance({ miles: 3.4 }), laps: 0 },
+    8: { name: "Underdog", distance: new Distance({ miles: 1.73 }), laps: 0 },
+    9: { name: "Parkland", distance: new Distance({ miles: 3.43 }), laps: 5 },
+    10: { name: "Docks", distance: new Distance({ miles: 3.81 }), laps: 5 },
+    11: { name: "Commerce", distance: new Distance({ miles: 1.09 }), laps: 15 },
+    12: { name: "Two Islands", distance: new Distance({ miles: 2.71 }), laps: 6 },
+    15: { name: "Industrial", distance: new Distance({ miles: 1.35 }), laps: 0 },
+    16: { name: "Vector", distance: new Distance({ miles: 1.16 }), laps: 14 },
+    17: { name: "Mudpit", distance: new Distance({ miles: 1.06 }), laps: 15 },
+    18: { name: "Hammerhead", distance: new Distance({ miles: 1.16 }), laps: 14 },
+    19: { name: "Sewage", distance: new Distance({ miles: 1.5 }), laps: 11 },
+    20: { name: "Meltdown", distance: new Distance({ miles: 1.2 }), laps: 13 },
+    21: { name: "Speedway", distance: new Distance({ miles: 0.9 }), laps: 0 },
+    23: { name: "Stone Park", distance: new Distance({ miles: 2.08 }), laps: 8 },
+    24: { name: "Convict", distance: new Distance({ miles: 1.64 }), laps: 10 },
+  };
+
+  /**
+   * API access level enumeration
+   * @readonly
+   * @enum {number}
+   */
+  const ACCESS_LEVEL = Object.freeze({
+    Public: 0,
+    Minimal: 1,
+    Limited: 2,
+    Full: 3,
+  });
+
   Logger.info(`Application started. Loading... ${Date.now() - SCRIPT_START} msec`);
 
   const doc = w.document;
