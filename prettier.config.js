@@ -11,6 +11,7 @@ const config = {
   semi: true,
   useTabs: false,
   singleQuote: false,
+  quoteProps: "consistent",
 };
 
 export default config;
