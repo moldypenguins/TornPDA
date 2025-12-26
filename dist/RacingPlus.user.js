@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.71
+// @version      0.99.72
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1249,6 +1249,7 @@
     const rplus_button = doc.createElement("a");
     rplus_button.id = "racing-plus-button";
     rplus_button.className = city_button.className;
+    rplus_button.setAttribute("role", "button");
     rplus_button.setAttribute("aria-labelledby", "racing-plus-link-label");
     rplus_button.innerHTML = `
         <span id="racing-plus-button-icon" class="${city_icon_wrap.className}">
@@ -1261,6 +1262,7 @@
     // Toggle the settings panel on click
     rplus_button.addEventListener("click", (ev) => {
       ev.preventDefault();
+      Logger.debug("'rplus_button' clicked");
       doc.querySelector(".racing-plus-panel")?.classList.toggle("show");
     });
 
