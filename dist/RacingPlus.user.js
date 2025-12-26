@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.65
+// @version      0.99.66
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1230,7 +1230,7 @@ const ACCESS_LEVEL = Object.freeze({
     const links_container = await defer(RACING_LINKS_SELECTOR);
     if (!links_container) return;
 
-    let city_button = links_container.firstChild;
+    let city_button = links_container.querySelector('[href="city.php"]');
     if (!city_button) return;
 
     let city_label = city_button.querySelector(`#${city_button.getAttribute("aria-labelledby")}`);
@@ -1243,7 +1243,7 @@ const ACCESS_LEVEL = Object.freeze({
         </span>
         <span id="racing-plus-button-label" class="${city_label.className}">Racing+</span>
       </a>`;
-    links_container.insertAdjacentHTML("afterBegin", rplus_button);
+    city_button.insertAdjacentHTML("beforeBegin", rplus_button);
 
     // Toggle the settings panel on click
     rplus_button.addEventListener("click", (ev) => {
