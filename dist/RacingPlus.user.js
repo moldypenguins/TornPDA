@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.5-alpha
+// @version      1.0.6-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
-// @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
+// @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
 // @updateURL    https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/dist/RacingPlus.user.js
@@ -25,11 +25,11 @@ const MS_PER_HOUR = 3600000; // Number of milliseconds in 1 hour.
 const SECONDS_PER_HOUR = 3600; // Number of seconds in 1 hour.
 const KMS_PER_MI = 1.609344; // Number of kilometers in 1 mile.
 
-const CACHE_TTL = MS_PER_HOUR; // Number of milliseconds to cache API responses. Default = 1 hour.
 const API_KEY_LENGTH = 16; // Number of characters in a valid API key.
 const API_FETCH_TIMEOUT = 10 * MS_PER_SECOND; // Number of milliseconds to wait for an API request.
 const DEFERRAL_TIMEOUT = MS_PER_MINUTE / 2; // Number of milliseconds to wait for a selector to appear. Default = 1 minute.
 const SPEED_INTERVAL = MS_PER_SECOND; // Number of milliseconds to update speed. Default = 1 second.
+const CACHE_TTL = MS_PER_HOUR; // Number of milliseconds to cache API responses. Default = 1 hour.
 
 /* ------------------------------------------------------------------------
  * Logger
@@ -336,6 +336,23 @@ const PART_CATEGORIES = {
  * Torn models
  * --------------------------------------------------------------------- */
 /**
+ * Comment shown in Torn API recent usage.
+ */
+const API_COMMENT = "RacingPlus";
+
+/**
+ * List of valid Torn API root strings.
+ * @readonly
+ * @type {readonly ["user","faction","market","racing","forum","property","key","torn"]}
+ */
+const API_VALID_ROOTS = Object.freeze(/** @type {const} */ (["user", "faction", "market", "racing", "forum", "property", "key", "torn"]));
+
+/**
+ * Union type of valid roots, derived from API_VALID_ROOTS.
+ * @typedef {typeof API_VALID_ROOTS[number]} ApiRoot
+ */
+
+/**
  * TornAPI access level enumeration
  * @readonly
  * @enum {number}
@@ -349,6 +366,7 @@ const ACCESS_LEVEL = Object.freeze({
 
 /**
  * TornAPI class - Wrapper for authenticated Torn API calls with caching and timeouts
+ * @see https://www.torn.com/swagger/index.html
  * @class
  */
 class TornAPI {
@@ -363,6 +381,70 @@ class TornAPI {
   }
 
   /**
+   * Makes a Torn API request (with caching) after validating the path and root.
+   * @param {ApiRoot} root - API root
+   * @param {string} path - API path (e.g., 'key/info' or '/user/stats')
+   * @param {object|string} [args={}] - Query parameters object or a prebuilt query string
+   * @returns {Promise<object|null>} API response data if available
+   * @throws {Error} If path/root inputs are invalid
+   */
+  async request(root, path, params = {}) {
+    // validate root
+    if (!API_VALID_ROOTS.includes(root)) {
+      throw new Error(`Invalid API root. Must be one of: ${API_VALID_ROOTS.join(", ")}`);
+    }
+    // validate path
+    if (typeof path !== "string") throw new Error("Invalid path. Must be a string.");
+    // validate args
+    // ...
+    // build query string
+    let queryString = "";
+    if (params != null && typeof params === "object" && Object.entries(params).length > 0) {
+      queryString = Object.entries(params)
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+        .join("&");
+    } else {
+      throw new Error("Invalid argument. Params must be an object.");
+    }
+    // build query url
+    const queryURL =
+      "https://api.torn.com/v2" +
+      `/${root}/${path.replace(/^\/+|\/+$/g, "")}` +
+      `?comment=${API_COMMENT}${this.key ? `&key=${this.key}` : ""}${queryString ? `&${queryString}` : ""}`;
+
+    // check for cached copy, then return results
+    const cached = this.cache.get(queryURL);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
+
+    // no cached copy, request new copy
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), API_FETCH_TIMEOUT);
+
+    try {
+      // get response
+      const response = await fetch(queryURL, { signal: controller.signal });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText || ""}`.trim());
+      }
+      // parse response
+      const results = await response.json().catch((err) => {
+        throw new Error(`Invalid JSON response: ${err}`);
+      });
+      if (!results || results.error) {
+        throw new Error(`API request failed: ${results?.error?.error ?? "Unknown error."}`);
+      }
+      // cache new copy, then return results
+      this.cache.set(queryURL, { data: results, timestamp: Date.now() });
+      return results;
+    } catch (err) {
+      Logger.warn(`API request failed: ${err}`);
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
    * Validates a Torn API key by calling /key/info
    * @param {string} key - API key to validate
    * @returns {Promise<boolean>} True if valid with sufficient access
@@ -373,16 +455,17 @@ class TornAPI {
     if (!key || typeof key !== "string" || key.length !== API_KEY_LENGTH) {
       throw new Error("Invalid API key: local validation.");
     }
+    // use candidate key for probe call, store current key
     const prev_key = this.key;
     this.key = key;
-
-    const data = await this.request("key/info", {
+    const data = await this.request("key", "info", {
       timestamp: `${Date.unix()}`,
     });
     if (data?.info?.access && Number(data.info.access.level) >= ACCESS_LEVEL.Minimal) {
       Logger.debug("Valid API key.");
       return true;
     }
+    // invalid key, reset to previous key
     this.key = prev_key;
     throw new Error("Invalid API key: unexpected response.");
   }
