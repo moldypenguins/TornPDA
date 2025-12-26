@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.2-alpha
+// @version      1.0.3-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -52,17 +52,17 @@ class Logger {
   /** logs a debug-level message. */
   static debug(...args) {
     if (LOG_MODE > LOG_LEVEL.debug) return;
-    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#9aa0a6;font-weight:600", ...args);
+    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#6aa84f;font-weight:600", ...args);
   }
   /** logs an info-level message. */
   static info(...args) {
     if (LOG_MODE > LOG_LEVEL.info) return;
-    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#1a73e8;font-weight:600", ...args);
+    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#3d85c6;font-weight:600", ...args);
   }
   /** Logs a warning-level message. */
   static warn(...args) {
     if (LOG_MODE > LOG_LEVEL.WARN) return;
-    console.log("%c[WARN][TornPDA.Racing+]: ", "color:#f9ab00;font-weight:600", ...args);
+    console.log("%c[WARN][TornPDA.Racing+]: ", "color:#e69138;font-weight:600", ...args);
   }
   /** Logs an error-level message. */
   static error(...args) {
@@ -72,15 +72,47 @@ class Logger {
 }
 
 /* ------------------------------------------------------------------------
- * Static Type Methods
+ * Type Methods
  * --------------------------------------------------------------------- */
 /**
- * Returns the current Unix timestamp (seconds since epoch).
+ * Date.unix - Returns the current Unix timestamp (seconds since epoch).
  * @returns {number} Current Unix timestamp
  */
 if (!Date.unix) {
   Object.defineProperty(Date, "unix", {
-    value: () => Math.floor(Date.now() / 1000),
+    value: () => Math.floor(Date.now() / MS_PER_SECOND),
+    writable: true,
+    configurable: true,
+    enumerable: false,
+  });
+}
+
+/**
+ * Number.formatDate - Returns a formatted date (yyyy-MM-dd).
+ * @returns {string} Formatted date
+ */
+if (!Number.formatDate) {
+  Object.defineProperty(Number, "formatDate", {
+    value: (s) => {
+      const dt = new Date(s);
+      return `${String(dt.getFullYear())}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+    },
+    writable: true,
+    configurable: true,
+    enumerable: false,
+  });
+}
+
+/**
+ * Number.formatTime - Returns a formatted time.
+ * @returns {string} Formatted time
+ */
+if (!Number.formatTime) {
+  Object.defineProperty(Number, "formatTime", {
+    value: (ms) =>
+      `${("00" + Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60))).toString().slice(-2)}` +
+      `:${("00" + Math.floor((ms % (1000 * 60)) / 1000)).toString().slice(-2)}` +
+      `.${("000" + Math.floor(ms % 1000)).toString().slice(3)}`,
     writable: true,
     configurable: true,
     enumerable: false,
@@ -300,7 +332,7 @@ const PART_CATEGORIES = {
  * Application start
  * --------------------------------------------------------------------- */
 (async (w) => {
-  Logger.info(`Application loading... ${Date.now() - SCRIPT_START} msec`);
+  Logger.info(`Application loading... ${new Date(SCRIPT_START).toISOString()}`);
 
   // TornPDA Integration Stub
   const PDA_KEY = "###PDA-APIKEY###";
@@ -372,18 +404,22 @@ const PART_CATEGORIES = {
     Logger.debug("Styles added.");
   };
 
-  try {
-    Logger.info(`Application loaded. Starting... ${Date.now() - SCRIPT_START} msec`);
+  /**
+   * start - Main entry point for the application.
+   */
+  const start = async () => {
+    try {
+      Logger.info(`Application loaded. Starting... ${Date.now() - SCRIPT_START} msec`);
 
-    addStyles();
+      addStyles();
 
-    /** Ensure document body is loaded */
-    if (!w.document.body) await new Promise((r) => w.addEventListener("DOMContentLoaded", r, { once: true }));
+      Logger.info(`Application started. ${Date.now() - SCRIPT_START} msec`);
+    } catch (err) {
+      Logger.error(err);
+    }
+  };
 
-    Logger.info(`Application started. ${Date.now() - SCRIPT_START} msec`);
-  } catch (err) {
-    Logger.error(err);
-  }
+  await start();
 })(window);
 
 // End of file: RacingPlus.user.js
