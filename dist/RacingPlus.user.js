@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.63
+// @version      0.99.64
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -704,7 +704,7 @@ const ACCESS_LEVEL = Object.freeze({
 
         // Show driver speed
         if (showSpeed) {
-          if (!drvr.querySelector("li.speed")) {
+          if (!stats.querySelector(".speed")) {
             stats.insertAdjacentHTML("beforeEnd", '<div class="speed">0.00mph</div>');
           }
           // if (!["joined", "finished"].includes(racestatus) && !speedIntervalByDriverId.has(driverId)) {
@@ -714,7 +714,7 @@ const ACCESS_LEVEL = Object.freeze({
         }
         // Show driver skill
         if (showSkill) {
-          if (!drvr.querySelector("li.skill")) {
+          if (!stats.querySelector(".skill")) {
             stats.insertAdjacentHTML("afterBegin", '<div class="skill">RS: ?</div>');
           }
           if (torn_api.key) {
@@ -722,7 +722,7 @@ const ACCESS_LEVEL = Object.freeze({
             try {
               let user = await torn_api.request(`user/${driverId}/personalStats`, { stat: "racingskill" });
               if (user) {
-                let skill = stats.querySelector("li.skill");
+                let skill = stats.querySelector(".skill");
                 skill.textContent = `RS: ${user.personalstats?.racing?.skill ?? "?"}`;
               }
             } catch (err) {
