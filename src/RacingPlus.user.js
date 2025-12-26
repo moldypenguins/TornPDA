@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.62
+// @version      0.99.63
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -705,7 +705,7 @@ const ACCESS_LEVEL = Object.freeze({
         // Show driver speed
         if (showSpeed) {
           if (!drvr.querySelector("li.speed")) {
-            stats.insertAdjacentHTML("afterEnd", '<ul><li class="speed">0.00mph</li></ul>');
+            stats.insertAdjacentHTML("beforeEnd", '<div class="speed">0.00mph</div>');
           }
           // if (!["joined", "finished"].includes(racestatus) && !speedIntervalByDriverId.has(driverId)) {
           //   Logger.debug(`Adding speed interval for driver ${driverId}.`);
@@ -715,7 +715,7 @@ const ACCESS_LEVEL = Object.freeze({
         // Show driver skill
         if (showSkill) {
           if (!drvr.querySelector("li.skill")) {
-            stats.insertAdjacentHTML("afterBegin", '<ul><li class="skill">RS: ?</li></ul>');
+            stats.insertAdjacentHTML("afterBegin", '<div class="skill">RS: ?</div>');
           }
           if (torn_api.key) {
             // Fetch racing skill data from the Torn API for the given driver id
