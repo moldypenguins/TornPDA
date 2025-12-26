@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.4-alpha
+// @version      1.0.5-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -179,6 +179,7 @@ class Store {
    * Map from toggle/control ids to persistent localStorage keys.
    */
   static keys = Object.freeze({
+    rplus_apikey: "RACINGPLUS_APIKEY",
     rplus_units: "RACINGPLUS_DISPLAYUNITS",
     rplus_addlinks: "RACINGPLUS_ADDPROFILELINKS",
     rplus_showskill: "RACINGPLUS_SHOWRACINGSKILL",
@@ -368,6 +369,7 @@ class TornAPI {
    * @throws {Error}
    */
   async validate(key) {
+    Logger.debug("Validating Torn API key...");
     if (!key || typeof key !== "string" || key.length !== API_KEY_LENGTH) {
       throw new Error("Invalid API key: local validation.");
     }
@@ -378,7 +380,7 @@ class TornAPI {
       timestamp: `${Date.unix()}`,
     });
     if (data?.info?.access && Number(data.info.access.level) >= ACCESS_LEVEL.Minimal) {
-      //Logger.debug("Valid API key.");
+      Logger.debug("Valid API key.");
       return true;
     }
     this.key = prev_key;
@@ -549,7 +551,7 @@ class TornDriver {
       await addStyles();
 
       torn_api = new TornAPI();
-      torn_api.validate();
+      torn_api.validate(IS_PDA ? PDA_KEY : (Store.getValue(Store.keys.rplus_apikey) ?? ""));
 
       // load driver data
       this_driver = await loadDriverData();
