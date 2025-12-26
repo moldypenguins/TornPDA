@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.59
+// @version      0.99.60
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -514,7 +514,7 @@ const ACCESS_LEVEL = Object.freeze({
           throw new Error(`Invalid JSON response: ${err}`);
         });
         if (!results || results.error) {
-          throw new Error(`${results?.error?.error ?? "Unknown error."}`);
+          throw new Error(`API request failed: ${results?.error?.error ?? "Unknown error."}`);
         }
         this.cache.set(queryURL, { data: results, timestamp: Date.now() });
         return results;
@@ -627,7 +627,7 @@ const ACCESS_LEVEL = Object.freeze({
      * Normalizes leaderboard DOM entries and adds driver info
      * @param {NodeList|Array} drivers - List of driver DOM elements
      */
-    updateLeaderBoard(drivers) {
+    async updateLeaderBoard(drivers) {
       Logger.debug("Updating Leaderboard...");
 
       const addLinks = STORE.getValue(STORE.keys.rplus_addlinks) === "1";
@@ -650,11 +650,11 @@ const ACCESS_LEVEL = Object.freeze({
         if (driverStatus) {
           switch (this.status) {
             case "joined":
-              driverStatus.className = "status success";
+              driverStatus.className = "status waiting";
               driverStatus.textContent = "";
               break;
             case "waiting":
-              driverStatus.className = "status waiting";
+              driverStatus.className = "status success";
               driverStatus.textContent = "";
               break;
             case "racing":
@@ -704,8 +704,10 @@ const ACCESS_LEVEL = Object.freeze({
 
         // Show driver speed
         if (showSpeed) {
-          if (!drvr.querySelector(".speed")) {
-            stats.insertAdjacentHTML("afterEnd", '<div class="speed">0.00mph</div>');
+          if (!drvr.querySelector("li.speed")) {
+            const speedContainer = doc.createElement("ul");
+            speedContainer.innerHTML('<li class="speed">0.00mph</li>');
+            stats.insertAdjacentHTML("afterEnd", speedContainer);
           }
           // if (!["joined", "finished"].includes(racestatus) && !speedIntervalByDriverId.has(driverId)) {
           //   Logger.debug(`Adding speed interval for driver ${driverId}.`);
@@ -714,25 +716,23 @@ const ACCESS_LEVEL = Object.freeze({
         }
         // Show driver skill
         if (showSkill) {
-          if (!drvr.querySelector(".skill")) {
-            stats.insertAdjacentHTML("afterBegin", '<div class="skill">RS: ?</div>');
+          if (!drvr.querySelector("li.skill")) {
+            const skillContainer = doc.createElement("ul");
+            skillContainer.innerHTML('<div class="skill">RS: ?</div>');
+            stats.insertAdjacentHTML("afterBegin", skillContainer);
           }
-          // if (apikey) {
-          //   // Fetch racing skill data from the Torn API for the given driver id
-          //   try {
-          //     let user = await torn_api(
-          //       apikey,
-          //       `user/${driverId}/personalStats`,
-          //       "stat=racingskill",
-          //     );
-          //     if (user) {
-          //       let skill = stats.querySelector(".skill");
-          //       skill.textContent = `RS: ${user.personalstats.racing.skill}`;
-          //     }
-          //   } catch (err) {
-          //     console.log(`[TornPDA.Racing+]: ${err.error ?? err}`);
-          //   }
-          // }
+          if (torn_api.key) {
+            // Fetch racing skill data from the Torn API for the given driver id
+            try {
+              let user = await torn_api.request(`user/${driverId}/personalStats`, { stat: "racingskill" });
+              if (user) {
+                let skill = stats.querySelector("li.skill");
+                skill.textContent = `RS: ${user.personalstats?.racing?.skill ?? "?"}`;
+              }
+            } catch (err) {
+              console.log(`[TornPDA.Racing+]: ${err.error ?? err}`);
+            }
+          }
         }
       } //);
     }
