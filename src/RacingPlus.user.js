@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.3-alpha
+// @version      1.0.4-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -13,6 +13,7 @@
 // @run-at       document-start
 // ==/UserScript==
 "use strict";
+
 /* ------------------------------------------------------------------------
  * Constants
  * --------------------------------------------------------------------- */
@@ -25,7 +26,9 @@ const SECONDS_PER_HOUR = 3600; // Number of seconds in 1 hour.
 const KMS_PER_MI = 1.609344; // Number of kilometers in 1 mile.
 
 const CACHE_TTL = MS_PER_HOUR; // Number of milliseconds to cache API responses. Default = 1 hour.
-const DEFERRAL_TIMEOUT = MS_PER_MINUTE; // Number of milliseconds to wait for a selector to appear. Default = 1 minute.
+const API_KEY_LENGTH = 16; // Number of characters in a valid API key.
+const API_FETCH_TIMEOUT = 10 * MS_PER_SECOND; // Number of milliseconds to wait for an API request.
+const DEFERRAL_TIMEOUT = MS_PER_MINUTE / 2; // Number of milliseconds to wait for a selector to appear. Default = 1 minute.
 const SPEED_INTERVAL = MS_PER_SECOND; // Number of milliseconds to update speed. Default = 1 second.
 
 /* ------------------------------------------------------------------------
@@ -329,6 +332,78 @@ const PART_CATEGORIES = {
 };
 
 /* ------------------------------------------------------------------------
+ * Torn models
+ * --------------------------------------------------------------------- */
+/**
+ * TornAPI access level enumeration
+ * @readonly
+ * @enum {number}
+ */
+const ACCESS_LEVEL = Object.freeze({
+  Public: 0,
+  Minimal: 1,
+  Limited: 2,
+  Full: 3,
+});
+
+/**
+ * TornAPI class - Wrapper for authenticated Torn API calls with caching and timeouts
+ * @class
+ */
+class TornAPI {
+  /**
+   * Creates a TornAPI instance
+   */
+  constructor() {
+    /** @type {Map<string, {data:any, timestamp:number}>} */
+    this.cache = new Map();
+    /** @type {string|null} */
+    this.key = null;
+  }
+
+  /**
+   * Validates a Torn API key by calling /key/info
+   * @param {string} key - API key to validate
+   * @returns {Promise<boolean>} True if valid with sufficient access
+   * @throws {Error}
+   */
+  async validate(key) {
+    if (!key || typeof key !== "string" || key.length !== API_KEY_LENGTH) {
+      throw new Error("Invalid API key: local validation.");
+    }
+    const prev_key = this.key;
+    this.key = key;
+
+    const data = await this.request("key/info", {
+      timestamp: `${Date.unix()}`,
+    });
+    if (data?.info?.access && Number(data.info.access.level) >= ACCESS_LEVEL.Minimal) {
+      //Logger.debug("Valid API key.");
+      return true;
+    }
+    this.key = prev_key;
+    throw new Error("Invalid API key: unexpected response.");
+  }
+}
+
+/**
+ * TornDriver - Stores skill and per-track best records for current user
+ * @class
+ */
+class TornDriver {
+  /**
+   * Creates a TornDriver instance for a driver id.
+   * @param {string|number} driver_id - Driver user ID
+   */
+  constructor(driver_id) {
+    this.id = driver_id;
+    this.skill = 0;
+    this.records = {};
+    this.cars = {};
+  }
+}
+
+/* ------------------------------------------------------------------------
  * Application start
  * --------------------------------------------------------------------- */
 (async (w) => {
@@ -379,8 +454,8 @@ const PART_CATEGORIES = {
    * addStyles - Injects Racing+ CSS into document head.
    * @returns {Promise<void>}
    */
-  const addStyles = () => {
-    Logger.debug("Adding styles...");
+  const addStyles = async () => {
+    Logger.debug(`Injecting styles... ${Date.now() - SCRIPT_START} msec`);
 
     const s = w.document.createElement("style");
     s.innerHTML = `__MINIFIED_CSS__`;
@@ -401,8 +476,67 @@ const PART_CATEGORIES = {
     }
 
     w.document.head.appendChild(s);
-    Logger.debug("Styles added.");
+    Logger.debug(`Styles injected. ${Date.now() - SCRIPT_START} msec`);
   };
+
+  const loadDriverData = async () => {
+    Logger.debug("Loading Driver Data...");
+    // Load driver data - Typically a hidden input with JSON { id, ... }
+    const scriptData = await defer("#torn-user");
+    let parsed;
+    try {
+      parsed = JSON.parse(scriptData.value);
+    } catch (err) {
+      throw new Error(`Failed to parse #torn-user JSON: ${err}`);
+    }
+    if (!parsed?.id) throw new Error("Missing driver id in #torn-user payload.");
+
+    return new TornDriver(parsed.id);
+  };
+
+  const addRacingPlusPanel = async () => {
+    Logger.debug("Adding settings panel...");
+  };
+
+  const addRacingPlusButton = async () => {
+    Logger.debug("Adding settings panel toggle button...");
+  };
+
+  const loadDomElements = async () => {
+    Logger.debug("Loading DOM...");
+    // Normalize the top banner structure & update skill snapshot
+    Logger.debug("Fixing top banner...");
+    const banner = await defer(".banner");
+    const leftBanner = w.document.createElement("div");
+    leftBanner.className = "left-banner";
+    const rightBanner = w.document.createElement("div");
+    rightBanner.className = "right-banner";
+
+    const elements = Array.from(banner.children);
+    elements.forEach((el) => {
+      if (el.classList.contains("skill-desc") || el.classList.contains("skill") || el.classList.contains("lastgain")) {
+        if (el.classList.contains("skill")) {
+          // Update driver skill snapshot (persist only if higher)
+          this_driver.updateSkill(el.textContent);
+          el.textContent = String(this_driver.skill);
+        }
+        leftBanner.appendChild(el);
+      } else if (el.classList.contains("class-desc") || el.classList.contains("class-letter")) {
+        rightBanner.appendChild(el);
+      }
+    });
+    banner.innerHTML = "";
+    banner.appendChild(leftBanner);
+    banner.appendChild(rightBanner);
+    Logger.debug("DOM loaded.");
+  };
+
+  /* ------------------------------------------------------------------------
+   * App lifecycle
+   * --------------------------------------------------------------------- */
+  // Singletons / shared state
+  /** @type {TornAPI} */ let torn_api;
+  /** @type {TornDriver} */ let this_driver;
 
   /**
    * start - Main entry point for the application.
@@ -411,7 +545,29 @@ const PART_CATEGORIES = {
     try {
       Logger.info(`Application loaded. Starting... ${Date.now() - SCRIPT_START} msec`);
 
-      addStyles();
+      // add styles
+      await addStyles();
+
+      torn_api = new TornAPI();
+      torn_api.validate();
+
+      // load driver data
+      this_driver = await loadDriverData();
+      this_driver.load();
+
+      // Add the Racing+ panel and button to the DOM
+      Promise.allSettled([addRacingPlusPanel, addRacingPlusButton, loadDomElements]).then((results) =>
+        results.forEach((result) => {
+          switch (result.status) {
+            case "fulfilled":
+              Logger.debug(`Fulfilled: ${result.value}`);
+              break;
+            case "rejected":
+              Logger.warn(`Rejected: ${result.value}`);
+              break;
+          }
+        })
+      );
 
       Logger.info(`Application started. ${Date.now() - SCRIPT_START} msec`);
     } catch (err) {
