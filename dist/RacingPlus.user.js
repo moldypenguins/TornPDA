@@ -1237,13 +1237,17 @@ const ACCESS_LEVEL = Object.freeze({
     let city_icon_wrap = city_button.querySelector(`:not([id])`);
     if (!city_label || !city_icon_wrap) return;
 
-    const rplus_button = `<a id="racing-plus-button" aria-labelledby="racing-plus-link-label" class="${city_button.className}">
+    const rplus_button = doc.createElement("a");
+    rplus_button.id = "racing-plus-button";
+    rplus_button.className = city_button.className;
+    rplus_button.setAttribute("aria-labelledby", "racing-plus-link-label");
+    rplus_button.innerHTML = `
         <span id="racing-plus-button-icon" class="${city_icon_wrap.className}">
           <svg xmlns="http://www.w3.org/2000/svg" stroke="transparent" stroke-width="0" width="15" height="14" viewBox="0 0 15 14"><path d="m14.02,11.5c.65-1.17.99-2.48.99-3.82,0-2.03-.78-3.98-2.2-5.44-2.83-2.93-7.49-3.01-10.42-.18-.06.06-.12.12-.18.18C.78,3.7,0,5.66,0,7.69c0,1.36.35,2.69,1.02,3.88.36.64.82,1.22,1.35,1.73l.73.7,1.37-1.5-.73-.7c-.24-.23-.45-.47-.64-.74l1.22-.72-.64-1.14-1.22.72c-.6-1.42-.6-3.03,0-4.45l1.22.72.64-1.14-1.22-.72c.89-1.23,2.25-2.04,3.76-2.23v1.44h1.29v-1.44c1.51.19,2.87.99,3.76,2.23l-1.22.72.65,1.14,1.22-.72c.68,1.63.58,3.48-.28,5.02-.06.11-.12.21-.19.31l-1.14-.88.48,3.5,3.41-.49-1.15-.89c.12-.18.23-.35.33-.53Zm-6.51-4.97c-.64-.02-1.17.49-1.18,1.13s.49,1.17,1.13,1.18,1.17-.49,1.18-1.13c0,0,0-.01,0-.02l1.95-1.88-2.56.85c-.16-.09-.34-.13-.52-.13h0Z"/></svg>
         </span>
         <span id="racing-plus-button-label" class="${city_label.className}">Racing+</span>
-      </a>`;
-    city_button.insertAdjacentHTML("beforeBegin", rplus_button);
+      `;
+    city_button.insertAdjacentElement("beforeBegin", rplus_button);
 
     // Toggle the settings panel on click
     rplus_button.addEventListener("click", (ev) => {
