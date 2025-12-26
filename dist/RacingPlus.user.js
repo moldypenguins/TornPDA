@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.69
+// @version      0.99.70
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1265,7 +1265,7 @@ const ACCESS_LEVEL = Object.freeze({
     // Toggle the settings panel on click
     rplus_button.addEventListener("click", (ev) => {
       ev.preventDefault();
-      doc.querySelector("#racing-plus-panel")?.classList.toggle("show");
+      doc.querySelector(".racing-plus-panel")?.classList.toggle("show");
     });
 
     Logger.debug("Settings button added.");
@@ -1278,7 +1278,7 @@ const ACCESS_LEVEL = Object.freeze({
    */
   async function addRacingPlusPanel(main_container) {
     // Check if panel already exists
-    if (doc.querySelector("#racing-plus-panel")) return;
+    if (doc.querySelector(".racing-plus-panel")) return;
 
     // Load Torn API key (from PDA or local storage)
     let api_key = IS_PDA ? PDA_KEY : (STORE.getValue("RACINGPLUS_APIKEY") ?? "");
@@ -1292,7 +1292,7 @@ const ACCESS_LEVEL = Object.freeze({
     // }
 
     const rplus_panel = doc.createElement("div");
-    rplus_panel.id = "racing-plus-panel";
+    rplus_panel.className = "racing-plus-panel";
     rplus_panel.appendChild(createDiv("racing-plus-header", "Racing+"));
 
     const api_actions = createDiv("nowrap", [
