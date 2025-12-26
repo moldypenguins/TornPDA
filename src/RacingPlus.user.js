@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.68
+// @version      0.99.69
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1509,95 +1509,98 @@ const ACCESS_LEVEL = Object.freeze({
   /** @type {TornRace} */ let this_race;
   /** @type {MutationObserver} */ let page_observer;
 
-  Logger.info(`Application loaded. Initializing. ${Date.now() - SCRIPT_START} msec`);
+  async function main() {
+    Logger.info(`Application loaded. Initializing. ${Date.now() - SCRIPT_START} msec`);
 
-  try {
-    await addStyles(); // Add CSS
+    try {
+      await addStyles(); // Add CSS
 
-    const main_container = await defer(RACING_MAIN_SELECTOR);
-    const race_container = await defer(RACING_ADDITIONAL_SELECTOR); // race is a child of main
-    const title_container = await defer(RACING_TITLE_SELECTOR); // title is a child of race
+      const main_container = await defer(RACING_MAIN_SELECTOR);
+      const race_container = await defer(RACING_ADDITIONAL_SELECTOR); // race is a child of main
+      const title_container = await defer(RACING_TITLE_SELECTOR); // title is a child of race
 
-    await loadRacingPlus(main_container); // Verify API and build UI
+      await loadRacingPlus(main_container); // Verify API and build UI
 
-    await this_driver.updateRecords(); // Update track records from API
-    await this_driver.updateCars(); // Update available cars from API
+      await this_driver.updateRecords(); // Update track records from API
+      await this_driver.updateCars(); // Update available cars from API
 
-    // Add Page observer (track tab changes, race updates, etc.)
-    Logger.debug("Adding Page Observer...");
+      // Add Page observer (track tab changes, race updates, etc.)
+      Logger.debug("Adding Page Observer...");
 
-    // Add window-scoped page_observer.
-    page_observer = new MutationObserver(async (mutations) => {
-      for (const mutation of mutations) {
-        // If infospot text changed, update status
-        if (mutation.type === "characterData" || mutation.type === "childList") {
-          /** @type {Node} */
-          const tNode = mutation.target;
-          const el = tNode.nodeType === Node.ELEMENT_NODE ? tNode : tNode.parentElement;
-          if (el && el.id === "infoSpot") {
-            this_race?.updateStatus(el.textContent || "");
-            // if (DEBUG_MODE) console.log(`[TornPDA.Racing+]: Race Status Update -> ${this_race.status}.`);
-          }
-          if (el && el.id === "leaderBoard") {
-            await this_race?.updateLeaderBoard(el.childNodes || []);
-            // if (DEBUG_MODE) console.log(`[TornPDA.Racing+]: Leader Board Update.`);
-          }
-        }
-        //TODO: node.classList?.contains? is unsafe as node may be text
-        // Handle injected subtrees (new tab content loaded)
-        const addedNodes = mutation.addedNodes && mutation.addedNodes.length > 0 ? Array.from(mutation.addedNodes) : [];
-        if (addedNodes.length > 0 && !addedNodes.some((node) => node?.classList?.contains?.("ajax-preloader"))) {
-          try {
-            if (addedNodes.some((node) => node?.id === "racingupdates")) {
-              await loadOfficialEvents(main_container, race_container);
-            } else if (addedNodes.some((node) => node?.classList?.contains?.("enlist-wrap"))) {
-              await loadEnlistedCars();
-            } else if (addedNodes.some((node) => node?.classList?.contains?.("pm-categories-wrap")) && STORE.getValue(STORE.keys.rplus_showparts) === "1") {
-              await loadPartsAndModifications();
+      // Add window-scoped page_observer.
+      page_observer = new MutationObserver(async (mutations) => {
+        for (const mutation of mutations) {
+          // If infospot text changed, update status
+          if (mutation.type === "characterData" || mutation.type === "childList") {
+            /** @type {Node} */
+            const tNode = mutation.target;
+            const el = tNode.nodeType === Node.ELEMENT_NODE ? tNode : tNode.parentElement;
+            if (el && el.id === "infoSpot") {
+              this_race?.updateStatus(el.textContent || "");
+              // if (DEBUG_MODE) console.log(`[TornPDA.Racing+]: Race Status Update -> ${this_race.status}.`);
             }
-          } catch (err) {
-            // Prevent observer from dying on transient DOM states.
-            Logger.warn(`Observer handler failed.\n${err}`);
+            if (el && el.id === "leaderBoard") {
+              await this_race?.updateLeaderBoard(el.childNodes || []);
+              // if (DEBUG_MODE) console.log(`[TornPDA.Racing+]: Leader Board Update.`);
+            }
+          }
+          //TODO: node.classList?.contains? is unsafe as node may be text
+          // Handle injected subtrees (new tab content loaded)
+          const addedNodes = mutation.addedNodes && mutation.addedNodes.length > 0 ? Array.from(mutation.addedNodes) : [];
+          if (addedNodes.length > 0 && !addedNodes.some((node) => node?.classList?.contains?.("ajax-preloader"))) {
+            try {
+              if (addedNodes.some((node) => node?.id === "racingupdates")) {
+                await loadOfficialEvents(main_container, race_container);
+              } else if (addedNodes.some((node) => node?.classList?.contains?.("enlist-wrap"))) {
+                await loadEnlistedCars();
+              } else if (addedNodes.some((node) => node?.classList?.contains?.("pm-categories-wrap")) && STORE.getValue(STORE.keys.rplus_showparts) === "1") {
+                await loadPartsAndModifications();
+              }
+            } catch (err) {
+              // Prevent observer from dying on transient DOM states.
+              Logger.warn(`Observer handler failed.\n${err}`);
+            }
           }
         }
-      }
-    });
+      });
 
-    page_observer?.observe(race_container, {
-      characterData: true,
-      childList: true,
-      subtree: true,
-    });
+      page_observer?.observe(race_container, {
+        characterData: true,
+        childList: true,
+        subtree: true,
+      });
 
-    page_observer?.observe(title_container, {
-      characterData: true,
-      childList: true,
-      subtree: true,
-    });
+      page_observer?.observe(title_container, {
+        characterData: true,
+        childList: true,
+        subtree: true,
+      });
 
-    /**
-     * disconnectObserver - Safely disconnect the page MutationObserver.
-     * @returns {void}
-     */
-    const disconnectObserver = () => {
-      try {
-        page_observer?.disconnect();
-      } catch (err) {
-        Logger.debug(`Observer disconnect failed: ${err}`);
-      }
-    };
+      /**
+       * disconnectObserver - Safely disconnect the page MutationObserver.
+       * @returns {void}
+       */
+      const disconnectObserver = () => {
+        try {
+          page_observer?.disconnect();
+        } catch (err) {
+          Logger.debug(`Observer disconnect failed: ${err}`);
+        }
+      };
 
-    /** Safely disconnect the page MutationObserver */
-    w.addEventListener("pagehide", disconnectObserver, { once: true });
-    w.addEventListener("beforeunload", disconnectObserver, { once: true });
+      /** Safely disconnect the page MutationObserver */
+      w.addEventListener("pagehide", disconnectObserver, { once: true });
+      w.addEventListener("beforeunload", disconnectObserver, { once: true });
 
-    // load initial content
-    await loadOfficialEvents(main_container);
+      // load initial content
+      await loadOfficialEvents(main_container);
 
-    Logger.info(`Application initialized. ${Date.now() - SCRIPT_START} msec`);
-  } catch (err) {
-    Logger.error(err);
+      Logger.info(`Application initialized. ${Date.now() - SCRIPT_START} msec`);
+    } catch (err) {
+      Logger.error(err);
+    }
   }
+  await main();
 })(window);
 
 // End of file: RacingPlus.user.js
