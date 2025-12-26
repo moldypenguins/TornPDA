@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      0.99.72
+// @version      0.99.73
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -1280,14 +1280,14 @@
 
     // Load Torn API key (from PDA or local storage)
     let api_key = IS_PDA ? PDA_KEY : (STORE.getValue("RACINGPLUS_APIKEY") ?? "");
-    // if (api_key) {
-    //   Logger.debug("Loading Torn API...");
-    //   // validate torn api key; if invalid, we'll leave the input editable
-    //   if (!(await torn_api.validate Key(api_key))) {
-    //     torn_api.deleteKey();
-    //     api_key = "";
-    //   }
-    // }
+    if (api_key) {
+      Logger.debug("Loading Torn API...");
+      // validate torn api key; if invalid, we'll leave the input editable
+      if (!(await torn_api.validateKey(api_key))) {
+        torn_api.deleteKey();
+        api_key = "";
+      }
+    }
 
     const rplus_panel = doc.createElement("div");
     rplus_panel.className = "racing-plus-panel";
