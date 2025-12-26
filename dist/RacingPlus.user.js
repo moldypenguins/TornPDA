@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.1-alpha
+// @version      1.0.2-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] - With flavours from TheProgrammer [2782979]
@@ -81,6 +81,19 @@ class Logger {
 if (!Date.unix) {
   Object.defineProperty(Date, "unix", {
     value: () => Math.floor(Date.now() / 1000),
+    writable: true,
+    configurable: true,
+    enumerable: false,
+  });
+}
+
+/**
+ * Number.isValid - returns true for number primitives (excludes NaN).
+ * @returns {boolean}
+ */
+if (!Number.isValid) {
+  Object.defineProperty(Number, "isValid", {
+    value: (n) => typeof n === "number" && Number.isFinite(n),
     writable: true,
     configurable: true,
     enumerable: false,
