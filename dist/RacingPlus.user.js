@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.6-alpha
+// @version      1.0.7-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
@@ -188,6 +188,7 @@ class Store {
     rplus_showexportlink: "RACINGPLUS_SHOWEXPORTLINK",
     rplus_showwinrate: "RACINGPLUS_SHOWCARWINRATE",
     rplus_showparts: "RACINGPLUS_SHOWCARPARTS",
+    rplus_driver: "RACINGPLUS_DRIVER",
   });
 }
 
@@ -372,12 +373,13 @@ const ACCESS_LEVEL = Object.freeze({
 class TornAPI {
   /**
    * Creates a TornAPI instance
+   * @param {string|null} key
    */
-  constructor() {
+  constructor(key = null) {
     /** @type {Map<string, {data:any, timestamp:number}>} */
     this.cache = new Map();
     /** @type {string|null} */
-    this.key = null;
+    this.key = key;
   }
 
   /**
@@ -451,7 +453,6 @@ class TornAPI {
    * @throws {Error}
    */
   async validate(key) {
-    Logger.debug("Validating Torn API key...");
     if (!key || typeof key !== "string" || key.length !== API_KEY_LENGTH) {
       throw new Error("Invalid API key: local validation.");
     }
@@ -485,6 +486,39 @@ class TornDriver {
     this.skill = 0;
     this.records = {};
     this.cars = {};
+  }
+
+  /**
+   * Load driver data from localStorage
+   */
+  load() {
+    const raw = Store.getValue(Store.keys.rplus_driver);
+    if (raw) {
+      try {
+        const driver = JSON.parse(raw);
+        if (driver && driver.id === this.id) {
+          this.skill = Number(driver.skill) || 0;
+          this.records = driver.records || {};
+          this.cars = driver.cars || {};
+        }
+      } catch (err) {
+        // Log parse errors in debug mode
+        Logger.warn(`Failed to load driver cache.\n${err}`);
+      }
+    }
+  }
+
+  /**
+   * Save driver data to localStorage
+   */
+  save() {
+    const payload = JSON.stringify({
+      id: this.id,
+      skill: this.skill,
+      records: this.records,
+      cars: this.cars,
+    });
+    Store.setValue(Store.keys.rplus_driver, payload);
   }
 }
 
@@ -564,21 +598,6 @@ class TornDriver {
     Logger.debug(`Styles injected. ${Date.now() - SCRIPT_START} msec`);
   };
 
-  const loadDriverData = async () => {
-    Logger.debug("Loading Driver Data...");
-    // Load driver data - Typically a hidden input with JSON { id, ... }
-    const scriptData = await defer("#torn-user");
-    let parsed;
-    try {
-      parsed = JSON.parse(scriptData.value);
-    } catch (err) {
-      throw new Error(`Failed to parse #torn-user JSON: ${err}`);
-    }
-    if (!parsed?.id) throw new Error("Missing driver id in #torn-user payload.");
-
-    return new TornDriver(parsed.id);
-  };
-
   const addRacingPlusPanel = async () => {
     Logger.debug("Adding settings panel...");
   };
@@ -633,12 +652,24 @@ class TornDriver {
       // add styles
       await addStyles();
 
-      torn_api = new TornAPI();
-      torn_api.validate(IS_PDA ? PDA_KEY : (Store.getValue(Store.keys.rplus_apikey) ?? ""));
+      // load TornAPI
+      Logger.debug(`Loading Torn API... ${Date.now() - SCRIPT_START} msec`);
+      torn_api = new TornAPI(IS_PDA ? PDA_KEY : Store.getValue(Store.keys.rplus_apikey));
 
       // load driver data
-      this_driver = await loadDriverData();
-      this_driver.load();
+      Logger.debug(`Loading Driver Data... ${Date.now() - SCRIPT_START} msec`);
+      // check for stored driver
+      const stored = Store.getValue(Store.keys.rplus_driver);
+      if (!stored) {
+        // create new driver - '#torn-user' a hidden input with JSON { id, ... }
+        const scriptData = await defer("#torn-user");
+        try {
+          this_driver = new TornDriver(JSON.parse(scriptData.value).id);
+          this_driver.load();
+        } catch (err) {
+          Logger.error(`Failed to load driver data. ${err}`);
+        }
+      }
 
       // Add the Racing+ panel and button to the DOM
       Promise.allSettled([addRacingPlusPanel, addRacingPlusButton, loadDomElements]).then((results) =>
