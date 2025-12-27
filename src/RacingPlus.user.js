@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.12-alpha
+// @version      1.0.13-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
@@ -63,12 +63,12 @@ class Logger {
   /** logs a debug-level message. */
   static debug(...args) {
     if (LOG_MODE > LOG_LEVEL.debug) return;
-    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#6aa84f;font-weight:600", ...args);
+    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#6aa84f;font-weight:600", ...args, ` ${Date.now() - SCRIPT_START} msec`);
   }
   /** logs an info-level message. */
   static info(...args) {
     if (LOG_MODE > LOG_LEVEL.info) return;
-    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#3d85c6;font-weight:600", ...args);
+    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#3d85c6;font-weight:600", ...args, ` ${Date.now() - SCRIPT_START} msec`);
   }
   /** Logs a warning-level message. */
   static warn(...args) {
@@ -763,7 +763,7 @@ class TornDriver {
    * @returns {Promise<void>}
    */
   const addStyles = async () => {
-    Logger.debug(`Injecting styles... ${Date.now() - SCRIPT_START} msec`);
+    Logger.debug(`Injecting styles...`);
 
     const s = w.document.createElement("style");
     s.innerHTML = `__MINIFIED_CSS__`;
@@ -784,7 +784,7 @@ class TornDriver {
     }
 
     w.document.head.appendChild(s);
-    Logger.debug(`Styles injected. ${Date.now() - SCRIPT_START} msec`);
+    Logger.debug(`Styles injected.`);
   };
 
   /**
@@ -1015,17 +1015,17 @@ class TornDriver {
    */
   const start = async () => {
     try {
-      Logger.info(`Application loaded. Starting... ${Date.now() - SCRIPT_START} msec`);
+      Logger.info(`Application loaded. Starting...`);
 
       // add styles
       await addStyles();
 
       // load TornAPI
-      Logger.debug(`Loading Torn API... ${Date.now() - SCRIPT_START} msec`);
+      Logger.debug(`Loading Torn API...`);
       torn_api = new TornAPI(IS_PDA ? PDA_KEY : Store.getValue(Store.keys.rplus_apikey));
 
       // load driver data
-      Logger.debug(`Loading Driver Data... ${Date.now() - SCRIPT_START} msec`);
+      Logger.debug(`Loading Driver Data...`);
       try {
         // check for stored driver
         let scriptData = Store.getValue(Store.keys.rplus_driver);
@@ -1063,7 +1063,7 @@ class TornDriver {
       // TODO: more code goes here...maybe?
       // ...
 
-      Logger.info(`Application started. ${Date.now() - SCRIPT_START} msec`);
+      Logger.info(`Application started.`);
     } catch (err) {
       Logger.error(err);
     }
