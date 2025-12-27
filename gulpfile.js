@@ -2,6 +2,8 @@
 import console from "node:console";
 import { Buffer } from "node:buffer";
 import gulp from "gulp";
+import terser from "gulp-terser";
+import replace from "gulp-replace";
 import through2 from "through2";
 import fs from "node:fs";
 import path from "node:path";
@@ -139,23 +141,7 @@ export const lintFix = parallel(lintFixJs, lintFixScss);
 
 /** -------------------------------- */
 
-/**
- * minifyJs
- * Description: Minifies JS and strips comments.
- * @param {string} js - Source JS.
- * @param {string} filename - For error context.
- * @returns {Promise<string>} Minified JS.
- */
-const minifyJs = async (js, filename) => {
-  const { minify } = await import("terser");
-  const result = await minify(js, {
-    format: { comments: false }, // strip all comments
-  });
-  if (!result?.code) throw new Error(`[terser] Failed to minify ${filename}`);
-  return result.code;
-};
-
-/** Build userscripts: inline minified CSS from SCSS (if present), then inject Common.js. */
+/** Build userscripts: inline minified CSS from SCSS (if present), then minify JS. */
 export const userscripts = () => {
   return src(GLOB_JS, { allowEmpty: true })
     .pipe(
@@ -165,36 +151,47 @@ export const userscripts = () => {
         const processFile = async () => {
           const jsPath = file.path;
           let jsContents = file.contents.toString("utf8");
-
-          // Optional CSS pipeline: compile -> autoprefix -> minify -> inject placeholder
           const base = path.basename(jsPath, ".user.js");
           const scssPath = path.join(path.dirname(jsPath), `${base}.scss`);
 
           if (fs.existsSync(scssPath)) {
-            let cssCompiled;
             try {
-              cssCompiled = compileScss(scssPath);
+              const cssCompiled = compileScss(scssPath);
+              const cssPrefixed = await autoprefixCss(cssCompiled, scssPath);
+              const cssMin = minifyCss(cssPrefixed);
+
+              const { out, replaced } = replacePlaceholderSmart(jsContents, PLACEHOLDER, cssMin);
+              if (!replaced) {
+                console.warn(`[userscripts] Placeholder missing in ${base}.user.js`);
+              }
+              jsContents = out;
             } catch (e) {
-              throw new Error(`[sass] Failed to compile ${base}.scss: ${e.message}`);
+              return cb(new Error(`[build] Error in ${base}: ${e.message}`));
             }
-            const cssPrefixed = await autoprefixCss(cssCompiled, scssPath);
-            const cssMin = minifyCss(cssPrefixed);
-            const { out, replaced } = replacePlaceholderSmart(jsContents, PLACEHOLDER, cssMin);
-            if (!replaced) {
-              console.warn(`[userscripts] Placeholder "${PLACEHOLDER}" not found in ${base}.js; CSS was NOT injected.`);
-            }
-            jsContents = await minifyJs(out, path.basename(jsPath));
           }
 
-          // Output
           file.contents = Buffer.from(jsContents);
+          cb(null, file);
         };
 
-        processFile()
-          .then(() => cb(null, file))
-          .catch(cb);
+        processFile().catch(cb);
       })
     )
+    .pipe(
+      terser({
+        mangle: false, // { reserved: ['localStorage'] },
+        compress: false, // { something: false }
+        format: {
+          comments: (_, comment) => {
+            if (comment.type === "comment1") return true;
+            if (comment.type === "comment2" && comment.value.startsWith("*")) return true;
+            return false;
+          },
+        },
+      })
+    )
+    .on("error", (err) => console.error("Terser Error:", err.toString()))
+    .pipe(replace(/"use strict";/g, '"use strict";\n'))
     .pipe(dest(OUT_DIR));
 };
 
