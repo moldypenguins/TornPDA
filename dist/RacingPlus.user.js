@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @license      MIT
 // @copyright    Copyright © 2025 moldypenguins
-// @version      1.0.27-alpha
+// @version      1.0.28-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -15,20 +15,20 @@
 // @run-at       document-start
 // ==/UserScript==
 "use strict";
-(async w=>{Logger.info(`Application loading... ${new Date(SCRIPT_START).toISOString()}`);const SCRIPT_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const MS_PER_HOUR=36e5;const SECONDS_PER_HOUR=3600;const KMS_PER_MI=1.609344;const API_FETCH_TIMEOUT=10*MS_PER_SECOND;const DEFERRAL_TIMEOUT=15*MS_PER_SECOND;const SPEED_INTERVAL=MS_PER_SECOND;const CACHE_TTL=MS_PER_HOUR;const API_KEY_LENGTH=16;const SELECTORS=Object.freeze({links_container:"#racing-leaderboard-header-root div[class^='linksContainer']",main_container:"#racingMainContainer",main_banner:"#racingMainContainer .header-wrap div.banner",tabs_container:"#racingMainContainer .header-wrap ul.categories",content_container:"racingAdditionalContainer",car_selected:"#racingupdates .car-selected",drivers_list:"#racingupdates .drivers-list",drivers_list_title:"#racingupdates .drivers-list div[class^='title']",drivers_list_leaderboard:"#racingupdates .drivers-list #leaderBoard"});
+const SCRIPT_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const MS_PER_HOUR=36e5;const SECONDS_PER_HOUR=3600;const KMS_PER_MI=1.609344;const API_FETCH_TIMEOUT=10*MS_PER_SECOND;const DEFERRAL_TIMEOUT=15*MS_PER_SECOND;const SPEED_INTERVAL=MS_PER_SECOND;const CACHE_TTL=MS_PER_HOUR;const API_KEY_LENGTH=16;const SELECTORS=Object.freeze({links_container:"#racing-leaderboard-header-root div[class^='linksContainer']",main_container:"#racingMainContainer",main_banner:"#racingMainContainer .header-wrap div.banner",tabs_container:"#racingMainContainer .header-wrap ul.categories",content_container:"racingAdditionalContainer",car_selected:"#racingupdates .car-selected",drivers_list:"#racingupdates .drivers-list",drivers_list_title:"#racingupdates .drivers-list div[class^='title']",drivers_list_leaderboard:"#racingupdates .drivers-list #leaderBoard"});
 /**
-   * LOG_LEVEL - Log level enumeration
-   * @readonly
-   * @enum {number}
-   */const LOG_LEVEL=Object.freeze({debug:10,info:20,warn:30,error:40,silent:50});
+ * LOG_LEVEL - Log level enumeration
+ * @readonly
+ * @enum {number}
+ */const LOG_LEVEL=Object.freeze({debug:10,info:20,warn:30,error:40,silent:50});
 /**
-   * LOG_MODE - Log level threshold LOG_LEVEL[debug|info|warn|error|silent]
-   * @type {number}
-   */const LOG_MODE=LOG_LEVEL.debug;
+ * LOG_MODE - Log level threshold LOG_LEVEL[debug|info|warn|error|silent]
+ * @type {number}
+ */const LOG_MODE=LOG_LEVEL.debug;
 /**
-   * Static methods for leveled console logging.
-   * @class
-   */class Logger{
+ * Static methods for leveled console logging.
+ * @class
+ */class Logger{
 /** Returns elapsed time since SCRIPT_START. */
 static get time(){const t=Date.now()-SCRIPT_START;return t>0?` ${t} msec`:""}
 /** logs a debug-level message. */static debug(...args){if(LOG_MODE>LOG_LEVEL.debug)return;console.log("%c[DEBUG][TornPDA.Racing+]: ","color:#6aa84f;font-weight:600",...args,this.time)}
@@ -36,116 +36,116 @@ static get time(){const t=Date.now()-SCRIPT_START;return t>0?` ${t} msec`:""}
 /** Logs a warning-level message. */static warn(...args){if(LOG_MODE>LOG_LEVEL.warn)return;console.log("%c[WARN][TornPDA.Racing+]: ","color:#e69138;font-weight:600",...args)}
 /** Logs an error-level message. */static error(...args){if(LOG_MODE>LOG_LEVEL.error)return;console.log("%c[ERROR][TornPDA.Racing+]: ","color:#d93025;font-weight:600",...args)}}
 /**
-   * Date.unix
-   * Description: Returns the current Unix timestamp (seconds since epoch).
-   * @returns {number} Current Unix timestamp (seconds)
-   */if(typeof Date.unix!=="function"){Object.defineProperty(Date,"unix",{value:()=>Math.floor(Date.now()/1e3),writable:true,configurable:true,enumerable:false})}
+ * Date.unix
+ * Description: Returns the current Unix timestamp (seconds since epoch).
+ * @returns {number} Current Unix timestamp (seconds)
+ */if(typeof Date.unix!=="function"){Object.defineProperty(Date,"unix",{value:()=>Math.floor(Date.now()/1e3),writable:true,configurable:true,enumerable:false})}
 /**
-   * Number.formatDate
-   * Description: Formats a timestamp (ms since epoch) as "YYYY-MM-DD" in local time.
-   * @param {number} ms - Timestamp in milliseconds since epoch.
-   * @returns {string} Formatted date string ("YYYY-MM-DD")
-   */if(typeof Number.formatDate!=="function"){Object.defineProperty(Number,"formatDate",{value:ms=>{const dt=new Date(ms);return`${String(dt.getFullYear())}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`},writable:true,configurable:true,enumerable:false})}
+ * Number.formatDate
+ * Description: Formats a timestamp (ms since epoch) as "YYYY-MM-DD" in local time.
+ * @param {number} ms - Timestamp in milliseconds since epoch.
+ * @returns {string} Formatted date string ("YYYY-MM-DD")
+ */if(typeof Number.formatDate!=="function"){Object.defineProperty(Number,"formatDate",{value:ms=>{const dt=new Date(ms);return`${String(dt.getFullYear())}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`},writable:true,configurable:true,enumerable:false})}
 /**
-   * Number.formatTime
-   * Description: Formats a duration (ms) as "MM:SS.mmm".
-   * @param {number} ms - Duration in milliseconds.
-   * @returns {string} Formatted time string ("MM:SS.mmm")
-   */if(typeof Number.formatTime!=="function"){Object.defineProperty(Number,"formatTime",{value:ms=>{const minutes=Math.floor(ms%(1e3*60*60)/(1e3*60));const seconds=Math.floor(ms%(1e3*60)/1e3);const millis=Math.floor(ms%1e3);return`${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}.${String(millis).padStart(3,"0")}`},writable:true,configurable:true,enumerable:false})}
+ * Number.formatTime
+ * Description: Formats a duration (ms) as "MM:SS.mmm".
+ * @param {number} ms - Duration in milliseconds.
+ * @returns {string} Formatted time string ("MM:SS.mmm")
+ */if(typeof Number.formatTime!=="function"){Object.defineProperty(Number,"formatTime",{value:ms=>{const minutes=Math.floor(ms%(1e3*60*60)/(1e3*60));const seconds=Math.floor(ms%(1e3*60)/1e3);const millis=Math.floor(ms%1e3);return`${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}.${String(millis).padStart(3,"0")}`},writable:true,configurable:true,enumerable:false})}
 /**
-   * Number.isValid
-   * Description: Returns true for number primitives that are finite (excludes NaN and ±Infinity).
-   * @param {unknown} n - Value to test.
-   * @returns {boolean} True if n is a finite number primitive.
-   */if(typeof Number.isValid!=="function"){Object.defineProperty(Number,"isValid",{value:n=>typeof n==="number"&&Number.isFinite(n),writable:true,configurable:true,enumerable:false})}
+ * Number.isValid
+ * Description: Returns true for number primitives that are finite (excludes NaN and ±Infinity).
+ * @param {unknown} n - Value to test.
+ * @returns {boolean} True if n is a finite number primitive.
+ */if(typeof Number.isValid!=="function"){Object.defineProperty(Number,"isValid",{value:n=>typeof n==="number"&&Number.isFinite(n),writable:true,configurable:true,enumerable:false})}
 /**
-   * Error.prototype.toString
-   * Description: Returns a human-readable error string (name + message).
-   * @returns {string}
-   */if(typeof Error.prototype.toString!=="function"){Object.defineProperty(Error.prototype,"toString",{value:function toString(){const name=this&&this.name?String(this.name):"Error";const msg=this&&this.message?String(this.message):"";return msg?`${name}: ${msg}`:name},writable:true,configurable:true,enumerable:false})}
+ * Error.prototype.toString
+ * Description: Returns a human-readable error string (name + message).
+ * @returns {string}
+ */if(typeof Error.prototype.toString!=="function"){Object.defineProperty(Error.prototype,"toString",{value:function toString(){const name=this&&this.name?String(this.name):"Error";const msg=this&&this.message?String(this.message):"";return msg?`${name}: ${msg}`:name},writable:true,configurable:true,enumerable:false})}
 /**
-   * Store Wrapper classs for localStorage.
-   * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
-   * @class
-   */class Store{
+ * Store Wrapper classs for localStorage.
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
+ * @class
+ */class Store{
 /**
-     * Get a value by key from localStorage
-     * @param {string} key - Storage key
-     * @returns {string|null} Stored value or null
-     */
+   * Get a value by key from localStorage
+   * @param {string} key - Storage key
+   * @returns {string|null} Stored value or null
+   */
 static getValue=key=>localStorage.getItem(key);
 /**
-     * Set a value by key in localStorage
-     * @param {string} key - Storage key
-     * @param {string} value - Value to store
-     */
+   * Set a value by key in localStorage
+   * @param {string} key - Storage key
+   * @param {string} value - Value to store
+   */
 static setValue=(key,value)=>localStorage.setItem(key,value);
 /**
-     * Delete a value by key from localStorage
-     * @param {string} key - Storage key
-     */
+   * Delete a value by key from localStorage
+   * @param {string} key - Storage key
+   */
 static deleteValue=key=>localStorage.removeItem(key);
 /**
-     * Clears all keys out of the storage.
-     */
+   * Clears all keys out of the storage.
+   */
 static deleteAll=()=>localStorage.clear();
 /**
-     * List all stored values (for debugging)
-     * @returns {Array<string>} Array of stored values
-     */
+   * List all stored values (for debugging)
+   * @returns {Array<string>} Array of stored values
+   */
 static listValues=()=>Object.values(localStorage);
 /**
-     * Map from toggle/control ids to persistent localStorage keys.
-     */
+   * Map from toggle/control ids to persistent localStorage keys.
+   */
 static keys=Object.freeze({rplus_apikey:"RACINGPLUS_APIKEY",rplus_units:"RACINGPLUS_DISPLAYUNITS",rplus_addlinks:"RACINGPLUS_ADDPROFILELINKS",rplus_showskill:"RACINGPLUS_SHOWRACINGSKILL",rplus_showspeed:"RACINGPLUS_SHOWCARSPEED",rplus_showracelink:"RACINGPLUS_SHOWRACELINK",rplus_showexportlink:"RACINGPLUS_SHOWEXPORTLINK",rplus_showwinrate:"RACINGPLUS_SHOWCARWINRATE",rplus_showparts:"RACINGPLUS_SHOWCARPARTS",rplus_driver:"RACINGPLUS_DRIVER"})}
 /**
-   * Distance class - Stores distance and formats value based on preferred units
-   * @class
-   */class Distance{
+ * Distance class - Stores distance and formats value based on preferred units
+ * @class
+ */class Distance{
 /**
-     * Creates a Distance instance
-     * @param {object} [args={}] - Constructor arguments
-     * @param {number} [args.miles=null] - Distance in miles
-     * @param {number} [args.kilometers=null] - Distance in kilometers
-     * @throws {TypeError} If miles is not a finite number
-     */
+   * Creates a Distance instance
+   * @param {object} [args={}] - Constructor arguments
+   * @param {number} [args.miles=null] - Distance in miles
+   * @param {number} [args.kilometers=null] - Distance in kilometers
+   * @throws {TypeError} If miles is not a finite number
+   */
 constructor(args={}){const{miles:miles,kilometers:kilometers}=args;if(miles==null&&kilometers==null){throw new TypeError("One of miles or kilometers must be specified.")}const mi=miles??(kilometers!=null?kilometers/KMS_PER_MI:0);if(!Number.isValid(mi)){throw new TypeError("Miles or Kilometers must be a number.")}this._mi=mi;this._units=kilometers!=null?"km":"mi"}
 /**
-     * Get distance in miles
-     * @returns {number} Distance in miles
-     */get mi(){return this._mi}
+   * Get distance in miles
+   * @returns {number} Distance in miles
+   */get mi(){return this._mi}
 /**
-     * Get distance in kilometers
-     * @returns {number} Distance in kilometers
-     */get km(){return this._mi*KMS_PER_MI}
+   * Get distance in kilometers
+   * @returns {number} Distance in kilometers
+   */get km(){return this._mi*KMS_PER_MI}
 /**
-     * Format distance as string according to chosen units
-     * @returns {string} Formatted distance with units
-     */toString(){const val=this._units==="km"?this.km:this.mi;return`${val.toFixed(2)} ${this._units}`}}
+   * Format distance as string according to chosen units
+   * @returns {string} Formatted distance with units
+   */toString(){const val=this._units==="km"?this.km:this.mi;return`${val.toFixed(2)} ${this._units}`}}
 /**
-   * Speed class - Computes speed from Distance and elapsed time
-   * @class
-   */class Speed{
+ * Speed class - Computes speed from Distance and elapsed time
+ * @class
+ */class Speed{
 /**
-     * Creates a Speed instance
-     * @param {object} args - Constructor arguments
-     * @param {Distance} args.distance - Distance traveled
-     * @param {number} args.seconds - Elapsed time in seconds (> 0)
-     * @throws {TypeError} If distance is not a Distance instance or seconds invalid
-     */
+   * Creates a Speed instance
+   * @param {object} args - Constructor arguments
+   * @param {Distance} args.distance - Distance traveled
+   * @param {number} args.seconds - Elapsed time in seconds (> 0)
+   * @throws {TypeError} If distance is not a Distance instance or seconds invalid
+   */
 constructor(args={}){const{distance:distance,seconds:seconds}=args;if(!(distance instanceof Distance)){throw new TypeError("distance must be a Distance instance.")}if(!Number.isInteger(seconds)||seconds<=0){throw new TypeError("seconds must be an integer > 0.")}this._mph=distance.mi/(seconds/SECONDS_PER_HOUR);this._units=Store.getValue(Store.keys.rplus_units)??"mph"}
 /**
-     * Get speed in miles per hour
-     * @returns {number} Speed in mph
-     */get mph(){return this._mph}
+   * Get speed in miles per hour
+   * @returns {number} Speed in mph
+   */get mph(){return this._mph}
 /**
-     * Get speed in kilometers per hour
-     * @returns {number} Speed in kph
-     */get kph(){return this._mph*KMS_PER_MI}
+   * Get speed in kilometers per hour
+   * @returns {number} Speed in kph
+   */get kph(){return this._mph*KMS_PER_MI}
 /**
-     * Format speed according to preferred units
-     * @returns {string} Formatted speed with units
-     */toString(){const val=this._units==="kph"?this.kph:this.mph;return`${val.toFixed(2)} ${this._units}`}}
+   * Format speed according to preferred units
+   * @returns {string} Formatted speed with units
+   */toString(){const val=this._units==="kph"?this.kph:this.mph;return`${val.toFixed(2)} ${this._units}`}}
 // Colours for car parts.
 const RACE_COLOURS=["#5D9CEC","#48CFAD","#FFCE54","#ED5565","#EC87C0","#AC92EC","#FC6E51","#A0D468","#4FC1E9"];
 // Tracks metadata with Distance instances
@@ -157,43 +157,43 @@ const PART_CATEGORIES={Aerodynamics:["Spoiler","Engine Cooling","Brake Cooling",
 /** @type {TornDriver} */let this_driver;
 /** @type {TornRace} */let this_race;
 /**
-   * Comment shown in Torn API recent usage.
-   */const API_COMMENT="RacingPlus";
+ * Comment shown in Torn API recent usage.
+ */const API_COMMENT="RacingPlus";
 /**
-   * List of valid Torn API root strings.
-   * @readonly
-   * @type {readonly ["user","faction","market","racing","forum","property","key","torn"]}
-   */const API_VALID_ROOTS=Object.freeze(/** @type {const} */["user","faction","market","racing","forum","property","key","torn"]);
+ * List of valid Torn API root strings.
+ * @readonly
+ * @type {readonly ["user","faction","market","racing","forum","property","key","torn"]}
+ */const API_VALID_ROOTS=Object.freeze(/** @type {const} */["user","faction","market","racing","forum","property","key","torn"]);
 /**
-   * Union type of valid roots, derived from API_VALID_ROOTS.
-   * @typedef {typeof API_VALID_ROOTS[number]} ApiRoot
+ * Union type of valid roots, derived from API_VALID_ROOTS.
+ * @typedef {typeof API_VALID_ROOTS[number]} ApiRoot
+ */
+/**
+ * TornAPI access level enumeration
+ * @readonly
+ * @enum {number}
+ */const ACCESS_LEVEL=Object.freeze({Public:0,Minimal:1,Limited:2,Full:3});
+/**
+ * TornAPI class - Wrapper for authenticated Torn API calls with caching and timeouts
+ * @see https://www.torn.com/swagger/index.html
+ * @class
+ */class TornAPI{
+/**
+   * Creates a TornAPI instance
+   * @param {string|null} key
    */
-/**
-   * TornAPI access level enumeration
-   * @readonly
-   * @enum {number}
-   */const ACCESS_LEVEL=Object.freeze({Public:0,Minimal:1,Limited:2,Full:3});
-/**
-   * TornAPI class - Wrapper for authenticated Torn API calls with caching and timeouts
-   * @see https://www.torn.com/swagger/index.html
-   * @class
-   */class TornAPI{
-/**
-     * Creates a TornAPI instance
-     * @param {string|null} key
-     */
 constructor(key=null){
 /** @type {Map<string, {data:any, timestamp:number}>} */
 this.cache=new Map;
 /** @type {string|null} */this.key=key}
 /**
-     * Makes a Torn API request (with caching) after validating the path and root.
-     * @param {ApiRoot} root - API root
-     * @param {string} path - API path (e.g., 'key/info' or '/user/stats')
-     * @param {object|string} [args={}] - Query parameters object or a prebuilt query string
-     * @returns {Promise<object|null>} API response data if available
-     * @throws {Error} If path/root inputs are invalid
-     */async request(root,path,params={}){
+   * Makes a Torn API request (with caching) after validating the path and root.
+   * @param {ApiRoot} root - API root
+   * @param {string} path - API path (e.g., 'key/info' or '/user/stats')
+   * @param {object|string} [args={}] - Query parameters object or a prebuilt query string
+   * @returns {Promise<object|null>} API response data if available
+   * @throws {Error} If path/root inputs are invalid
+   */async request(root,path,params={}){
 // validate root
 if(!API_VALID_ROOTS.includes(root)){throw new Error(`Invalid API root. Must be one of: ${API_VALID_ROOTS.join(", ")}`)}
 // validate path
@@ -215,44 +215,44 @@ const results=await response.json().catch(err=>{throw new Error(`Invalid JSON re
 // cache new copy, then return results
 this.cache.set(queryURL,{data:results,timestamp:Date.now()});return results}catch(err){Logger.warn(`API request failed: ${err}`);throw err}finally{clearTimeout(timer)}}
 /**
-     * Validates a Torn API key by calling /key/info
-     * @param {string} key - API key to validate
-     * @returns {Promise<boolean>} True if valid with sufficient access
-     * @throws {Error}
-     */async validate(key){if(!key||typeof key!=="string"||key.length!==API_KEY_LENGTH){throw new Error("Invalid API key: local validation.")}
+   * Validates a Torn API key by calling /key/info
+   * @param {string} key - API key to validate
+   * @returns {Promise<boolean>} True if valid with sufficient access
+   * @throws {Error}
+   */async validate(key){if(!key||typeof key!=="string"||key.length!==API_KEY_LENGTH){throw new Error("Invalid API key: local validation.")}
 // use candidate key for probe call, store current key
 const prev_key=this.key;this.key=key;const data=await this.request("key","info",{timestamp:`${Date.unix()}`});if(data?.info?.access&&Number(data.info.access.level)>=ACCESS_LEVEL.Minimal){Logger.debug("Valid API key.");return true}
 // invalid key, reset to previous key
 this.key=prev_key;throw new Error("Invalid API key: unexpected response.")}}
 /**
-   * TornDriver - Stores skill and per-track best records for current user
-   * @class
-   */class TornDriver{
+ * TornDriver - Stores skill and per-track best records for current user
+ * @class
+ */class TornDriver{
 /**
-     * Creates a TornDriver instance for a driver id.
-     * @param {string|number} driver_id - Driver user ID
-     */
+   * Creates a TornDriver instance for a driver id.
+   * @param {string|number} driver_id - Driver user ID
+   */
 constructor(driver_id){this.id=driver_id;this.skill=0;this.records={};this.cars={}}
 /**
-     * Load driver data from localStorage
-     */load(){const raw=Store.getValue(Store.keys.rplus_driver);if(raw){try{const driver=JSON.parse(raw);if(driver&&driver.id===this.id){this.skill=Number(driver.skill)||0;this.records=driver.records||{};this.cars=driver.cars||{}}}catch(err){
+   * Load driver data from localStorage
+   */load(){const raw=Store.getValue(Store.keys.rplus_driver);if(raw){try{const driver=JSON.parse(raw);if(driver&&driver.id===this.id){this.skill=Number(driver.skill)||0;this.records=driver.records||{};this.cars=driver.cars||{}}}catch(err){
 // Log parse errors in debug mode
 Logger.warn(`Failed to load driver cache.\n${err}`)}}}
 /**
-     * Save driver data to localStorage
-     */save(){const payload=JSON.stringify({id:this.id,skill:this.skill,records:this.records,cars:this.cars});Store.setValue(Store.keys.rplus_driver,payload)}
+   * Save driver data to localStorage
+   */save(){const payload=JSON.stringify({id:this.id,skill:this.skill,records:this.records,cars:this.cars});Store.setValue(Store.keys.rplus_driver,payload)}
 /**
-     * Update stored skill if newer value is higher (skill increases only)
-     * @param {number|string} skill - New skill value
-     */updateSkill(skill){const v=Number(skill);if(Number.isValid(v)){this.skill=Math.max(this.skill,v);this.save()}}
+   * Update stored skill if newer value is higher (skill increases only)
+   * @param {number|string} skill - New skill value
+   */updateSkill(skill){const v=Number(skill);if(Number.isValid(v)){this.skill=Math.max(this.skill,v);this.save()}}
 /**
-     * Fetch racing records from API and store best lap per car/track
-     * @returns {Promise<void>}
-     */async updateRecords(){try{if(!torn_api||!torn_api.key)throw new Error("TornAPI not initialized.");const results=await torn_api.request("user","racingrecords",{timestamp:`${Date.unix()}`});if(Array.isArray(results?.racingrecords)){results.racingrecords.forEach(({track:track,records:records})=>{if(!track?.id||!Array.isArray(records))return;this.records[track.id]=records.reduce((acc,rec)=>{if(!acc[rec.car_id]){acc[rec.car_id]={name:rec.car_name,lap_time:rec.lap_time,count:1}}else{acc[rec.car_id].lap_time=Math.min(acc[rec.car_id].lap_time,rec.lap_time);acc[rec.car_id].count+=1}return acc},{})});this.save()}else{Logger.debug("Racing records response missing 'racingrecords' array.")}}catch(err){Logger.warn(`Racing records fetch failed.\n${err}`)}}
+   * Fetch racing records from API and store best lap per car/track
+   * @returns {Promise<void>}
+   */async updateRecords(){try{if(!torn_api||!torn_api.key)throw new Error("TornAPI not initialized.");const results=await torn_api.request("user","racingrecords",{timestamp:`${Date.unix()}`});if(Array.isArray(results?.racingrecords)){results.racingrecords.forEach(({track:track,records:records})=>{if(!track?.id||!Array.isArray(records))return;this.records[track.id]=records.reduce((acc,rec)=>{if(!acc[rec.car_id]){acc[rec.car_id]={name:rec.car_name,lap_time:rec.lap_time,count:1}}else{acc[rec.car_id].lap_time=Math.min(acc[rec.car_id].lap_time,rec.lap_time);acc[rec.car_id].count+=1}return acc},{})});this.save()}else{Logger.debug("Racing records response missing 'racingrecords' array.")}}catch(err){Logger.warn(`Racing records fetch failed.\n${err}`)}}
 /**
-     * Fetch and store enlisted cars with win rate calculation
-     * @returns {Promise<void>}
-     */async updateCars(){try{if(!torn_api||!torn_api.key)throw new Error("TornAPI not initialized.");const results=await torn_api.request("user","enlistedcars",{timestamp:`${Date.unix()}`});if(Array.isArray(results?.enlistedcars)){this.cars=results.enlistedcars.filter(car=>!car.is_removed).reduce((acc,car)=>{acc[car.car_item_id]={name:car.car_item_name,top_speed:car.top_speed,acceleration:car.acceleration,braking:car.braking,handling:car.handling,safety:car.safety,dirt:car.dirt,tarmac:car.tarmac,class:car.car_class,worth:car.worth,points_spent:car.points_spent,races_entered:car.races_entered,races_won:car.races_won,win_rate:car.races_entered>0?car.races_won/car.races_entered:0};return acc},{});this.save()}else{Logger.debug("Enlisted cars response missing 'enlistedcars' array.")}}catch(err){Logger.warn(`Enlisted cars fetch failed.\n${err}`)}}}
+   * Fetch and store enlisted cars with win rate calculation
+   * @returns {Promise<void>}
+   */async updateCars(){try{if(!torn_api||!torn_api.key)throw new Error("TornAPI not initialized.");const results=await torn_api.request("user","enlistedcars",{timestamp:`${Date.unix()}`});if(Array.isArray(results?.enlistedcars)){this.cars=results.enlistedcars.filter(car=>!car.is_removed).reduce((acc,car)=>{acc[car.car_item_id]={name:car.car_item_name,top_speed:car.top_speed,acceleration:car.acceleration,braking:car.braking,handling:car.handling,safety:car.safety,dirt:car.dirt,tarmac:car.tarmac,class:car.car_class,worth:car.worth,points_spent:car.points_spent,races_entered:car.races_entered,races_won:car.races_won,win_rate:car.races_entered>0?car.races_won/car.races_entered:0};return acc},{});this.save()}else{Logger.debug("Enlisted cars response missing 'enlistedcars' array.")}}catch(err){Logger.warn(`Enlisted cars fetch failed.\n${err}`)}}}(async w=>{Logger.info(`Application loading... ${new Date(SCRIPT_START).toISOString()}`);
 // TornPDA Integration Stub
 const PDA_KEY="###PDA-APIKEY###";
 // IS_PDA is a boolean indicating whether script is running in TornPDA.
