@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.7-alpha
+// @version      1.0.8-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
@@ -30,6 +30,14 @@ const API_FETCH_TIMEOUT = 10 * MS_PER_SECOND; // Number of milliseconds to wait 
 const DEFERRAL_TIMEOUT = MS_PER_MINUTE / 2; // Number of milliseconds to wait for a selector to appear. Default = 1 minute.
 const SPEED_INTERVAL = MS_PER_SECOND; // Number of milliseconds to update speed. Default = 1 second.
 const CACHE_TTL = MS_PER_HOUR; // Number of milliseconds to cache API responses. Default = 1 hour.
+
+const SELECTORS = Object.freeze({
+  links_container: "#racing-leaderboard-header-root div[class^='linksContainer']",
+  main_container: "#racingMainContainer",
+  additional_container: "#racingAdditionalContainer",
+  drivers_title: "#racingupdates .drivers-list div[class^='title']",
+  drivers_leaderboard: "#racingupdates .drivers-list #leaderBoard",
+});
 
 /* ------------------------------------------------------------------------
  * Logger
@@ -75,15 +83,16 @@ class Logger {
 }
 
 /* ------------------------------------------------------------------------
- * Type Methods
+ * Polyfill / Shim Extensions
  * --------------------------------------------------------------------- */
 /**
- * Date.unix - Returns the current Unix timestamp (seconds since epoch).
- * @returns {number} Current Unix timestamp
+ * Date.unix
+ * Description: Returns the current Unix timestamp (seconds since epoch).
+ * @returns {number} Current Unix timestamp (seconds)
  */
-if (!Date.unix) {
+if (typeof Date.unix !== "function") {
   Object.defineProperty(Date, "unix", {
-    value: () => Math.floor(Date.now() / MS_PER_SECOND),
+    value: () => Math.floor(Date.now() / 1000),
     writable: true,
     configurable: true,
     enumerable: false,
@@ -91,13 +100,15 @@ if (!Date.unix) {
 }
 
 /**
- * Number.formatDate - Returns a formatted date (yyyy-MM-dd).
- * @returns {string} Formatted date
+ * Number.formatDate
+ * Description: Formats a timestamp (ms since epoch) as "YYYY-MM-DD" in local time.
+ * @param {number} ms - Timestamp in milliseconds since epoch.
+ * @returns {string} Formatted date string ("YYYY-MM-DD")
  */
-if (!Number.formatDate) {
+if (typeof Number.formatDate !== "function") {
   Object.defineProperty(Number, "formatDate", {
-    value: (s) => {
-      const dt = new Date(s);
+    value: (ms) => {
+      const dt = new Date(ms);
       return `${String(dt.getFullYear())}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
     },
     writable: true,
@@ -107,15 +118,20 @@ if (!Number.formatDate) {
 }
 
 /**
- * Number.formatTime - Returns a formatted time.
- * @returns {string} Formatted time
+ * Number.formatTime
+ * Description: Formats a duration (ms) as "MM:SS.mmm".
+ * @param {number} ms - Duration in milliseconds.
+ * @returns {string} Formatted time string ("MM:SS.mmm")
  */
-if (!Number.formatTime) {
+if (typeof Number.formatTime !== "function") {
   Object.defineProperty(Number, "formatTime", {
-    value: (ms) =>
-      `${("00" + Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60))).toString().slice(-2)}` +
-      `:${("00" + Math.floor((ms % (1000 * 60)) / 1000)).toString().slice(-2)}` +
-      `.${("000" + Math.floor(ms % 1000)).toString().slice(3)}`,
+    value: (ms) => {
+      const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((ms % (1000 * 60)) / 1000);
+      const millis = Math.floor(ms % 1000);
+
+      return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(millis).padStart(3, "0")}`;
+    },
     writable: true,
     configurable: true,
     enumerable: false,
@@ -123,12 +139,32 @@ if (!Number.formatTime) {
 }
 
 /**
- * Number.isValid - returns true for number primitives (excludes NaN).
- * @returns {boolean}
+ * Number.isValid
+ * Description: Returns true for number primitives that are finite (excludes NaN and ±Infinity).
+ * @param {unknown} n - Value to test.
+ * @returns {boolean} True if n is a finite number primitive.
  */
-if (!Number.isValid) {
+if (typeof Number.isValid !== "function") {
   Object.defineProperty(Number, "isValid", {
     value: (n) => typeof n === "number" && Number.isFinite(n),
+    writable: true,
+    configurable: true,
+    enumerable: false,
+  });
+}
+
+/**
+ * Error.prototype.toString
+ * Description: Returns a human-readable error string (name + message).
+ * @returns {string}
+ */
+if (typeof Error.prototype.toString !== "function") {
+  Object.defineProperty(Error.prototype, "toString", {
+    value: function toString() {
+      const name = this && this.name ? String(this.name) : "Error";
+      const msg = this && this.message ? String(this.message) : "";
+      return msg ? `${name}: ${msg}` : name;
+    },
     writable: true,
     configurable: true,
     enumerable: false,
@@ -570,6 +606,63 @@ class TornDriver {
     });
 
   /**
+   * @typedef {Object} DivOptions
+   * @description Named-arguments container for common <div> attributes and optional content.
+   * @property {string} [id] - Value for the div's `id` attribute.
+   * @property {string} [name] - Value for the div's `name` attribute.
+   * @property {string} [class] - Value for the div's `class` attribute.
+   * @property {string} [style] - Inline CSS for the div's `style` attribute.
+   * @property {string} [title] - Value for the div's `title` attribute.
+   * @property {string|Node|(string|Node)[]|null} [html=null] - Content to insert/append into the div as HTML/nodes.
+   * @property {string|null} [text=null] - Plain text to set as the div's textContent.
+   */
+
+  /**
+   * Creates a div using DivOptions.
+   * @param {DivOptions} options - Div configuration (attributes + content).
+   * @returns {HTMLDivElement} The constructed div element.
+   */
+  const createDiv = (options) => {
+    const el = w.document.createElement("div");
+    if (options.id) el.id = options.id;
+    if (options.name) el.setAttribute("name", options.name);
+    if (options.className) el.className = options.className;
+    if (options.style) el.setAttribute("style", options.style);
+    if (options.title) el.title = options.title;
+    /**
+     * Append a supported item to the container div.
+     * @param {string|Node|null|undefined} item - Item to append.
+     * @returns {void}
+     */
+    const append = (item) => {
+      if (item == null) return;
+      if (typeof item === "string") el.insertAdjacentHTML("beforeend", item);
+      else if (item instanceof Node) el.appendChild(item);
+    };
+
+    const content = options.innerHTML;
+    if (Array.isArray(content)) content.forEach(append);
+    else append(content);
+    return el;
+  };
+
+  /**
+   * @typedef {Object} CheckboxOptions
+   * @description Named-arguments container for common label and checkbox.
+   * @property {string} [id] - Value for the `id` attributes.
+   * @property {string} [label] - Value for the `label` content.
+   */
+
+  /**
+   * Creates a label and checkbox HTML string from a required options object.
+   * @param {CheckboxOptions} options - Label/checkbox configuration (id + label).
+   * @returns {string} HTML string for the label + checkbox.
+   */
+  const createCheckbox = (options) => {
+    return `<label for="${options.id}">${options.label}</label><div><input type="checkbox" id="${options.id}" /></div>`;
+  };
+
+  /**
    * addStyles - Injects Racing+ CSS into document head.
    * @returns {Promise<void>}
    */
@@ -598,8 +691,184 @@ class TornDriver {
     Logger.debug(`Styles injected. ${Date.now() - SCRIPT_START} msec`);
   };
 
-  const addRacingPlusPanel = async () => {
+  /**
+   * Adds the Racing+ settings panel to the UI.
+   * @param {Element} main_container - Main container element
+   * @returns {Promise<void>}
+   */
+  const addRacingPlusPanel = async (main_container) => {
     Logger.debug("Adding settings panel...");
+    // Check if panel already exists
+    if (w.document.querySelector(".racing-plus-panel")) return;
+
+    // Load Torn API key (from PDA or local storage)
+    let apikey = IS_PDA ? PDA_KEY : (Store.getValue(Store.keys.rplus_apikey) ?? "");
+    if (apikey) {
+      Logger.debug("Loading Torn API...");
+      // validate torn api key; if invalid, we'll leave the input editable
+      if (!(await torn_api.validate(apikey))) {
+        torn_api.deleteKey();
+        apikey = "";
+      }
+    }
+
+    // create panel
+    const rplus_panel = createDiv({ class: "racing-plus-panel" });
+    // append header to panel
+    rplus_panel.appendChild(createDiv({ class: "racing-plus-header", text: "Racing+" }));
+    // create body
+    const api_actions = createDiv({
+      class: "nowrap",
+      html: [
+        IS_PDA
+          ? ""
+          : '<span class="racing-plus-apikey-actions">' +
+            '<button type="button" class="racing-plus-apikey-save" aria-label="Save">' +
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" version="1.1">' +
+            '<path fill-rule="evenodd" clip-rule="evenodd" d="M7 2C4.23858 2 2 4.23858 2 7V17C2 19.7614 4.23858 22 7 22H17C19.7614 22 22 19.7614 22 17V8.82843C22 8.03278 21.6839 7.26972 21.1213 6.70711L17.2929 2.87868C16.7303 2.31607 15.9672 2 15.1716 2H7ZM7 4C6.44772 4 6 4.44772 6 5V7C6 7.55228 6.44772 8 7 8H15C15.5523 8 16 7.55228 16 7V5C16 4.44772 15.5523 4 15 4H7ZM12 17C13.6569 17 15 15.6569 15 14C15 12.3431 13.6569 11 12 11C10.3431 11 9 12.3431 9 14C9 15.6569 10.3431 17 12 17Z" />' +
+            "</svg>" +
+            "</button>" +
+            '<button type="button" class="racing-plus-apikey-reset" aria-label="Reset">' +
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" version="1.1">' +
+            '<path d="M790.2 590.67l105.978 32.29C847.364 783.876 697.86 901 521 901c-216.496 0-392-175.504-392-392s175.504-392 392-392c108.502 0 206.708 44.083 277.685 115.315l-76.64 76.64C670.99 257.13 599.997 225 521.5 225 366.032 225 240 351.032 240 506.5 240 661.968 366.032 788 521.5 788c126.148 0 232.916-82.978 268.7-197.33z"/>' +
+            '<path d="M855.58 173.003L650.426 363.491l228.569 32.285z"/>' +
+            "</svg>" +
+            "</button>" +
+            "</span>",
+        `<input type="text" id="rplus-apikey" maxlength="${API_KEY_LENGTH}" />`,
+      ],
+    });
+    const flex_div = createDiv({ class: "flex-col", html: [api_actions, '<span class="racing-plus-apikey-status"></span>'] });
+    const rplus_main = createDiv({ class: "racing-plus-main" });
+    rplus_main.appendChild(
+      createDiv({
+        class: "racing-plus-settings",
+        html: [
+          '<label for="rplus-apikey">API Key</label>',
+          flex_div,
+          createCheckbox({ id: "rplus_addlinks", label: "Add profile links" }),
+          createCheckbox({ id: "rplus_showskill", label: "Show racing skill" }),
+          createCheckbox({ id: "rplus_showspeed", label: "Show current speed" }),
+          createCheckbox({ id: "rplus_showracelink", label: "Add race link" }),
+          createCheckbox({ id: "rplus_showexportlink", label: "Add export link" }),
+          createCheckbox({ id: "rplus_showwinrate", label: "Show car win rate" }),
+          createCheckbox({ id: "rplus_showparts", label: "Show available parts" }),
+        ],
+      })
+    );
+    // append body to panel
+    rplus_panel.appendChild(rplus_main);
+    // append footer to panel
+    rplus_panel.appendChild(createDiv({ class: "racing-plus-footer" }));
+    // append panel to container
+    main_container.insertAdjacentElement("beforeBegin", rplus_panel);
+
+    /** @type {HTMLInputElement} */
+    const apiInput = w.document.querySelector("#rplus-apikey");
+    const apiSave = w.document.querySelector(".racing-plus-apikey-save");
+    const apiReset = w.document.querySelector(".racing-plus-apikey-reset");
+    const apiStatus = w.document.querySelector(".racing-plus-apikey-status");
+
+    // Initialize API key UI
+    if (IS_PDA) {
+      if (apikey && apiInput) apiInput.value = apikey;
+      if (apiInput) {
+        apiInput.disabled = true;
+        apiInput.readOnly = true;
+      }
+      if (apiStatus) {
+        apiStatus.textContent = "Edit in TornPDA settings.";
+        apiStatus.classList.toggle("show", true);
+      }
+      apiSave?.classList.toggle("show", false);
+      apiReset?.classList.toggle("show", false);
+    } else {
+      if (apikey && apiInput) {
+        apiInput.value = apikey;
+        apiInput.disabled = true;
+        apiInput.readOnly = true;
+        if (apiStatus) {
+          apiStatus.textContent = "";
+          apiStatus.classList.toggle("show", false);
+        }
+        apiSave?.classList.toggle("show", false);
+        apiReset?.classList.toggle("show", true);
+      } else {
+        if (apiInput) {
+          apiInput.disabled = false;
+          apiInput.readOnly = false;
+        }
+        if (apiStatus) {
+          apiStatus.textContent = "";
+          apiStatus.classList.toggle("show", false);
+        }
+        apiSave?.classList.toggle("show", true);
+        apiReset?.classList.toggle("show", false);
+      }
+
+      // Save button handler: validate and persist key.
+      apiSave?.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        if (!apiInput) return;
+        apiInput.classList.remove("valid", "invalid");
+        const candidate = apiInput.value.trim();
+
+        if (
+          await torn_api.validateKey(candidate).catch((err) => {
+            Logger.warn(err);
+            apiInput.classList.add("invalid");
+            if (apiStatus) {
+              apiStatus.textContent = err.message ?? err;
+              apiStatus.classList.toggle("show", true);
+            }
+            return false;
+          })
+        ) {
+          Logger.debug("Valid API key.");
+          apiInput.classList.add("valid");
+          torn_api.saveKey();
+          apiInput.disabled = true;
+          apiInput.readOnly = true;
+          apiSave.classList.toggle("show", false);
+          apiReset?.classList.toggle("show", true);
+          if (apiStatus) {
+            apiStatus.textContent = "";
+            apiStatus.classList.toggle("show", false);
+          }
+        }
+      });
+
+      // Reset button handler: clear stored key and make input editable.
+      apiReset?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        if (!apiInput) return;
+        apiInput.value = "";
+        apiInput.disabled = false;
+        apiInput.readOnly = false;
+        apiInput.classList.remove("valid", "invalid");
+        torn_api.deleteKey();
+        apiSave?.classList.toggle("show", true);
+        apiReset.classList.toggle("show", false);
+        if (apiStatus) {
+          apiStatus.textContent = "";
+          apiStatus.classList.toggle("show", false);
+        }
+      });
+    }
+
+    // Initialize toggles from storage & persist on click.
+    w.document.querySelectorAll(".racing-plus-settings input[type=checkbox]").forEach((el) => {
+      const key = Store.keys[el.id];
+      if (!key) return;
+      el.checked = Store.getValue(key) === "1";
+      el.addEventListener("click", (ev) => {
+        const t = /** @type {HTMLInputElement} */ (ev.currentTarget);
+        Store.setValue(key, t.checked ? "1" : "0");
+        Logger.debug(`${el.id} saved.`);
+      });
+    });
+
+    Logger.debug("Settings panel added.");
   };
 
   const addRacingPlusButton = async () => {
@@ -671,8 +940,10 @@ class TornDriver {
         }
       }
 
+      const main_container = await defer(SELECTORS.main_container);
+
       // Add the Racing+ panel and button to the DOM
-      Promise.allSettled([addRacingPlusPanel, addRacingPlusButton, loadDomElements]).then((results) =>
+      Promise.allSettled([addRacingPlusPanel(main_container), addRacingPlusButton(), loadDomElements()]).then((results) =>
         results.forEach((result) => {
           switch (result.status) {
             case "fulfilled":
@@ -684,6 +955,10 @@ class TornDriver {
           }
         })
       );
+
+      // ...
+      // TODO: more code goes here
+      // ...
 
       Logger.info(`Application started. ${Date.now() - SCRIPT_START} msec`);
     } catch (err) {
