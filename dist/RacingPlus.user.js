@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.16-alpha
+// @version      1.0.17-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
@@ -27,7 +27,7 @@ const KMS_PER_MI = 1.609344; // Number of kilometers in 1 mile.
 
 const API_KEY_LENGTH = 16; // Number of characters in a valid API key.
 const API_FETCH_TIMEOUT = 10 * MS_PER_SECOND; // Number of milliseconds to wait for an API request.
-const DEFERRAL_TIMEOUT = MS_PER_MINUTE / 2; // Number of milliseconds to wait for a selector to appear. Default = 1 minute.
+const DEFERRAL_TIMEOUT = 15 * MS_PER_SECOND; // Number of milliseconds to wait for a selector to appear. Default = 15 seconds.
 const SPEED_INTERVAL = MS_PER_SECOND; // Number of milliseconds to update speed. Default = 1 second.
 const CACHE_TTL = MS_PER_HOUR; // Number of milliseconds to cache API responses. Default = 1 hour.
 
@@ -897,32 +897,32 @@ class TornDriver {
       // Save button handler: validate and persist key.
       apiSave.addEventListener("click", async (ev) => {
         ev.preventDefault();
-        if (!apiInput) return;
-        apiInput.classList.remove("valid", "invalid");
-        const candidate = apiInput.value.trim();
 
-        if (
-          await torn_api.validateKey(candidate).catch((err) => {
-            Logger.warn(err);
-            apiInput.classList.add("invalid");
+        const candidate = apiInput.value.trim();
+        apiInput.classList.remove("valid", "invalid");
+
+        try {
+          if (await torn_api.validate(candidate)) {
+            Logger.debug("Valid API key.");
+            apiInput.classList.add("valid");
+            torn_api.saveKey();
+            apiInput.disabled = true;
+            apiInput.readOnly = true;
+            apiSave.classList.toggle("show", false);
+            apiReset?.classList.toggle("show", true);
             if (apiStatus) {
-              apiStatus.textContent = err.message ?? err;
-              apiStatus.classList.toggle("show", true);
+              apiStatus.textContent = "";
+              apiStatus.classList.toggle("show", false);
             }
-            return false;
-          })
-        ) {
-          Logger.debug("Valid API key.");
-          apiInput.classList.add("valid");
-          torn_api.saveKey();
-          apiInput.disabled = true;
-          apiInput.readOnly = true;
-          apiSave.classList.toggle("show", false);
-          apiReset?.classList.toggle("show", true);
-          if (apiStatus) {
-            apiStatus.textContent = "";
-            apiStatus.classList.toggle("show", false);
           }
+        } catch (err) {
+          Logger.warn(err);
+          apiInput.classList.add("invalid");
+          if (apiStatus) {
+            apiStatus.textContent = err.message ?? err;
+            apiStatus.classList.toggle("show", true);
+          }
+          return false;
         }
       });
 
@@ -1005,16 +1005,17 @@ class TornDriver {
   const start = async () => {
     try {
       Logger.info(`Application loaded. Starting...`);
-
-      // add styles
+      // Add styles
       await addStyles();
-
-      // load TornAPI
-      Logger.debug(`Loading Torn API...`);
-      const torn_apikey = IS_PDA ? PDA_KEY : Store.getValue(Store.keys.rplus_apikey);
-      torn_api = new TornAPI(torn_apikey);
-
-      // load driver data
+      // Initialize torn_api
+      torn_api = new TornAPI(Store.getValue(Store.keys.rplus_apikey));
+      if (torn_api.key?.length == 0 && IS_PDA && PDA_KEY.length > 0) {
+        if (await torn_api.validate(PDA_KEY)) {
+          // Store valid key
+          Store.setValue(Store.keys.rplus_apikey, PDA_KEY);
+        }
+      }
+      // Load driver data
       Logger.debug(`Loading Driver Data...`);
       try {
         // Check for stored driver
@@ -1028,23 +1029,21 @@ class TornDriver {
       } catch (err) {
         Logger.error(`Failed to load driver data. ${err}`);
       }
-
-      // Add the Racing+ panel and button to the DOM
+      // Wait for required DOM elements
       const main_container = await defer(SELECTORS.main_container);
+      // Add the Racing+ panel and button to the DOM
       const results = await Promise.allSettled([addRacingPlusPanel(main_container), addRacingPlusButton(), loadDomElements()]);
-
       // Ensure all results are fulfilled else log rejected reasons then exit
       if (!results.every((r) => r.status === "fulfilled")) {
         results.filter((r) => r.status === "rejected").forEach((r) => Logger.error(`${r.reason}`));
         return;
       }
-
       // Initialize the settings panel
-      await initRacingPlusPanel(torn_apikey);
-
-      // Update track records and available cars from API
+      await initRacingPlusPanel(torn_api.key);
+      // Update driver track records and available cars
       await this_driver.updateRecords();
       await this_driver.updateCars();
+
       // ...
       // TODO: code goes here
       // ...
