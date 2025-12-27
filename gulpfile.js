@@ -183,7 +183,9 @@ export const userscripts = () => {
         compress: false, // { something: false }
         format: {
           comments: (_, comment) => {
-            if (comment.type === "comment1") return true;
+            /* Discard '// TODO:' comments, keep all other '//' comments */
+            if (comment.type === "comment1") return !/^todo:/i.test(comment.value.trim());
+            /* Discard '/*' comments, keep '/**' JSDoc comments */
             if (comment.type === "comment2" && comment.value.startsWith("*")) return true;
             return false;
           },
