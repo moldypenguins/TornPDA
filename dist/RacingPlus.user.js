@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.14-alpha
+// @version      1.0.15-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
@@ -60,24 +60,26 @@ const LOG_MODE = LOG_LEVEL.debug;
  * @class
  */
 class Logger {
+  static time = (t = Date.now() - SCRIPT_START) => (t > 0 ? ` ${t} msec` : "");
+
   /** logs a debug-level message. */
   static debug(...args) {
     if (LOG_MODE > LOG_LEVEL.debug) return;
-    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#6aa84f;font-weight:600", ...args, ` ${Date.now() - SCRIPT_START} msec`);
+    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#6aa84f;font-weight:600", ...args, this.time());
   }
   /** logs an info-level message. */
   static info(...args) {
     if (LOG_MODE > LOG_LEVEL.info) return;
-    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#3d85c6;font-weight:600", ...args, ` ${Date.now() - SCRIPT_START} msec`);
+    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#3d85c6;font-weight:600", ...args, this.time());
   }
   /** Logs a warning-level message. */
   static warn(...args) {
-    if (LOG_MODE > LOG_LEVEL.WARN) return;
+    if (LOG_MODE > LOG_LEVEL.warn) return;
     console.log("%c[WARN][TornPDA.Racing+]: ", "color:#e69138;font-weight:600", ...args);
   }
   /** Logs an error-level message. */
   static error(...args) {
-    if (LOG_MODE > LOG_LEVEL.ERROR) return;
+    if (LOG_MODE > LOG_LEVEL.error) return;
     console.log("%c[ERROR][TornPDA.Racing+]: ", "color:#d93025;font-weight:600", ...args);
   }
 }
