@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.8-alpha
+// @version      1.0.9-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
@@ -869,10 +869,15 @@ class TornDriver {
     });
 
     Logger.debug("Settings panel added.");
+    return true;
   };
 
   const addRacingPlusButton = async () => {
     Logger.debug("Adding settings panel toggle button...");
+
+    // TODO: ...
+
+    return true;
   };
 
   const loadDomElements = async () => {
@@ -902,6 +907,7 @@ class TornDriver {
     banner.appendChild(leftBanner);
     banner.appendChild(rightBanner);
     Logger.debug("DOM loaded.");
+    return true;
   };
 
   /* ------------------------------------------------------------------------
@@ -943,18 +949,22 @@ class TornDriver {
       const main_container = await defer(SELECTORS.main_container);
 
       // Add the Racing+ panel and button to the DOM
-      Promise.allSettled([addRacingPlusPanel(main_container), addRacingPlusButton(), loadDomElements()]).then((results) =>
-        results.forEach((result) => {
-          switch (result.status) {
-            case "fulfilled":
-              Logger.debug(`Fulfilled: ${result.value}`);
-              break;
-            case "rejected":
-              Logger.warn(`Rejected: ${result.value}`);
-              break;
-          }
-        })
-      );
+      Promise.allSettled([addRacingPlusPanel(main_container), addRacingPlusButton(), loadDomElements()])
+        .then((results) =>
+          results.forEach((result) => {
+            switch (result.status) {
+              case "fulfilled":
+                Logger.debug(`Fulfilled: ${result.value}`);
+                break;
+              case "rejected":
+                Logger.warn(`Rejected: ${result.value}`);
+                break;
+            }
+          })
+        )
+        .catch((err) => {
+          Logger.error(err);
+        });
 
       // ...
       // TODO: more code goes here
