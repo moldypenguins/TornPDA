@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.20-alpha
+// @version      1.0.21-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
@@ -603,7 +603,7 @@ class TornDriver {
   async updateRecords() {
     try {
       if (!torn_api || !torn_api.key) throw new Error("TornAPI not initialized.");
-      const results = await torn_api.request("user/racingrecords", {
+      const results = await torn_api.request("user", "racingrecords", {
         timestamp: `${Date.unix()}`,
       });
       if (Array.isArray(results?.racingrecords)) {
@@ -639,7 +639,7 @@ class TornDriver {
   async updateCars() {
     try {
       if (!torn_api || !torn_api.key) throw new Error("TornAPI not initialized.");
-      const results = await torn_api.request("user/enlistedcars", {
+      const results = await torn_api.request("user", "enlistedcars", {
         timestamp: `${Date.unix()}`,
       });
       if (Array.isArray(results?.enlistedcars)) {
@@ -976,6 +976,10 @@ class TornDriver {
   const addRacingPlusButton = async () => {
     Logger.debug("Adding settings panel toggle button...");
 
+    // Check if button already exists
+    if (w.document.querySelector("#racing-plus-button")) return;
+
+    const links_container = await defer(SELECTORS.links_container);
     // TODO: ...
 
     Logger.debug("Settings button added.");
@@ -1043,9 +1047,6 @@ class TornDriver {
       } catch (err) {
         Logger.error(`Failed to load driver data. ${err}`);
       }
-      // Wait for required DOM elements
-      const links_container = await defer(SELECTORS.links_container);
-
       // Add the Racing+ panel and button to the DOM
       const results = await Promise.allSettled([addRacingPlusPanel(), addRacingPlusButton(), loadDomElements()]);
       // Ensure all results are fulfilled else log rejected reasons then exit
