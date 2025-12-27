@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.21-alpha
+// @version      1.0.22-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
@@ -47,6 +47,7 @@ const API_KEY_LENGTH = 16;
 const SELECTORS = Object.freeze({
   links_container: "#racing-leaderboard-header-root div[class^='linksContainer']",
   main_container: "#racingMainContainer",
+  main_banner: "#racingMainContainer .header-wrap div.banner",
   main_categories: "#racingMainContainer .header-wrap ul.categories",
   car_selected: "#racingupdates .car-selected",
   drivers_list: "#racingupdates .drivers-list",
@@ -601,6 +602,7 @@ class TornDriver {
    * @returns {Promise<void>}
    */
   async updateRecords() {
+    // TODO: add logging
     try {
       if (!torn_api || !torn_api.key) throw new Error("TornAPI not initialized.");
       const results = await torn_api.request("user", "racingrecords", {
@@ -637,6 +639,7 @@ class TornDriver {
    * @returns {Promise<void>}
    */
   async updateCars() {
+    // TODO: add logging
     try {
       if (!torn_api || !torn_api.key) throw new Error("TornAPI not initialized.");
       const results = await torn_api.request("user", "enlistedcars", {
@@ -989,7 +992,7 @@ class TornDriver {
     Logger.debug("Loading DOM...");
     // Normalize the top banner structure & update skill snapshot
     Logger.debug("Fixing top banner...");
-    const banner = await defer(".banner");
+    const banner = await defer(SELECTORS.main_banner);
     const leftBanner = w.document.createElement("div");
     leftBanner.className = "left-banner";
     const rightBanner = w.document.createElement("div");
@@ -1011,7 +1014,22 @@ class TornDriver {
     banner.innerHTML = "";
     banner.appendChild(leftBanner);
     banner.appendChild(rightBanner);
+
+    // Fix active tab highlighting
+    await fixActiveTabHighlighting();
+
     Logger.debug("DOM loaded.");
+  };
+
+  /**
+   * Fixes active tab highlighting for racing categories
+   * @returns {Promise<void>}
+   */
+  const fixActiveTabHighlighting = async () => {
+    Logger.debug("Fixing active tab highlighting...");
+    const categories = await defer(SELECTORS.main_categories);
+    /* Only select elements without 'clear' class and toggle their active state */
+    categories.querySelectorAll(":not(.clear)").forEach((c) => c.classList.toggle("active", c.querySelector(".official-events") !== null));
   };
 
   /* ------------------------------------------------------------------------

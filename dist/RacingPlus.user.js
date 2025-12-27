@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.21-alpha
+// @version      1.0.22-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
@@ -13,7 +13,7 @@
 // @run-at       document-start
 // ==/UserScript==
 "use strict";
-const SCRIPT_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const MS_PER_HOUR=36e5;const SECONDS_PER_HOUR=3600;const KMS_PER_MI=1.609344;const API_FETCH_TIMEOUT=10*MS_PER_SECOND;const DEFERRAL_TIMEOUT=15*MS_PER_SECOND;const SPEED_INTERVAL=MS_PER_SECOND;const CACHE_TTL=MS_PER_HOUR;const API_KEY_LENGTH=16;const SELECTORS=Object.freeze({links_container:"#racing-leaderboard-header-root div[class^='linksContainer']",main_container:"#racingMainContainer",main_categories:"#racingMainContainer .header-wrap ul.categories",car_selected:"#racingupdates .car-selected",drivers_list:"#racingupdates .drivers-list",drivers_list_title:"#racingupdates .drivers-list div[class^='title']",drivers_list_leaderboard:"#racingupdates .drivers-list #leaderBoard"});
+const SCRIPT_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const MS_PER_HOUR=36e5;const SECONDS_PER_HOUR=3600;const KMS_PER_MI=1.609344;const API_FETCH_TIMEOUT=10*MS_PER_SECOND;const DEFERRAL_TIMEOUT=15*MS_PER_SECOND;const SPEED_INTERVAL=MS_PER_SECOND;const CACHE_TTL=MS_PER_HOUR;const API_KEY_LENGTH=16;const SELECTORS=Object.freeze({links_container:"#racing-leaderboard-header-root div[class^='linksContainer']",main_container:"#racingMainContainer",main_banner:"#racingMainContainer .header-wrap div.banner",main_categories:"#racingMainContainer .header-wrap ul.categories",car_selected:"#racingupdates .car-selected",drivers_list:"#racingupdates .drivers-list",drivers_list_title:"#racingupdates .drivers-list div[class^='title']",drivers_list_leaderboard:"#racingupdates .drivers-list #leaderBoard"});
 /**
  * LOG_LEVEL - Log level enumeration
  * @readonly
@@ -308,9 +308,15 @@ w.document.querySelectorAll(".racing-plus-settings input[type=checkbox]").forEac
 // Check if button already exists
 if(w.document.querySelector("#racing-plus-button"))return;const links_container=await defer(SELECTORS.links_container);Logger.debug("Settings button added.")};const loadDomElements=async()=>{Logger.debug("Loading DOM...");
 // Normalize the top banner structure & update skill snapshot
-Logger.debug("Fixing top banner...");const banner=await defer(".banner");const leftBanner=w.document.createElement("div");leftBanner.className="left-banner";const rightBanner=w.document.createElement("div");rightBanner.className="right-banner";const elements=Array.from(banner.children);elements.forEach(el=>{if(el.classList.contains("skill-desc")||el.classList.contains("skill")||el.classList.contains("lastgain")){if(el.classList.contains("skill")){
+Logger.debug("Fixing top banner...");const banner=await defer(SELECTORS.main_banner);const leftBanner=w.document.createElement("div");leftBanner.className="left-banner";const rightBanner=w.document.createElement("div");rightBanner.className="right-banner";const elements=Array.from(banner.children);elements.forEach(el=>{if(el.classList.contains("skill-desc")||el.classList.contains("skill")||el.classList.contains("lastgain")){if(el.classList.contains("skill")){
 // Update driver skill snapshot (persist only if higher)
-this_driver.updateSkill(el.textContent);el.textContent=String(this_driver.skill)}leftBanner.appendChild(el)}else if(el.classList.contains("class-desc")||el.classList.contains("class-letter")){rightBanner.appendChild(el)}});banner.innerHTML="";banner.appendChild(leftBanner);banner.appendChild(rightBanner);Logger.debug("DOM loaded.")};
+this_driver.updateSkill(el.textContent);el.textContent=String(this_driver.skill)}leftBanner.appendChild(el)}else if(el.classList.contains("class-desc")||el.classList.contains("class-letter")){rightBanner.appendChild(el)}});banner.innerHTML="";banner.appendChild(leftBanner);banner.appendChild(rightBanner);
+// Fix active tab highlighting
+await fixActiveTabHighlighting();Logger.debug("DOM loaded.")};
+/**
+   * Fixes active tab highlighting for racing categories
+   * @returns {Promise<void>}
+   */const fixActiveTabHighlighting=async()=>{Logger.debug("Fixing active tab highlighting...");const categories=await defer(SELECTORS.main_categories);categories.querySelectorAll(":not(.clear)").forEach(c=>c.classList.toggle("active",c.querySelector(".official-events")!==null))};
 /**
    * start - Main entry point for the application.
    */const start=async()=>{try{Logger.info(`Application loaded. Starting...`);
