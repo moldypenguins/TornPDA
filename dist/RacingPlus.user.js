@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @license      MIT
 // @copyright    Copyright © 2025 moldypenguins
-// @version      1.0.28-alpha
+// @license      MIT
+// @version      1.0.29-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -15,7 +15,7 @@
 // @run-at       document-start
 // ==/UserScript==
 "use strict";
-const SCRIPT_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const MS_PER_HOUR=36e5;const SECONDS_PER_HOUR=3600;const KMS_PER_MI=1.609344;const API_FETCH_TIMEOUT=10*MS_PER_SECOND;const DEFERRAL_TIMEOUT=15*MS_PER_SECOND;const SPEED_INTERVAL=MS_PER_SECOND;const CACHE_TTL=MS_PER_HOUR;const API_KEY_LENGTH=16;const SELECTORS=Object.freeze({links_container:"#racing-leaderboard-header-root div[class^='linksContainer']",main_container:"#racingMainContainer",main_banner:"#racingMainContainer .header-wrap div.banner",tabs_container:"#racingMainContainer .header-wrap ul.categories",content_container:"racingAdditionalContainer",car_selected:"#racingupdates .car-selected",drivers_list:"#racingupdates .drivers-list",drivers_list_title:"#racingupdates .drivers-list div[class^='title']",drivers_list_leaderboard:"#racingupdates .drivers-list #leaderBoard"});
+const SCRIPT_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const MS_PER_HOUR=36e5;const SECONDS_PER_HOUR=3600;const KMS_PER_MI=1.609344;const API_FETCH_TIMEOUT=10*MS_PER_SECOND;const DEFERRAL_TIMEOUT=15*MS_PER_SECOND;const SPEED_INTERVAL=MS_PER_SECOND;const CACHE_TTL=MS_PER_HOUR;const API_KEY_LENGTH=16;const SELECTORS=Object.freeze({links_container:"#racing-leaderboard-header-root div[class^='linksContainer']",main_container:"#racingMainContainer",main_banner:"#racingMainContainer .header-wrap div.banner",tabs_container:"#racingMainContainer .header-wrap ul.categories",content_container:"#racingAdditionalContainer",car_selected:"#racingupdates .car-selected",drivers_list:"#racingupdates .drivers-list",drivers_list_title:"#racingupdates .drivers-list div[class^='title']",drivers_list_leaderboard:"#racingupdates .drivers-list #leaderBoard"});
 /**
  * LOG_LEVEL - Log level enumeration
  * @readonly
@@ -346,13 +346,13 @@ official_tab.addEventListener("click",async ev=>{await fixActiveTabHighlighting(
 // Custom Events tab click event handler.
 custom_tab.addEventListener("click",async ev=>{await fixActiveTabHighlighting(ev,tabs_container)});
 // Update driver track records and available cars
-await this_driver.updateRecords();await this_driver.updateCars();
-// ...
-// ...
-
-const content_container=await defer(SELECTORS.content_container);
-// Setup content container observer
-const page_observer=new MutationObserver(async mutations=>{});page_observer.observe(content_container,{characterData:true,childList:true,subtree:true});
+await this_driver.updateRecords();await this_driver.updateCars();const content_container=await defer(SELECTORS.content_container);const page_observer=new MutationObserver(async mutations=>{for(const mutation of mutations){if(mutation.type==="characterData"||mutation.type==="childList"){
+/** @type {Node} */
+const tNode=mutation.target;const el=tNode.nodeType===Node.ELEMENT_NODE?tNode:tNode.parentElement;if(el&&el.id==="infoSpot"){
+// this_race?.updateStatus(el.textContent || "");
+Logger.debug(`Race Status Update -> ${el.textContent}.`)}if(el&&el.id==="leaderBoard"){
+// await this_race?.updateLeaderBoard(el.childNodes || []);
+Logger.debug(`Leader Board Update.`)}}}});page_observer.observe(content_container,{characterData:true,childList:true,subtree:true});
 /**
        * Safely disconnect all mutation observers.
        * @returns {void}

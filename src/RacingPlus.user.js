@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @license      MIT
 // @copyright    Copyright © 2025 moldypenguins
-// @version      1.0.28-alpha
+// @license      MIT
+// @version      1.0.29-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -51,7 +51,7 @@ const SELECTORS = Object.freeze({
   main_container: "#racingMainContainer",
   main_banner: "#racingMainContainer .header-wrap div.banner",
   tabs_container: "#racingMainContainer .header-wrap ul.categories",
-  content_container: "racingAdditionalContainer",
+  content_container: "#racingAdditionalContainer",
   car_selected: "#racingupdates .car-selected",
   drivers_list: "#racingupdates .drivers-list",
   drivers_list_title: "#racingupdates .drivers-list div[class^='title']",
@@ -1107,15 +1107,30 @@ class TornDriver {
       await this_driver.updateRecords();
       await this_driver.updateCars();
 
-      // ...
-      // TODO: code goes here
-      // ...
+      /* -------------------- */
+      // TODO: code goes here //
+      /* -------------------- */
 
-      //
       const content_container = await defer(SELECTORS.content_container);
-      // Setup content container observer
+      /* Setup content container observer */
       const page_observer = new MutationObserver(async (mutations) => {
-        //
+        /* Iterate through mutations */
+        for (const mutation of mutations) {
+          /* If infospot text changed, update status */
+          if (mutation.type === "characterData" || mutation.type === "childList") {
+            /** @type {Node} */
+            const tNode = mutation.target;
+            const el = tNode.nodeType === Node.ELEMENT_NODE ? tNode : tNode.parentElement;
+            if (el && el.id === "infoSpot") {
+              // this_race?.updateStatus(el.textContent || "");
+              Logger.debug(`Race Status Update -> ${el.textContent}.`);
+            }
+            if (el && el.id === "leaderBoard") {
+              // await this_race?.updateLeaderBoard(el.childNodes || []);
+              Logger.debug(`Leader Board Update.`);
+            }
+          }
+        }
       });
       page_observer.observe(content_container, { characterData: true, childList: true, subtree: true });
 
