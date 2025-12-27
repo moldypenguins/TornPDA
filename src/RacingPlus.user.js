@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.15-alpha
+// @version      1.0.16-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
@@ -56,21 +56,24 @@ const LOG_LEVEL = Object.freeze({ debug: 10, info: 20, warn: 30, error: 40, sile
 const LOG_MODE = LOG_LEVEL.debug;
 
 /**
- * Logger - Static methods for console.log()
+ * Static methods for leveled console logging.
  * @class
  */
 class Logger {
-  static time = (t = Date.now() - SCRIPT_START) => (t > 0 ? ` ${t} msec` : "");
-
+  /** Returns elapsed time since SCRIPT_START. */
+  static get time() {
+    const t = Date.now() - SCRIPT_START;
+    return t > 0 ? ` ${t} msec` : "";
+  }
   /** logs a debug-level message. */
   static debug(...args) {
     if (LOG_MODE > LOG_LEVEL.debug) return;
-    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#6aa84f;font-weight:600", ...args, this.time());
+    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#6aa84f;font-weight:600", ...args, this.time);
   }
   /** logs an info-level message. */
   static info(...args) {
     if (LOG_MODE > LOG_LEVEL.info) return;
-    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#3d85c6;font-weight:600", ...args, this.time());
+    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#3d85c6;font-weight:600", ...args, this.time);
   }
   /** Logs a warning-level message. */
   static warn(...args) {
@@ -798,18 +801,6 @@ class TornDriver {
     Logger.debug("Adding settings panel...");
     // Check if panel already exists
     if (w.document.querySelector(".racing-plus-panel")) return;
-
-    // Load Torn API key (from PDA or local storage)
-    let apikey = IS_PDA ? PDA_KEY : (Store.getValue(Store.keys.rplus_apikey) ?? "");
-    if (apikey) {
-      Logger.debug("Loading Torn API...");
-      // validate torn api key; if invalid, we'll leave the input editable
-      if (!(await torn_api.validate(apikey))) {
-        torn_api.deleteKey();
-        apikey = "";
-      }
-    }
-
     // create panel
     const rplus_panel = createDiv({ class: "racing-plus-panel" });
     // append header to panel
@@ -861,51 +852,50 @@ class TornDriver {
     // append panel to container
     main_container.insertAdjacentElement("beforeBegin", rplus_panel);
 
-    /** @type {HTMLInputElement} */
-    const apiInput = w.document.querySelector("#rplus-apikey");
-    const apiSave = w.document.querySelector(".racing-plus-apikey-save");
-    const apiReset = w.document.querySelector(".racing-plus-apikey-reset");
-    const apiStatus = w.document.querySelector(".racing-plus-apikey-status");
+    Logger.debug("Settings panel added.");
+  };
 
-    // Initialize API key UI
+  /**
+   * Initializes the Racing+ settings panel in the UI.
+   * @returns {Promise<void>}
+   */
+  const initRacingPlusPanel = async () => {
+    Logger.debug("Initializing settings panel...");
+
+    /** @type {HTMLInputElement} */ const apiInput = await defer("#rplus-apikey");
+    /** @type {HTMLAnchorElement} */ const apiSave = await defer(".racing-plus-apikey-save");
+    /** @type {HTMLAnchorElement} */ const apiReset = await defer(".racing-plus-apikey-reset");
+    /** @type {HTMLAnchorElement} */ const apiStatus = await defer(".racing-plus-apikey-status");
+
+    const apikey = torn_api.key ?? "";
     if (IS_PDA) {
-      if (apikey && apiInput) apiInput.value = apikey;
-      if (apiInput) {
-        apiInput.disabled = true;
-        apiInput.readOnly = true;
-      }
-      if (apiStatus) {
-        apiStatus.textContent = "Edit in TornPDA settings.";
-        apiStatus.classList.toggle("show", true);
-      }
-      apiSave?.classList.toggle("show", false);
-      apiReset?.classList.toggle("show", false);
+      apiInput.value = apikey;
+      apiInput.disabled = true;
+      apiInput.readOnly = true;
+      apiStatus.textContent = "Edit in TornPDA settings.";
+      apiStatus.classList.toggle("show", true);
+      apiSave.classList.toggle("show", false);
+      apiReset.classList.toggle("show", false);
     } else {
-      if (apikey && apiInput) {
+      if (apikey.length > 0) {
         apiInput.value = apikey;
         apiInput.disabled = true;
         apiInput.readOnly = true;
-        if (apiStatus) {
-          apiStatus.textContent = "";
-          apiStatus.classList.toggle("show", false);
-        }
-        apiSave?.classList.toggle("show", false);
-        apiReset?.classList.toggle("show", true);
+        apiStatus.textContent = "";
+        apiStatus.classList.toggle("show", false);
+        apiSave.classList.toggle("show", false);
+        apiReset.classList.toggle("show", true);
       } else {
-        if (apiInput) {
-          apiInput.disabled = false;
-          apiInput.readOnly = false;
-        }
-        if (apiStatus) {
-          apiStatus.textContent = "";
-          apiStatus.classList.toggle("show", false);
-        }
-        apiSave?.classList.toggle("show", true);
-        apiReset?.classList.toggle("show", false);
+        apiInput.disabled = false;
+        apiInput.readOnly = false;
+        apiStatus.textContent = "";
+        apiStatus.classList.toggle("show", false);
+        apiSave.classList.toggle("show", true);
+        apiReset.classList.toggle("show", false);
       }
 
       // Save button handler: validate and persist key.
-      apiSave?.addEventListener("click", async (ev) => {
+      apiSave.addEventListener("click", async (ev) => {
         ev.preventDefault();
         if (!apiInput) return;
         apiInput.classList.remove("valid", "invalid");
@@ -937,7 +927,7 @@ class TornDriver {
       });
 
       // Reset button handler: clear stored key and make input editable.
-      apiReset?.addEventListener("click", (ev) => {
+      apiReset.addEventListener("click", (ev) => {
         ev.preventDefault();
         if (!apiInput) return;
         apiInput.value = "";
@@ -962,11 +952,11 @@ class TornDriver {
       el.addEventListener("click", (ev) => {
         const t = /** @type {HTMLInputElement} */ (ev.currentTarget);
         Store.setValue(key, t.checked ? "1" : "0");
-        Logger.debug(`${el.id} saved.`);
+        Logger.debug(`${el.id} saved ${t.checked ? "on" : "off"}.`);
       });
     });
 
-    Logger.debug("Settings panel added.");
+    Logger.debug("Settings panel initialized.");
   };
 
   const addRacingPlusButton = async () => {
@@ -1021,7 +1011,8 @@ class TornDriver {
 
       // load TornAPI
       Logger.debug(`Loading Torn API...`);
-      torn_api = new TornAPI(IS_PDA ? PDA_KEY : Store.getValue(Store.keys.rplus_apikey));
+      const torn_apikey = IS_PDA ? PDA_KEY : Store.getValue(Store.keys.rplus_apikey);
+      torn_api = new TornAPI(torn_apikey);
 
       // load driver data
       Logger.debug(`Loading Driver Data...`);
@@ -1048,6 +1039,12 @@ class TornDriver {
         return;
       }
 
+      // Initialize the settings panel
+      await initRacingPlusPanel(torn_apikey);
+
+      // Update track records and available cars from API
+      await this_driver.updateRecords();
+      await this_driver.updateCars();
       // ...
       // TODO: code goes here
       // ...
