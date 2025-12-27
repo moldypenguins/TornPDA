@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.13-alpha
+// @version      1.0.14-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
@@ -965,7 +965,6 @@ class TornDriver {
     });
 
     Logger.debug("Settings panel added.");
-    return "Settings panel added.";
   };
 
   const addRacingPlusButton = async () => {
@@ -974,7 +973,6 @@ class TornDriver {
     // TODO: ...
 
     Logger.debug("Settings button added.");
-    return "Settings button added.";
   };
 
   const loadDomElements = async () => {
@@ -1004,7 +1002,6 @@ class TornDriver {
     banner.appendChild(leftBanner);
     banner.appendChild(rightBanner);
     Logger.debug("DOM loaded.");
-    return "DOM loaded.";
   };
 
   /* ------------------------------------------------------------------------
@@ -1027,10 +1024,10 @@ class TornDriver {
       // load driver data
       Logger.debug(`Loading Driver Data...`);
       try {
-        // check for stored driver
+        // Check for stored driver
         let scriptData = Store.getValue(Store.keys.rplus_driver);
         if (!scriptData) {
-          // create new driver - '#torn-user' a hidden input with JSON { id, ... }
+          // Create new driver - '#torn-user' a hidden input with JSON { id, ... }
           scriptData = await defer("#torn-user").value;
         }
         this_driver = new TornDriver(JSON.parse(scriptData).id);
@@ -1039,28 +1036,18 @@ class TornDriver {
         Logger.error(`Failed to load driver data. ${err}`);
       }
 
-      const main_container = await defer(SELECTORS.main_container);
-
       // Add the Racing+ panel and button to the DOM
-      Promise.allSettled([addRacingPlusPanel(main_container), addRacingPlusButton(), loadDomElements()])
-        .then((results) =>
-          results.forEach((result) => {
-            switch (result.status) {
-              case "fulfilled":
-                Logger.debug(`Fulfilled: ${result.value}`);
-                break;
-              case "rejected":
-                Logger.warn(`Rejected: ${result.reason}`);
-                break;
-            }
-          })
-        )
-        .catch((err) => {
-          Logger.error(err);
-        });
+      const main_container = await defer(SELECTORS.main_container);
+      const results = await Promise.allSettled([addRacingPlusPanel(main_container), addRacingPlusButton(), loadDomElements()]);
+
+      // Ensure all results are fulfilled else log rejected reasons then exit
+      if (!results.every((r) => r.status === "fulfilled")) {
+        results.filter((r) => r.status === "rejected").forEach((r) => Logger.error(`${r.reason}`));
+        return;
+      }
 
       // ...
-      // TODO: more code goes here...maybe?
+      // TODO: code goes here
       // ...
 
       Logger.info(`Application started.`);
@@ -1069,6 +1056,7 @@ class TornDriver {
     }
   };
 
+  // Start application
   await start();
 })(window);
 
