@@ -17,20 +17,32 @@
 /* ------------------------------------------------------------------------
  * Constants
  * --------------------------------------------------------------------- */
+/** Script start time. */
 const SCRIPT_START = Date.now();
 
-const MS_PER_SECOND = 1000; // Number of milliseconds in 1 second.
-const MS_PER_MINUTE = 60000; // Number of milliseconds in 1 minute.
-const MS_PER_HOUR = 3600000; // Number of milliseconds in 1 hour.
-const SECONDS_PER_HOUR = 3600; // Number of seconds in 1 hour.
-const KMS_PER_MI = 1.609344; // Number of kilometers in 1 mile.
+/** Number of milliseconds in 1 second. */
+const MS_PER_SECOND = 1000;
+/** Number of milliseconds in 1 minute. */
+const MS_PER_MINUTE = 60000;
+/** Number of milliseconds in 1 hour. */
+const MS_PER_HOUR = 3600000;
+/** Number of seconds in 1 hour. */
+const SECONDS_PER_HOUR = 3600;
+/** Number of kilometers in 1 mile. */
+const KMS_PER_MI = 1.609344;
 
-const API_KEY_LENGTH = 16; // Number of characters in a valid API key.
-const API_FETCH_TIMEOUT = 10 * MS_PER_SECOND; // Number of milliseconds to wait for an API request.
-const DEFERRAL_TIMEOUT = 15 * MS_PER_SECOND; // Number of milliseconds to wait for a selector to appear. Default = 15 seconds.
-const SPEED_INTERVAL = MS_PER_SECOND; // Number of milliseconds to update speed. Default = 1 second.
-const CACHE_TTL = MS_PER_HOUR; // Number of milliseconds to cache API responses. Default = 1 hour.
+/** Number of milliseconds to wait for an API request. */
+const API_FETCH_TIMEOUT = 10 * MS_PER_SECOND;
+/** Number of milliseconds to wait for a selector to appear. Default = 15 seconds. */
+const DEFERRAL_TIMEOUT = 15 * MS_PER_SECOND;
+/** Number of milliseconds to update speed. Default = 1 second. */
+const SPEED_INTERVAL = MS_PER_SECOND;
+/** Number of milliseconds to cache API responses. Default = 1 hour. */
+const CACHE_TTL = MS_PER_HOUR;
 
+/** Number of characters in a valid API key. */
+const API_KEY_LENGTH = 16;
+/** CSS Selectors */
 const SELECTORS = Object.freeze({
   links_container: "#racing-leaderboard-header-root div[class^='linksContainer']",
   main_container: "#racingMainContainer",

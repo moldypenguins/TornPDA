@@ -136,7 +136,24 @@ export const lintFixScss = () => {
 export const lint = parallel(lintJs, lintScss);
 
 export const lintFix = parallel(lintFixJs, lintFixScss);
+
 /** -------------------------------- */
+
+/**
+ * minifyJs
+ * Description: Minifies JS and strips comments.
+ * @param {string} js - Source JS.
+ * @param {string} filename - For error context.
+ * @returns {Promise<string>} Minified JS.
+ */
+const minifyJs = async (js, filename) => {
+  const { minify } = await import("terser");
+  const result = await minify(js, {
+    format: { comments: false }, // strip all comments
+  });
+  if (!result?.code) throw new Error(`[terser] Failed to minify ${filename}`);
+  return result.code;
+};
 
 /** Build userscripts: inline minified CSS from SCSS (if present), then inject Common.js. */
 export const userscripts = () => {
@@ -166,7 +183,7 @@ export const userscripts = () => {
             if (!replaced) {
               console.warn(`[userscripts] Placeholder "${PLACEHOLDER}" not found in ${base}.js; CSS was NOT injected.`);
             }
-            jsContents = out;
+            jsContents = await minifyJs(out, path.basename(jsPath));
           }
 
           // Output
@@ -189,11 +206,7 @@ export const clean = () => {
 /** Monitor: lint then build on changes. */
 export const monitor = () => {
   // JS sources (excluding Common.js) → lint JS, then build
-  watch([`${SRC_DIR}/*.js`, `!${SRC_DIR}/Common.js`], series(lintJs, userscripts));
-
-  // Common.js → lint JS, then build (since it’s inlined)
-  watch(`${SRC_DIR}/Common.js`, series(lintJs, userscripts));
-
+  watch([`${SRC_DIR}/*.js`], series(lintJs, userscripts));
   // SCSS → lint SCSS, then build
   watch(`${SRC_DIR}/*.scss`, series(lintScss, userscripts));
 };
