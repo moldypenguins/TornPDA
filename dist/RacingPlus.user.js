@@ -1,32 +1,34 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.25-alpha
 // @license      MIT
+// @copyright    Copyright © 2025 moldypenguins
+// @version      1.0.27-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
-// @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
+// @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
+// @icon64       https://www.google.com/s2/favicons?sz=64&domain=torn.com
 // @updateURL    https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/dist/RacingPlus.user.js
 // @downloadURL  https://github.com/moldypenguins/TornPDA/raw/refs/heads/main/dist/RacingPlus.user.js
 // @connect      api.torn.com
+// @grant        none
 // @run-at       document-start
 // ==/UserScript==
 "use strict";
-const SCRIPT_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const MS_PER_HOUR=36e5;const SECONDS_PER_HOUR=3600;const KMS_PER_MI=1.609344;const API_FETCH_TIMEOUT=10*MS_PER_SECOND;const DEFERRAL_TIMEOUT=15*MS_PER_SECOND;const SPEED_INTERVAL=MS_PER_SECOND;const CACHE_TTL=MS_PER_HOUR;const API_KEY_LENGTH=16;const SELECTORS=Object.freeze({links_container:"#racing-leaderboard-header-root div[class^='linksContainer']",main_container:"#racingMainContainer",main_banner:"#racingMainContainer .header-wrap div.banner",main_categories:"#racingMainContainer .header-wrap ul.categories",car_selected:"#racingupdates .car-selected",drivers_list:"#racingupdates .drivers-list",drivers_list_title:"#racingupdates .drivers-list div[class^='title']",drivers_list_leaderboard:"#racingupdates .drivers-list #leaderBoard"});
+(async w=>{Logger.info(`Application loading... ${new Date(SCRIPT_START).toISOString()}`);const SCRIPT_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const MS_PER_HOUR=36e5;const SECONDS_PER_HOUR=3600;const KMS_PER_MI=1.609344;const API_FETCH_TIMEOUT=10*MS_PER_SECOND;const DEFERRAL_TIMEOUT=15*MS_PER_SECOND;const SPEED_INTERVAL=MS_PER_SECOND;const CACHE_TTL=MS_PER_HOUR;const API_KEY_LENGTH=16;const SELECTORS=Object.freeze({links_container:"#racing-leaderboard-header-root div[class^='linksContainer']",main_container:"#racingMainContainer",main_banner:"#racingMainContainer .header-wrap div.banner",tabs_container:"#racingMainContainer .header-wrap ul.categories",content_container:"racingAdditionalContainer",car_selected:"#racingupdates .car-selected",drivers_list:"#racingupdates .drivers-list",drivers_list_title:"#racingupdates .drivers-list div[class^='title']",drivers_list_leaderboard:"#racingupdates .drivers-list #leaderBoard"});
 /**
- * LOG_LEVEL - Log level enumeration
- * @readonly
- * @enum {number}
- */const LOG_LEVEL=Object.freeze({debug:10,info:20,warn:30,error:40,silent:50});
+   * LOG_LEVEL - Log level enumeration
+   * @readonly
+   * @enum {number}
+   */const LOG_LEVEL=Object.freeze({debug:10,info:20,warn:30,error:40,silent:50});
 /**
- * LOG_MODE - Log level threshold LOG_LEVEL[debug|info|warn|error|silent]
- * @type {number}
- */const LOG_MODE=LOG_LEVEL.debug;
+   * LOG_MODE - Log level threshold LOG_LEVEL[debug|info|warn|error|silent]
+   * @type {number}
+   */const LOG_MODE=LOG_LEVEL.debug;
 /**
- * Static methods for leveled console logging.
- * @class
- */class Logger{
+   * Static methods for leveled console logging.
+   * @class
+   */class Logger{
 /** Returns elapsed time since SCRIPT_START. */
 static get time(){const t=Date.now()-SCRIPT_START;return t>0?` ${t} msec`:""}
 /** logs a debug-level message. */static debug(...args){if(LOG_MODE>LOG_LEVEL.debug)return;console.log("%c[DEBUG][TornPDA.Racing+]: ","color:#6aa84f;font-weight:600",...args,this.time)}
@@ -34,116 +36,116 @@ static get time(){const t=Date.now()-SCRIPT_START;return t>0?` ${t} msec`:""}
 /** Logs a warning-level message. */static warn(...args){if(LOG_MODE>LOG_LEVEL.warn)return;console.log("%c[WARN][TornPDA.Racing+]: ","color:#e69138;font-weight:600",...args)}
 /** Logs an error-level message. */static error(...args){if(LOG_MODE>LOG_LEVEL.error)return;console.log("%c[ERROR][TornPDA.Racing+]: ","color:#d93025;font-weight:600",...args)}}
 /**
- * Date.unix
- * Description: Returns the current Unix timestamp (seconds since epoch).
- * @returns {number} Current Unix timestamp (seconds)
- */if(typeof Date.unix!=="function"){Object.defineProperty(Date,"unix",{value:()=>Math.floor(Date.now()/1e3),writable:true,configurable:true,enumerable:false})}
+   * Date.unix
+   * Description: Returns the current Unix timestamp (seconds since epoch).
+   * @returns {number} Current Unix timestamp (seconds)
+   */if(typeof Date.unix!=="function"){Object.defineProperty(Date,"unix",{value:()=>Math.floor(Date.now()/1e3),writable:true,configurable:true,enumerable:false})}
 /**
- * Number.formatDate
- * Description: Formats a timestamp (ms since epoch) as "YYYY-MM-DD" in local time.
- * @param {number} ms - Timestamp in milliseconds since epoch.
- * @returns {string} Formatted date string ("YYYY-MM-DD")
- */if(typeof Number.formatDate!=="function"){Object.defineProperty(Number,"formatDate",{value:ms=>{const dt=new Date(ms);return`${String(dt.getFullYear())}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`},writable:true,configurable:true,enumerable:false})}
+   * Number.formatDate
+   * Description: Formats a timestamp (ms since epoch) as "YYYY-MM-DD" in local time.
+   * @param {number} ms - Timestamp in milliseconds since epoch.
+   * @returns {string} Formatted date string ("YYYY-MM-DD")
+   */if(typeof Number.formatDate!=="function"){Object.defineProperty(Number,"formatDate",{value:ms=>{const dt=new Date(ms);return`${String(dt.getFullYear())}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`},writable:true,configurable:true,enumerable:false})}
 /**
- * Number.formatTime
- * Description: Formats a duration (ms) as "MM:SS.mmm".
- * @param {number} ms - Duration in milliseconds.
- * @returns {string} Formatted time string ("MM:SS.mmm")
- */if(typeof Number.formatTime!=="function"){Object.defineProperty(Number,"formatTime",{value:ms=>{const minutes=Math.floor(ms%(1e3*60*60)/(1e3*60));const seconds=Math.floor(ms%(1e3*60)/1e3);const millis=Math.floor(ms%1e3);return`${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}.${String(millis).padStart(3,"0")}`},writable:true,configurable:true,enumerable:false})}
+   * Number.formatTime
+   * Description: Formats a duration (ms) as "MM:SS.mmm".
+   * @param {number} ms - Duration in milliseconds.
+   * @returns {string} Formatted time string ("MM:SS.mmm")
+   */if(typeof Number.formatTime!=="function"){Object.defineProperty(Number,"formatTime",{value:ms=>{const minutes=Math.floor(ms%(1e3*60*60)/(1e3*60));const seconds=Math.floor(ms%(1e3*60)/1e3);const millis=Math.floor(ms%1e3);return`${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}.${String(millis).padStart(3,"0")}`},writable:true,configurable:true,enumerable:false})}
 /**
- * Number.isValid
- * Description: Returns true for number primitives that are finite (excludes NaN and ±Infinity).
- * @param {unknown} n - Value to test.
- * @returns {boolean} True if n is a finite number primitive.
- */if(typeof Number.isValid!=="function"){Object.defineProperty(Number,"isValid",{value:n=>typeof n==="number"&&Number.isFinite(n),writable:true,configurable:true,enumerable:false})}
+   * Number.isValid
+   * Description: Returns true for number primitives that are finite (excludes NaN and ±Infinity).
+   * @param {unknown} n - Value to test.
+   * @returns {boolean} True if n is a finite number primitive.
+   */if(typeof Number.isValid!=="function"){Object.defineProperty(Number,"isValid",{value:n=>typeof n==="number"&&Number.isFinite(n),writable:true,configurable:true,enumerable:false})}
 /**
- * Error.prototype.toString
- * Description: Returns a human-readable error string (name + message).
- * @returns {string}
- */if(typeof Error.prototype.toString!=="function"){Object.defineProperty(Error.prototype,"toString",{value:function toString(){const name=this&&this.name?String(this.name):"Error";const msg=this&&this.message?String(this.message):"";return msg?`${name}: ${msg}`:name},writable:true,configurable:true,enumerable:false})}
+   * Error.prototype.toString
+   * Description: Returns a human-readable error string (name + message).
+   * @returns {string}
+   */if(typeof Error.prototype.toString!=="function"){Object.defineProperty(Error.prototype,"toString",{value:function toString(){const name=this&&this.name?String(this.name):"Error";const msg=this&&this.message?String(this.message):"";return msg?`${name}: ${msg}`:name},writable:true,configurable:true,enumerable:false})}
 /**
- * Store Wrapper classs for localStorage.
- * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
- * @class
- */class Store{
+   * Store Wrapper classs for localStorage.
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
+   * @class
+   */class Store{
 /**
-   * Get a value by key from localStorage
-   * @param {string} key - Storage key
-   * @returns {string|null} Stored value or null
-   */
+     * Get a value by key from localStorage
+     * @param {string} key - Storage key
+     * @returns {string|null} Stored value or null
+     */
 static getValue=key=>localStorage.getItem(key);
 /**
-   * Set a value by key in localStorage
-   * @param {string} key - Storage key
-   * @param {string} value - Value to store
-   */
+     * Set a value by key in localStorage
+     * @param {string} key - Storage key
+     * @param {string} value - Value to store
+     */
 static setValue=(key,value)=>localStorage.setItem(key,value);
 /**
-   * Delete a value by key from localStorage
-   * @param {string} key - Storage key
-   */
+     * Delete a value by key from localStorage
+     * @param {string} key - Storage key
+     */
 static deleteValue=key=>localStorage.removeItem(key);
 /**
-   * Clears all keys out of the storage.
-   */
+     * Clears all keys out of the storage.
+     */
 static deleteAll=()=>localStorage.clear();
 /**
-   * List all stored values (for debugging)
-   * @returns {Array<string>} Array of stored values
-   */
+     * List all stored values (for debugging)
+     * @returns {Array<string>} Array of stored values
+     */
 static listValues=()=>Object.values(localStorage);
 /**
-   * Map from toggle/control ids to persistent localStorage keys.
-   */
+     * Map from toggle/control ids to persistent localStorage keys.
+     */
 static keys=Object.freeze({rplus_apikey:"RACINGPLUS_APIKEY",rplus_units:"RACINGPLUS_DISPLAYUNITS",rplus_addlinks:"RACINGPLUS_ADDPROFILELINKS",rplus_showskill:"RACINGPLUS_SHOWRACINGSKILL",rplus_showspeed:"RACINGPLUS_SHOWCARSPEED",rplus_showracelink:"RACINGPLUS_SHOWRACELINK",rplus_showexportlink:"RACINGPLUS_SHOWEXPORTLINK",rplus_showwinrate:"RACINGPLUS_SHOWCARWINRATE",rplus_showparts:"RACINGPLUS_SHOWCARPARTS",rplus_driver:"RACINGPLUS_DRIVER"})}
 /**
- * Distance class - Stores distance and formats value based on preferred units
- * @class
- */class Distance{
+   * Distance class - Stores distance and formats value based on preferred units
+   * @class
+   */class Distance{
 /**
-   * Creates a Distance instance
-   * @param {object} [args={}] - Constructor arguments
-   * @param {number} [args.miles=null] - Distance in miles
-   * @param {number} [args.kilometers=null] - Distance in kilometers
-   * @throws {TypeError} If miles is not a finite number
-   */
+     * Creates a Distance instance
+     * @param {object} [args={}] - Constructor arguments
+     * @param {number} [args.miles=null] - Distance in miles
+     * @param {number} [args.kilometers=null] - Distance in kilometers
+     * @throws {TypeError} If miles is not a finite number
+     */
 constructor(args={}){const{miles:miles,kilometers:kilometers}=args;if(miles==null&&kilometers==null){throw new TypeError("One of miles or kilometers must be specified.")}const mi=miles??(kilometers!=null?kilometers/KMS_PER_MI:0);if(!Number.isValid(mi)){throw new TypeError("Miles or Kilometers must be a number.")}this._mi=mi;this._units=kilometers!=null?"km":"mi"}
 /**
-   * Get distance in miles
-   * @returns {number} Distance in miles
-   */get mi(){return this._mi}
+     * Get distance in miles
+     * @returns {number} Distance in miles
+     */get mi(){return this._mi}
 /**
-   * Get distance in kilometers
-   * @returns {number} Distance in kilometers
-   */get km(){return this._mi*KMS_PER_MI}
+     * Get distance in kilometers
+     * @returns {number} Distance in kilometers
+     */get km(){return this._mi*KMS_PER_MI}
 /**
-   * Format distance as string according to chosen units
-   * @returns {string} Formatted distance with units
-   */toString(){const val=this._units==="km"?this.km:this.mi;return`${val.toFixed(2)} ${this._units}`}}
+     * Format distance as string according to chosen units
+     * @returns {string} Formatted distance with units
+     */toString(){const val=this._units==="km"?this.km:this.mi;return`${val.toFixed(2)} ${this._units}`}}
 /**
- * Speed class - Computes speed from Distance and elapsed time
- * @class
- */class Speed{
+   * Speed class - Computes speed from Distance and elapsed time
+   * @class
+   */class Speed{
 /**
-   * Creates a Speed instance
-   * @param {object} args - Constructor arguments
-   * @param {Distance} args.distance - Distance traveled
-   * @param {number} args.seconds - Elapsed time in seconds (> 0)
-   * @throws {TypeError} If distance is not a Distance instance or seconds invalid
-   */
+     * Creates a Speed instance
+     * @param {object} args - Constructor arguments
+     * @param {Distance} args.distance - Distance traveled
+     * @param {number} args.seconds - Elapsed time in seconds (> 0)
+     * @throws {TypeError} If distance is not a Distance instance or seconds invalid
+     */
 constructor(args={}){const{distance:distance,seconds:seconds}=args;if(!(distance instanceof Distance)){throw new TypeError("distance must be a Distance instance.")}if(!Number.isInteger(seconds)||seconds<=0){throw new TypeError("seconds must be an integer > 0.")}this._mph=distance.mi/(seconds/SECONDS_PER_HOUR);this._units=Store.getValue(Store.keys.rplus_units)??"mph"}
 /**
-   * Get speed in miles per hour
-   * @returns {number} Speed in mph
-   */get mph(){return this._mph}
+     * Get speed in miles per hour
+     * @returns {number} Speed in mph
+     */get mph(){return this._mph}
 /**
-   * Get speed in kilometers per hour
-   * @returns {number} Speed in kph
-   */get kph(){return this._mph*KMS_PER_MI}
+     * Get speed in kilometers per hour
+     * @returns {number} Speed in kph
+     */get kph(){return this._mph*KMS_PER_MI}
 /**
-   * Format speed according to preferred units
-   * @returns {string} Formatted speed with units
-   */toString(){const val=this._units==="kph"?this.kph:this.mph;return`${val.toFixed(2)} ${this._units}`}}
+     * Format speed according to preferred units
+     * @returns {string} Formatted speed with units
+     */toString(){const val=this._units==="kph"?this.kph:this.mph;return`${val.toFixed(2)} ${this._units}`}}
 // Colours for car parts.
 const RACE_COLOURS=["#5D9CEC","#48CFAD","#FFCE54","#ED5565","#EC87C0","#AC92EC","#FC6E51","#A0D468","#4FC1E9"];
 // Tracks metadata with Distance instances
@@ -154,45 +156,44 @@ const PART_CATEGORIES={Aerodynamics:["Spoiler","Engine Cooling","Brake Cooling",
 /** @type {TornAPI} */let torn_api;
 /** @type {TornDriver} */let this_driver;
 /** @type {TornRace} */let this_race;
-/** @type {MutationObserver} */let page_observer;
 /**
- * Comment shown in Torn API recent usage.
- */const API_COMMENT="RacingPlus";
+   * Comment shown in Torn API recent usage.
+   */const API_COMMENT="RacingPlus";
 /**
- * List of valid Torn API root strings.
- * @readonly
- * @type {readonly ["user","faction","market","racing","forum","property","key","torn"]}
- */const API_VALID_ROOTS=Object.freeze(/** @type {const} */["user","faction","market","racing","forum","property","key","torn"]);
+   * List of valid Torn API root strings.
+   * @readonly
+   * @type {readonly ["user","faction","market","racing","forum","property","key","torn"]}
+   */const API_VALID_ROOTS=Object.freeze(/** @type {const} */["user","faction","market","racing","forum","property","key","torn"]);
 /**
- * Union type of valid roots, derived from API_VALID_ROOTS.
- * @typedef {typeof API_VALID_ROOTS[number]} ApiRoot
- */
-/**
- * TornAPI access level enumeration
- * @readonly
- * @enum {number}
- */const ACCESS_LEVEL=Object.freeze({Public:0,Minimal:1,Limited:2,Full:3});
-/**
- * TornAPI class - Wrapper for authenticated Torn API calls with caching and timeouts
- * @see https://www.torn.com/swagger/index.html
- * @class
- */class TornAPI{
-/**
-   * Creates a TornAPI instance
-   * @param {string|null} key
+   * Union type of valid roots, derived from API_VALID_ROOTS.
+   * @typedef {typeof API_VALID_ROOTS[number]} ApiRoot
    */
+/**
+   * TornAPI access level enumeration
+   * @readonly
+   * @enum {number}
+   */const ACCESS_LEVEL=Object.freeze({Public:0,Minimal:1,Limited:2,Full:3});
+/**
+   * TornAPI class - Wrapper for authenticated Torn API calls with caching and timeouts
+   * @see https://www.torn.com/swagger/index.html
+   * @class
+   */class TornAPI{
+/**
+     * Creates a TornAPI instance
+     * @param {string|null} key
+     */
 constructor(key=null){
 /** @type {Map<string, {data:any, timestamp:number}>} */
 this.cache=new Map;
 /** @type {string|null} */this.key=key}
 /**
-   * Makes a Torn API request (with caching) after validating the path and root.
-   * @param {ApiRoot} root - API root
-   * @param {string} path - API path (e.g., 'key/info' or '/user/stats')
-   * @param {object|string} [args={}] - Query parameters object or a prebuilt query string
-   * @returns {Promise<object|null>} API response data if available
-   * @throws {Error} If path/root inputs are invalid
-   */async request(root,path,params={}){
+     * Makes a Torn API request (with caching) after validating the path and root.
+     * @param {ApiRoot} root - API root
+     * @param {string} path - API path (e.g., 'key/info' or '/user/stats')
+     * @param {object|string} [args={}] - Query parameters object or a prebuilt query string
+     * @returns {Promise<object|null>} API response data if available
+     * @throws {Error} If path/root inputs are invalid
+     */async request(root,path,params={}){
 // validate root
 if(!API_VALID_ROOTS.includes(root)){throw new Error(`Invalid API root. Must be one of: ${API_VALID_ROOTS.join(", ")}`)}
 // validate path
@@ -214,44 +215,44 @@ const results=await response.json().catch(err=>{throw new Error(`Invalid JSON re
 // cache new copy, then return results
 this.cache.set(queryURL,{data:results,timestamp:Date.now()});return results}catch(err){Logger.warn(`API request failed: ${err}`);throw err}finally{clearTimeout(timer)}}
 /**
-   * Validates a Torn API key by calling /key/info
-   * @param {string} key - API key to validate
-   * @returns {Promise<boolean>} True if valid with sufficient access
-   * @throws {Error}
-   */async validate(key){if(!key||typeof key!=="string"||key.length!==API_KEY_LENGTH){throw new Error("Invalid API key: local validation.")}
+     * Validates a Torn API key by calling /key/info
+     * @param {string} key - API key to validate
+     * @returns {Promise<boolean>} True if valid with sufficient access
+     * @throws {Error}
+     */async validate(key){if(!key||typeof key!=="string"||key.length!==API_KEY_LENGTH){throw new Error("Invalid API key: local validation.")}
 // use candidate key for probe call, store current key
 const prev_key=this.key;this.key=key;const data=await this.request("key","info",{timestamp:`${Date.unix()}`});if(data?.info?.access&&Number(data.info.access.level)>=ACCESS_LEVEL.Minimal){Logger.debug("Valid API key.");return true}
 // invalid key, reset to previous key
 this.key=prev_key;throw new Error("Invalid API key: unexpected response.")}}
 /**
- * TornDriver - Stores skill and per-track best records for current user
- * @class
- */class TornDriver{
+   * TornDriver - Stores skill and per-track best records for current user
+   * @class
+   */class TornDriver{
 /**
-   * Creates a TornDriver instance for a driver id.
-   * @param {string|number} driver_id - Driver user ID
-   */
+     * Creates a TornDriver instance for a driver id.
+     * @param {string|number} driver_id - Driver user ID
+     */
 constructor(driver_id){this.id=driver_id;this.skill=0;this.records={};this.cars={}}
 /**
-   * Load driver data from localStorage
-   */load(){const raw=Store.getValue(Store.keys.rplus_driver);if(raw){try{const driver=JSON.parse(raw);if(driver&&driver.id===this.id){this.skill=Number(driver.skill)||0;this.records=driver.records||{};this.cars=driver.cars||{}}}catch(err){
+     * Load driver data from localStorage
+     */load(){const raw=Store.getValue(Store.keys.rplus_driver);if(raw){try{const driver=JSON.parse(raw);if(driver&&driver.id===this.id){this.skill=Number(driver.skill)||0;this.records=driver.records||{};this.cars=driver.cars||{}}}catch(err){
 // Log parse errors in debug mode
 Logger.warn(`Failed to load driver cache.\n${err}`)}}}
 /**
-   * Save driver data to localStorage
-   */save(){const payload=JSON.stringify({id:this.id,skill:this.skill,records:this.records,cars:this.cars});Store.setValue(Store.keys.rplus_driver,payload)}
+     * Save driver data to localStorage
+     */save(){const payload=JSON.stringify({id:this.id,skill:this.skill,records:this.records,cars:this.cars});Store.setValue(Store.keys.rplus_driver,payload)}
 /**
-   * Update stored skill if newer value is higher (skill increases only)
-   * @param {number|string} skill - New skill value
-   */updateSkill(skill){const v=Number(skill);if(Number.isValid(v)){this.skill=Math.max(this.skill,v);this.save()}}
+     * Update stored skill if newer value is higher (skill increases only)
+     * @param {number|string} skill - New skill value
+     */updateSkill(skill){const v=Number(skill);if(Number.isValid(v)){this.skill=Math.max(this.skill,v);this.save()}}
 /**
-   * Fetch racing records from API and store best lap per car/track
-   * @returns {Promise<void>}
-   */async updateRecords(){try{if(!torn_api||!torn_api.key)throw new Error("TornAPI not initialized.");const results=await torn_api.request("user","racingrecords",{timestamp:`${Date.unix()}`});if(Array.isArray(results?.racingrecords)){results.racingrecords.forEach(({track:track,records:records})=>{if(!track?.id||!Array.isArray(records))return;this.records[track.id]=records.reduce((acc,rec)=>{if(!acc[rec.car_id]){acc[rec.car_id]={name:rec.car_name,lap_time:rec.lap_time,count:1}}else{acc[rec.car_id].lap_time=Math.min(acc[rec.car_id].lap_time,rec.lap_time);acc[rec.car_id].count+=1}return acc},{})});this.save()}else{Logger.debug("Racing records response missing 'racingrecords' array.")}}catch(err){Logger.warn(`Racing records fetch failed.\n${err}`)}}
+     * Fetch racing records from API and store best lap per car/track
+     * @returns {Promise<void>}
+     */async updateRecords(){try{if(!torn_api||!torn_api.key)throw new Error("TornAPI not initialized.");const results=await torn_api.request("user","racingrecords",{timestamp:`${Date.unix()}`});if(Array.isArray(results?.racingrecords)){results.racingrecords.forEach(({track:track,records:records})=>{if(!track?.id||!Array.isArray(records))return;this.records[track.id]=records.reduce((acc,rec)=>{if(!acc[rec.car_id]){acc[rec.car_id]={name:rec.car_name,lap_time:rec.lap_time,count:1}}else{acc[rec.car_id].lap_time=Math.min(acc[rec.car_id].lap_time,rec.lap_time);acc[rec.car_id].count+=1}return acc},{})});this.save()}else{Logger.debug("Racing records response missing 'racingrecords' array.")}}catch(err){Logger.warn(`Racing records fetch failed.\n${err}`)}}
 /**
-   * Fetch and store enlisted cars with win rate calculation
-   * @returns {Promise<void>}
-   */async updateCars(){try{if(!torn_api||!torn_api.key)throw new Error("TornAPI not initialized.");const results=await torn_api.request("user","enlistedcars",{timestamp:`${Date.unix()}`});if(Array.isArray(results?.enlistedcars)){this.cars=results.enlistedcars.filter(car=>!car.is_removed).reduce((acc,car)=>{acc[car.car_item_id]={name:car.car_item_name,top_speed:car.top_speed,acceleration:car.acceleration,braking:car.braking,handling:car.handling,safety:car.safety,dirt:car.dirt,tarmac:car.tarmac,class:car.car_class,worth:car.worth,points_spent:car.points_spent,races_entered:car.races_entered,races_won:car.races_won,win_rate:car.races_entered>0?car.races_won/car.races_entered:0};return acc},{});this.save()}else{Logger.debug("Enlisted cars response missing 'enlistedcars' array.")}}catch(err){Logger.warn(`Enlisted cars fetch failed.\n${err}`)}}}(async w=>{Logger.info(`Application loading... ${new Date(SCRIPT_START).toISOString()}`);
+     * Fetch and store enlisted cars with win rate calculation
+     * @returns {Promise<void>}
+     */async updateCars(){try{if(!torn_api||!torn_api.key)throw new Error("TornAPI not initialized.");const results=await torn_api.request("user","enlistedcars",{timestamp:`${Date.unix()}`});if(Array.isArray(results?.enlistedcars)){this.cars=results.enlistedcars.filter(car=>!car.is_removed).reduce((acc,car)=>{acc[car.car_item_id]={name:car.car_item_name,top_speed:car.top_speed,acceleration:car.acceleration,braking:car.braking,handling:car.handling,safety:car.safety,dirt:car.dirt,tarmac:car.tarmac,class:car.car_class,worth:car.worth,points_spent:car.points_spent,races_entered:car.races_entered,races_won:car.races_won,win_rate:car.races_entered>0?car.races_won/car.races_entered:0};return acc},{});this.save()}else{Logger.debug("Enlisted cars response missing 'enlistedcars' array.")}}catch(err){Logger.warn(`Enlisted cars fetch failed.\n${err}`)}}}
 // TornPDA Integration Stub
 const PDA_KEY="###PDA-APIKEY###";
 // IS_PDA is a boolean indicating whether script is running in TornPDA.
@@ -304,13 +305,15 @@ apiSave.addEventListener("click",async ev=>{ev.preventDefault();const candidate=
 // Reset button handler: clear stored key and make input editable.
 apiReset.addEventListener("click",ev=>{ev.preventDefault();if(!apiInput)return;apiInput.value="";apiInput.disabled=false;apiInput.readOnly=false;apiInput.classList.remove("valid","invalid");torn_api.deleteKey();apiSave?.classList.toggle("show",true);apiReset.classList.toggle("show",false);if(apiStatus){apiStatus.textContent="";apiStatus.classList.toggle("show",false)}})}
 // Initialize toggles from storage & persist on click.
-w.document.querySelectorAll(".racing-plus-settings input[type=checkbox]").forEach(el=>{const key=Store.keys[el.id];if(!key)return;el.checked=Store.getValue(key)==="1";el.addEventListener("click",ev=>{const t=/** @type {HTMLInputElement} */ev.currentTarget;Store.setValue(key,t.checked?"1":"0");Logger.debug(`${el.id} saved ${t.checked?"on":"off"}.`)})});Logger.debug("Settings panel initialized.")};const addRacingPlusButton=async()=>{Logger.debug("Adding settings button...");if(w.document.querySelector("#racing-plus-button"))return;const links_container=await defer(SELECTORS.links_container);const city_button=links_container.querySelector('[href="city.php"]');if(!city_button)return;const city_label=city_button.querySelector(`#${city_button.getAttribute("aria-labelledby")}`);const city_icon_wrap=city_button.querySelector(`:not([id])`);if(!city_label||!city_icon_wrap)return;const rplus_button=newElement("a",{role:"button",ariaLabelledBy:"racing-plus-link-label",id:"racing-plus-button",className:city_button.className,children:[newElement("span",{id:"racing-plus-button-icon",className:city_icon_wrap.className,innerHTML:'<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 15 14"><path d="m14.02,11.5c.65-1.17.99-2.48.99-3.82,0-2.03-.78-3.98-2.2-5.44-2.83-2.93-7.49-3.01-10.42-.18-.06.06-.12.12-.18.18C.78,3.7,0,5.66,0,7.69c0,1.36.35,2.69,1.02,3.88.36.64.82,1.22,1.35,1.73l.73.7,1.37-1.5-.73-.7c-.24-.23-.45-.47-.64-.74l1.22-.72-.64-1.14-1.22.72c-.6-1.42-.6-3.03,0-4.45l1.22.72.64-1.14-1.22-.72c.89-1.23,2.25-2.04,3.76-2.23v1.44h1.29v-1.44c1.51.19,2.87.99,3.76,2.23l-1.22.72.65,1.14,1.22-.72c.68,1.63.58,3.48-.28,5.02-.06.11-.12.21-.19.31l-1.14-.88.48,3.5,3.41-.49-1.15-.89c.12-.18.23-.35.33-.53Zm-6.51-4.97c-.64-.02-1.17.49-1.18,1.13s.49,1.17,1.13,1.18,1.17-.49,1.18-1.13c0,0,0-.01,0-.02l1.95-1.88-2.56.85c-.16-.09-.34-.13-.52-.13h0Z"/></svg>'}),newElement("span",{id:"racing-plus-button-label",className:city_label.className,innerText:"Racing+"})]});city_button.insertAdjacentElement("beforeBegin",rplus_button);rplus_button.addEventListener("click",ev=>{ev.preventDefault();Logger.debug("'rplus_button' clicked.");w.document.querySelector(".racing-plus-panel")?.classList.toggle("show")});Logger.debug("Settings button added.")};const fixTopBanner=async()=>{Logger.debug("Fixing top banner...");const banner=await defer(SELECTORS.main_banner);const leftBanner=w.document.createElement("div");leftBanner.className="left-banner";const rightBanner=w.document.createElement("div");rightBanner.className="right-banner";const elements=Array.from(banner.children);elements.forEach(el=>{if(el.classList.contains("skill-desc")||el.classList.contains("skill")||el.classList.contains("lastgain")){if(el.classList.contains("skill")){
+w.document.querySelectorAll(".racing-plus-settings input[type=checkbox]").forEach(el=>{const key=Store.keys[el.id];if(!key)return;el.checked=Store.getValue(key)==="1";el.addEventListener("click",ev=>{const t=/** @type {HTMLInputElement} */ev.currentTarget;Store.setValue(key,t.checked?"1":"0");Logger.debug(`${el.id} saved ${t.checked?"on":"off"}.`)})});Logger.debug("Settings panel initialized.")};const addRacingPlusButton=async links_container=>{Logger.debug("Adding settings button...");if(w.document.querySelector("#racing-plus-button"))return;const city_button=links_container.querySelector('[href="city.php"]');if(!city_button)return;const city_label=city_button.querySelector(`#${city_button.getAttribute("aria-labelledby")}`);const city_icon_wrap=city_button.querySelector(`:not([id])`);if(!city_label||!city_icon_wrap)return;const rplus_button=newElement("a",{role:"button",ariaLabelledBy:"racing-plus-link-label",id:"racing-plus-button",className:city_button.className,children:[newElement("span",{id:"racing-plus-button-icon",className:city_icon_wrap.className,innerHTML:'<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 15 14"><path d="m14.02,11.5c.65-1.17.99-2.48.99-3.82,0-2.03-.78-3.98-2.2-5.44-2.83-2.93-7.49-3.01-10.42-.18-.06.06-.12.12-.18.18C.78,3.7,0,5.66,0,7.69c0,1.36.35,2.69,1.02,3.88.36.64.82,1.22,1.35,1.73l.73.7,1.37-1.5-.73-.7c-.24-.23-.45-.47-.64-.74l1.22-.72-.64-1.14-1.22.72c-.6-1.42-.6-3.03,0-4.45l1.22.72.64-1.14-1.22-.72c.89-1.23,2.25-2.04,3.76-2.23v1.44h1.29v-1.44c1.51.19,2.87.99,3.76,2.23l-1.22.72.65,1.14,1.22-.72c.68,1.63.58,3.48-.28,5.02-.06.11-.12.21-.19.31l-1.14-.88.48,3.5,3.41-.49-1.15-.89c.12-.18.23-.35.33-.53Zm-6.51-4.97c-.64-.02-1.17.49-1.18,1.13s.49,1.17,1.13,1.18,1.17-.49,1.18-1.13c0,0,0-.01,0-.02l1.95-1.88-2.56.85c-.16-.09-.34-.13-.52-.13h0Z"/></svg>'}),newElement("span",{id:"racing-plus-button-label",className:city_label.className,innerText:"Racing+"})]});city_button.insertAdjacentElement("beforeBegin",rplus_button);rplus_button.addEventListener("click",ev=>{ev.preventDefault();Logger.debug("'rplus_button' clicked.");w.document.querySelector(".racing-plus-panel")?.classList.toggle("show")});Logger.debug("Settings button added.")};const fixTopBanner=async()=>{Logger.debug("Fixing top banner...");const banner=await defer(SELECTORS.main_banner);const leftBanner=w.document.createElement("div");leftBanner.className="left-banner";const rightBanner=w.document.createElement("div");rightBanner.className="right-banner";const elements=Array.from(banner.children);elements.forEach(el=>{if(el.classList.contains("skill-desc")||el.classList.contains("skill")||el.classList.contains("lastgain")){if(el.classList.contains("skill")){
 // Update driver skill snapshot (persist only if higher)
 this_driver.updateSkill(el.textContent);el.textContent=String(this_driver.skill)}leftBanner.appendChild(el)}else if(el.classList.contains("class-desc")||el.classList.contains("class-letter")){rightBanner.appendChild(el)}});banner.innerHTML="";banner.appendChild(leftBanner);banner.appendChild(rightBanner)};
 /**
    * Fixes active tab highlighting for racing categories
+   * @param {MouseEvent} event
+   * @param {} tabs
    * @returns {Promise<void>}
-   */const fixActiveTabHighlighting=async()=>{Logger.debug("Fixing active tab highlighting...");const categories=await defer(SELECTORS.main_categories);categories.querySelectorAll(":not(.clear)").forEach(c=>c.classList.toggle("active",c.querySelector(".official-events")!==null))};
+   */const fixActiveTabHighlighting=async(event,tabs)=>{Logger.debug("Fixing active tab highlighting...");tabs.querySelectorAll(":not(.clear)").forEach(c=>{c.classList.toggle("active",c.className==event.target.className)})};
 /**
    * start - Main entry point for the application.
    */const start=async()=>{try{Logger.info(`Application loaded. Starting...`);
@@ -327,16 +330,34 @@ let scriptData=Store.getValue(Store.keys.rplus_driver);if(!scriptData){
 // Create new driver - '#torn-user' a hidden input with JSON { id, ... }
 scriptData=await defer("#torn-user").value}this_driver=new TornDriver(JSON.parse(scriptData).id);this_driver.load()}catch(err){Logger.error(`Failed to load driver data. ${err}`)}
 // Add the Racing+ panel and button to the DOM
-const results=await Promise.allSettled([addRacingPlusPanel(),addRacingPlusButton(),fixTopBanner(),fixActiveTabHighlighting()]);
-// Ensure all results are fulfilled else log rejected reasons then exit
-if(!results.every(r=>r.status==="fulfilled")){results.filter(r=>r.status==="rejected").forEach(r=>Logger.error(`${r.reason}`));return}
+await addRacingPlusPanel();
+// Add Racing+ settings button
+const links_container=await defer(SELECTORS.links_container);await addRacingPlusButton(links_container);
+// Set up observer to re-add Racing+ settings button if it gets removed
+const button_observer=new MutationObserver(async mutations=>{await addRacingPlusButton(links_container)});button_observer.observe(links_container,{childList:true,subtree:true});
 // Initialize the settings panel
 await initRacingPlusPanel(torn_api.key);
+// Fix top banner (skill, class)
+await fixTopBanner();
+// Fix tabs
+const tabs_container=await defer(SELECTORS.tabs_container);const official_tab=tabs_container.querySelector('a[tab-value="race"]');const custom_tab=tabs_container.querySelector('a[tab-value="customrace"]');
+// Official Events tab click event handler.
+official_tab.addEventListener("click",async ev=>{await fixActiveTabHighlighting(ev,tabs_container)});
+// Custom Events tab click event handler.
+custom_tab.addEventListener("click",async ev=>{await fixActiveTabHighlighting(ev,tabs_container)});
 // Update driver track records and available cars
 await this_driver.updateRecords();await this_driver.updateCars();
 // ...
 // ...
-Logger.info(`Application started.`)}catch(err){Logger.error(err)}};
+
+const content_container=await defer(SELECTORS.content_container);
+// Setup content container observer
+const page_observer=new MutationObserver(async mutations=>{});page_observer.observe(content_container,{characterData:true,childList:true,subtree:true});
+/**
+       * Safely disconnect all mutation observers.
+       * @returns {void}
+       */const disconnectObservers=()=>{try{button_observer?.disconnect();page_observer?.disconnect()}catch(err){Logger.error(err)}};
+/** Safely disconnect the page MutationObserver */w.addEventListener("pagehide",disconnectObservers,{once:true});w.addEventListener("beforeunload",disconnectObservers,{once:true});Logger.info(`Application started.`)}catch(err){Logger.error(err)}};
 // Start application
 await start()})(window);
 // End of file: RacingPlus.user.js
