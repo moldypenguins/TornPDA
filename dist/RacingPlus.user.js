@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.18-alpha
+// @version      1.0.19-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
@@ -13,7 +13,7 @@
 // @run-at       document-start
 // ==/UserScript==
 "use strict";
-const SCRIPT_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const MS_PER_HOUR=36e5;const SECONDS_PER_HOUR=3600;const KMS_PER_MI=1.609344;const API_FETCH_TIMEOUT=10*MS_PER_SECOND;const DEFERRAL_TIMEOUT=15*MS_PER_SECOND;const SPEED_INTERVAL=MS_PER_SECOND;const CACHE_TTL=MS_PER_HOUR;const API_KEY_LENGTH=16;const SELECTORS=Object.freeze({links_container:"#racing-leaderboard-header-root div[class^='linksContainer']",main_container:"#racingMainContainer",additional_container:"#racingAdditionalContainer",drivers_title:"#racingupdates .drivers-list div[class^='title']",drivers_leaderboard:"#racingupdates .drivers-list #leaderBoard"});
+const SCRIPT_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const MS_PER_HOUR=36e5;const SECONDS_PER_HOUR=3600;const KMS_PER_MI=1.609344;const API_FETCH_TIMEOUT=10*MS_PER_SECOND;const DEFERRAL_TIMEOUT=15*MS_PER_SECOND;const SPEED_INTERVAL=MS_PER_SECOND;const CACHE_TTL=MS_PER_HOUR;const API_KEY_LENGTH=16;const SELECTORS=Object.freeze({links_container:"#racing-leaderboard-header-root div[class^='linksContainer']",main_container:"#racingMainContainer",main_categories:"#racingMainContainer .header-wrap ul.categories",car_selected:"#racingupdates .car-selected",drivers_list:"#racingupdates .drivers-list",drivers_list_title:"#racingupdates .drivers-list div[class^='title']",drivers_list_leaderboard:"#racingupdates .drivers-list #leaderBoard"});
 /**
  * LOG_LEVEL - Log level enumeration
  * @readonly
@@ -262,26 +262,13 @@ const IS_PDA=!PDA_KEY.includes("###")&&typeof w.flutter_inappwebview!=="undefine
    * @returns {Promise<Element>} Resolved element
    */const defer=selectors=>new Promise((resolve,reject)=>{const found=w.document.querySelector(selectors);if(found)return resolve(found);let obs;const timer=setTimeout(()=>{cleanup();reject(new Error(`deferral timed out: '${selectors}'`))},DEFERRAL_TIMEOUT);const cleanup=()=>{clearTimeout(timer);obs?.disconnect()};obs=new MutationObserver(()=>{const el=w.document.querySelector(selectors);if(el){cleanup();resolve(el)}});obs.observe(w.document.documentElement||w.document,{childList:true,subtree:true})});
 /**
-   * @typedef {Object} DivOptions
-   * @description Named-arguments container for common <div> attributes and optional content.
-   * @property {string} [id] - Value for the div's `id` attribute.
-   * @property {string} [name] - Value for the div's `name` attribute.
-   * @property {string} [class] - Value for the div's `class` attribute.
-   * @property {string} [style] - Inline CSS for the div's `style` attribute.
-   * @property {string} [title] - Value for the div's `title` attribute.
-   * @property {string|Node|(string|Node)[]|null} [html=null] - Content to insert/append into the div as HTML/nodes.
-   * @property {string|null} [text=null] - Plain text to set as the div's textContent.
-   */
-/**
-   * Creates a div using DivOptions.
-   * @param {DivOptions} options - Div configuration (attributes + content).
-   * @returns {HTMLDivElement} The constructed div element.
-   */const createDiv=options=>{const el=w.document.createElement("div");if(options.id)el.id=options.id;if(options.name)el.setAttribute("name",options.name);if(options.className)el.className=options.className;if(options.style)el.setAttribute("style",options.style);if(options.title)el.title=options.title;
-/**
-     * Append a supported item to the container div.
-     * @param {string|Node|null|undefined} item - Item to append.
-     * @returns {void}
-     */const append=item=>{if(item==null)return;if(typeof item==="string")el.insertAdjacentHTML("beforeend",item);else if(item instanceof Node)el.appendChild(item)};const content=options.innerHTML;if(Array.isArray(content))content.forEach(append);else append(content);return el};
+   * Creates an element with supplied properties.
+   * @param {keyof HTMLElementTagNameMap} tag - The HTML tag to create.
+   * @param {Object} props - HTML element properties + optional 'children' array/element.
+   * @returns {HTMLElement} The constructed element.
+   */const newElement=(tag,props={})=>{const{children:children,...rest}=props;const el=Object.assign(w.document.createElement(tag),rest);if(children){
+// Convert single child to array and append all
+const childrenArray=Array.isArray(children)?children:[children];el.append(...childrenArray)}return el};
 /**
    * @typedef {Object} CheckboxOptions
    * @description Named-arguments container for common label and checkbox.
@@ -303,21 +290,7 @@ if(Store.getValue(Store.keys.rplus_showparts)==="1"){const dynRules=[];Object.en
    * Adds the Racing+ settings panel to the UI.
    * @param {Element} main_container - Main container element
    * @returns {Promise<void>}
-   */const addRacingPlusPanel=async main_container=>{Logger.debug("Adding settings panel...");
-// Check if panel already exists
-if(w.document.querySelector(".racing-plus-panel"))return;
-// create panel
-const rplus_panel=createDiv({class:"racing-plus-panel"});
-// append header to panel
-rplus_panel.appendChild(createDiv({class:"racing-plus-header",text:"Racing+"}));
-// create body
-const api_actions=createDiv({class:"nowrap",html:[IS_PDA?"":'<span class="racing-plus-apikey-actions">'+'<button type="button" class="racing-plus-apikey-save" aria-label="Save">'+'<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" version="1.1">'+'<path fill-rule="evenodd" clip-rule="evenodd" d="M7 2C4.23858 2 2 4.23858 2 7V17C2 19.7614 4.23858 22 7 22H17C19.7614 22 22 19.7614 22 17V8.82843C22 8.03278 21.6839 7.26972 21.1213 6.70711L17.2929 2.87868C16.7303 2.31607 15.9672 2 15.1716 2H7ZM7 4C6.44772 4 6 4.44772 6 5V7C6 7.55228 6.44772 8 7 8H15C15.5523 8 16 7.55228 16 7V5C16 4.44772 15.5523 4 15 4H7ZM12 17C13.6569 17 15 15.6569 15 14C15 12.3431 13.6569 11 12 11C10.3431 11 9 12.3431 9 14C9 15.6569 10.3431 17 12 17Z" />'+"</svg>"+"</button>"+'<button type="button" class="racing-plus-apikey-reset" aria-label="Reset">'+'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" version="1.1">'+'<path d="M790.2 590.67l105.978 32.29C847.364 783.876 697.86 901 521 901c-216.496 0-392-175.504-392-392s175.504-392 392-392c108.502 0 206.708 44.083 277.685 115.315l-76.64 76.64C670.99 257.13 599.997 225 521.5 225 366.032 225 240 351.032 240 506.5 240 661.968 366.032 788 521.5 788c126.148 0 232.916-82.978 268.7-197.33z"/>'+'<path d="M855.58 173.003L650.426 363.491l228.569 32.285z"/>'+"</svg>"+"</button>"+"</span>",`<input type="text" id="rplus-apikey" maxlength="${API_KEY_LENGTH}" />`]});const flex_div=createDiv({class:"flex-col",html:[api_actions,'<span class="racing-plus-apikey-status"></span>']});const rplus_main=createDiv({class:"racing-plus-main"});rplus_main.appendChild(createDiv({class:"racing-plus-settings",html:['<label for="rplus-apikey">API Key</label>',flex_div,createCheckbox({id:"rplus_addlinks",label:"Add profile links"}),createCheckbox({id:"rplus_showskill",label:"Show racing skill"}),createCheckbox({id:"rplus_showspeed",label:"Show current speed"}),createCheckbox({id:"rplus_showracelink",label:"Add race link"}),createCheckbox({id:"rplus_showexportlink",label:"Add export link"}),createCheckbox({id:"rplus_showwinrate",label:"Show car win rate"}),createCheckbox({id:"rplus_showparts",label:"Show available parts"})]}));
-// append body to panel
-rplus_panel.appendChild(rplus_main);
-// append footer to panel
-rplus_panel.appendChild(createDiv({class:"racing-plus-footer"}));
-// append panel to container
-main_container.insertAdjacentElement("beforeBegin",rplus_panel);Logger.debug("Settings panel added.")};
+   */const addRacingPlusPanel=async()=>{Logger.debug("Adding settings panel...");if(w.document.querySelector(".racing-plus-panel"))return;const rplus_panel=newElement("div",{className:"racing-plus-panel"});rplus_panel.appendChild(newElement("div",{className:"racing-plus-header",innerText:"Racing+"}));const api_actions=newElement("div",{className:"nowrap",children:[newElement("span",{className:"racing-plus-apikey-actions",children:[newElement("button",{type:"button",className:"racing-plus-apikey-save",ariaLabel:"Save",children:[newElement("svg",{xmlns:"http://www.w3.org/2000/svg",version:"1.1",viewBox:"2 2 20 20",innerHTML:'<path fill-rule="evenodd" clip-rule="evenodd" d="M7 2C4.23858 2 2 4.23858 2 7V17C2 19.7614 4.23858 22 7 22H17C19.7614 22 22 19.7614 22 17V8.82843C22 8.03278 21.6839 7.26972 21.1213 6.70711L17.2929 2.87868C16.7303 2.31607 15.9672 2 15.1716 2H7ZM7 4C6.44772 4 6 4.44772 6 5V7C6 7.55228 6.44772 8 7 8H15C15.5523 8 16 7.55228 16 7V5C16 4.44772 15.5523 4 15 4H7ZM12 17C13.6569 17 15 15.6569 15 14C15 12.3431 13.6569 11 12 11C10.3431 11 9 12.3431 9 14C9 15.6569 10.3431 17 12 17Z" />'})]}),newElement("button",{type:"button",className:"racing-plus-apikey-reset",ariaLabel:"Reset",children:[newElement("svg",{xmlns:"http://www.w3.org/2000/svg",version:"1.1",viewBox:"0 0 1024 1024",innerHTML:'<path d="M790.2 590.67l105.978 32.29C847.364 783.876 697.86 901 521 901c-216.496 0-392-175.504-392-392s175.504-392 392-392c108.502 0 206.708 44.083 277.685 115.315l-76.64 76.64C670.99 257.13 599.997 225 521.5 225 366.032 225 240 351.032 240 506.5 240 661.968 366.032 788 521.5 788c126.148 0 232.916-82.978 268.7-197.33z"/><path d="M855.58 173.003L650.426 363.491l228.569 32.285z"/>'})]})]}),newElement("input",{type:"text",id:"rplus-apikey",maxlength:"${API_KEY_LENGTH}"})]});const flex_div=newElement("div",{className:"flex-col",children:[api_actions,'<span class="racing-plus-apikey-status"></span>']});const rplus_main=newElement("div",{className:"racing-plus-main"});rplus_main.appendChild(newElement("div",{className:"racing-plus-settings",children:['<label for="rplus-apikey">API Key</label>',flex_div,createCheckbox({id:"rplus_addlinks",label:"Add profile links"}),createCheckbox({id:"rplus_showskill",label:"Show racing skill"}),createCheckbox({id:"rplus_showspeed",label:"Show current speed"}),createCheckbox({id:"rplus_showracelink",label:"Add race link"}),createCheckbox({id:"rplus_showexportlink",label:"Add export link"}),createCheckbox({id:"rplus_showwinrate",label:"Show car win rate"}),createCheckbox({id:"rplus_showparts",label:"Show available parts"})]}));rplus_panel.appendChild(rplus_main);rplus_panel.appendChild(newElement("div",{class:"racing-plus-footer"}));const main_container=await defer(SELECTORS.main_container);main_container.insertAdjacentElement("beforeBegin",rplus_panel);Logger.debug("Settings panel added.")};
 /**
    * Initializes the Racing+ settings panel in the UI.
    * @returns {Promise<void>}
@@ -331,9 +304,7 @@ apiSave.addEventListener("click",async ev=>{ev.preventDefault();const candidate=
 // Reset button handler: clear stored key and make input editable.
 apiReset.addEventListener("click",ev=>{ev.preventDefault();if(!apiInput)return;apiInput.value="";apiInput.disabled=false;apiInput.readOnly=false;apiInput.classList.remove("valid","invalid");torn_api.deleteKey();apiSave?.classList.toggle("show",true);apiReset.classList.toggle("show",false);if(apiStatus){apiStatus.textContent="";apiStatus.classList.toggle("show",false)}})}
 // Initialize toggles from storage & persist on click.
-w.document.querySelectorAll(".racing-plus-settings input[type=checkbox]").forEach(el=>{const key=Store.keys[el.id];if(!key)return;el.checked=Store.getValue(key)==="1";el.addEventListener("click",ev=>{const t=/** @type {HTMLInputElement} */ev.currentTarget;Store.setValue(key,t.checked?"1":"0");Logger.debug(`${el.id} saved ${t.checked?"on":"off"}.`)})});Logger.debug("Settings panel initialized.")};const addRacingPlusButton=async()=>{Logger.debug("Adding settings panel toggle button...");
-// TODO: ...
-Logger.debug("Settings button added.")};const loadDomElements=async()=>{Logger.debug("Loading DOM...");
+w.document.querySelectorAll(".racing-plus-settings input[type=checkbox]").forEach(el=>{const key=Store.keys[el.id];if(!key)return;el.checked=Store.getValue(key)==="1";el.addEventListener("click",ev=>{const t=/** @type {HTMLInputElement} */ev.currentTarget;Store.setValue(key,t.checked?"1":"0");Logger.debug(`${el.id} saved ${t.checked?"on":"off"}.`)})});Logger.debug("Settings panel initialized.")};const addRacingPlusButton=async()=>{Logger.debug("Adding settings panel toggle button...");Logger.debug("Settings button added.")};const loadDomElements=async()=>{Logger.debug("Loading DOM...");
 // Normalize the top banner structure & update skill snapshot
 Logger.debug("Fixing top banner...");const banner=await defer(".banner");const leftBanner=w.document.createElement("div");leftBanner.className="left-banner";const rightBanner=w.document.createElement("div");rightBanner.className="right-banner";const elements=Array.from(banner.children);elements.forEach(el=>{if(el.classList.contains("skill-desc")||el.classList.contains("skill")||el.classList.contains("lastgain")){if(el.classList.contains("skill")){
 // Update driver skill snapshot (persist only if higher)
@@ -354,9 +325,9 @@ let scriptData=Store.getValue(Store.keys.rplus_driver);if(!scriptData){
 // Create new driver - '#torn-user' a hidden input with JSON { id, ... }
 scriptData=await defer("#torn-user").value}this_driver=new TornDriver(JSON.parse(scriptData).id);this_driver.load()}catch(err){Logger.error(`Failed to load driver data. ${err}`)}
 // Wait for required DOM elements
-const main_container=await defer(SELECTORS.main_container);
+const links_container=await defer(SELECTORS.links_container);
 // Add the Racing+ panel and button to the DOM
-const results=await Promise.allSettled([addRacingPlusPanel(main_container),addRacingPlusButton(),loadDomElements()]);
+const results=await Promise.allSettled([addRacingPlusPanel(),addRacingPlusButton(),loadDomElements()]);
 // Ensure all results are fulfilled else log rejected reasons then exit
 if(!results.every(r=>r.status==="fulfilled")){results.filter(r=>r.status==="rejected").forEach(r=>Logger.error(`${r.reason}`));return}
 // Initialize the settings panel
@@ -364,7 +335,6 @@ await initRacingPlusPanel(torn_api.key);
 // Update driver track records and available cars
 await this_driver.updateRecords();await this_driver.updateCars();
 // ...
-// TODO: code goes here
 // ...
 Logger.info(`Application started.`)}catch(err){Logger.error(err)}};
 // Start application
