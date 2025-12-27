@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.24-alpha
+// @version      1.0.25-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
@@ -963,20 +963,17 @@ class TornDriver {
   };
 
   const addRacingPlusButton = async () => {
-    Logger.debug("Adding settings panel toggle button...");
-
-    // Check if button already exists
+    Logger.debug("Adding settings button...");
+    /* Check if button already exists */
     if (w.document.querySelector("#racing-plus-button")) return;
-
+    /* Load and validate required elements */
     const links_container = await defer(SELECTORS.links_container);
-
     const city_button = links_container.querySelector('[href="city.php"]');
     if (!city_button) return;
-
     const city_label = city_button.querySelector(`#${city_button.getAttribute("aria-labelledby")}`);
     const city_icon_wrap = city_button.querySelector(`:not([id])`);
     if (!city_label || !city_icon_wrap) return;
-
+    /* Create button */
     const rplus_button = newElement("a", {
       role: "button",
       ariaLabelledBy: "racing-plus-link-label",
@@ -992,11 +989,13 @@ class TornDriver {
         newElement("span", { id: "racing-plus-button-label", className: city_label.className, innerText: "Racing+" }),
       ],
     });
-
     city_button.insertAdjacentElement("beforeBegin", rplus_button);
-
-    // TODO: ...
-
+    /* Settings button click event handler */
+    rplus_button.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      Logger.debug("'rplus_button' clicked.");
+      w.document.querySelector(".racing-plus-panel")?.classList.toggle("show");
+    });
     Logger.debug("Settings button added.");
   };
 
