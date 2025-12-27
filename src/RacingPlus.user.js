@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.10-alpha
+// @version      1.0.11-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
@@ -1023,17 +1023,17 @@ class TornDriver {
 
       // load driver data
       Logger.debug(`Loading Driver Data... ${Date.now() - SCRIPT_START} msec`);
-      // check for stored driver
-      const stored = Store.getValue(Store.keys.rplus_driver);
-      if (!stored) {
-        // create new driver - '#torn-user' a hidden input with JSON { id, ... }
-        const scriptData = await defer("#torn-user");
-        try {
-          this_driver = new TornDriver(JSON.parse(scriptData.value).id);
-          this_driver.load();
-        } catch (err) {
-          Logger.error(`Failed to load driver data. ${err}`);
+      try {
+        // check for stored driver
+        let scriptData = Store.getValue(Store.keys.rplus_driver);
+        if (!scriptData) {
+          // create new driver - '#torn-user' a hidden input with JSON { id, ... }
+          scriptData = await defer("#torn-user").value;
         }
+        this_driver = new TornDriver(JSON.parse(scriptData).id);
+        this_driver.load();
+      } catch (err) {
+        Logger.error(`Failed to load driver data. ${err}`);
       }
 
       const main_container = await defer(SELECTORS.main_container);
