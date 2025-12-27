@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Racing+
 // @namespace    TornPDA.RacingPlus
-// @version      1.0.22-alpha
+// @version      1.0.23-alpha
 // @license      MIT
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + styles from TheProgrammer [2782979]
@@ -306,13 +306,9 @@ apiReset.addEventListener("click",ev=>{ev.preventDefault();if(!apiInput)return;a
 // Initialize toggles from storage & persist on click.
 w.document.querySelectorAll(".racing-plus-settings input[type=checkbox]").forEach(el=>{const key=Store.keys[el.id];if(!key)return;el.checked=Store.getValue(key)==="1";el.addEventListener("click",ev=>{const t=/** @type {HTMLInputElement} */ev.currentTarget;Store.setValue(key,t.checked?"1":"0");Logger.debug(`${el.id} saved ${t.checked?"on":"off"}.`)})});Logger.debug("Settings panel initialized.")};const addRacingPlusButton=async()=>{Logger.debug("Adding settings panel toggle button...");
 // Check if button already exists
-if(w.document.querySelector("#racing-plus-button"))return;const links_container=await defer(SELECTORS.links_container);Logger.debug("Settings button added.")};const loadDomElements=async()=>{Logger.debug("Loading DOM...");
-// Normalize the top banner structure & update skill snapshot
-Logger.debug("Fixing top banner...");const banner=await defer(SELECTORS.main_banner);const leftBanner=w.document.createElement("div");leftBanner.className="left-banner";const rightBanner=w.document.createElement("div");rightBanner.className="right-banner";const elements=Array.from(banner.children);elements.forEach(el=>{if(el.classList.contains("skill-desc")||el.classList.contains("skill")||el.classList.contains("lastgain")){if(el.classList.contains("skill")){
+if(w.document.querySelector("#racing-plus-button"))return;const links_container=await defer(SELECTORS.links_container);const city_button=links_container.querySelector('[href="city.php"]');if(!city_button)return;const city_label=city_button.querySelector(`#${city_button.getAttribute("aria-labelledby")}`);const city_icon_wrap=city_button.querySelector(`:not([id])`);if(!city_label||!city_icon_wrap)return;const rplus_button=newElement("a",{role:"button",ariaLabelledBy:"racing-plus-link-label",id:"racing-plus-button",className:city_button.className,children:[newElement("span",{id:"racing-plus-button-icon",className:city_icon_wrap.className,children:[newElement("svg",{xmlns:"http://www.w3.org/2000/svg",version:"1.1",viewBox:"0 0 15 14",innerHTML:'<path d="m14.02,11.5c.65-1.17.99-2.48.99-3.82,0-2.03-.78-3.98-2.2-5.44-2.83-2.93-7.49-3.01-10.42-.18-.06.06-.12.12-.18.18C.78,3.7,0,5.66,0,7.69c0,1.36.35,2.69,1.02,3.88.36.64.82,1.22,1.35,1.73l.73.7,1.37-1.5-.73-.7c-.24-.23-.45-.47-.64-.74l1.22-.72-.64-1.14-1.22.72c-.6-1.42-.6-3.03,0-4.45l1.22.72.64-1.14-1.22-.72c.89-1.23,2.25-2.04,3.76-2.23v1.44h1.29v-1.44c1.51.19,2.87.99,3.76,2.23l-1.22.72.65,1.14,1.22-.72c.68,1.63.58,3.48-.28,5.02-.06.11-.12.21-.19.31l-1.14-.88.48,3.5,3.41-.49-1.15-.89c.12-.18.23-.35.33-.53Zm-6.51-4.97c-.64-.02-1.17.49-1.18,1.13s.49,1.17,1.13,1.18,1.17-.49,1.18-1.13c0,0,0-.01,0-.02l1.95-1.88-2.56.85c-.16-.09-.34-.13-.52-.13h0Z"/>'})]}),newElement("span",{id:"racing-plus-button-label",className:city_label.className,innerText:"Racing+"})]});city_button.insertAdjacentElement("beforeBegin",rplus_button);Logger.debug("Settings button added.")};const fixTopBanner=async()=>{Logger.debug("Fixing top banner...");const banner=await defer(SELECTORS.main_banner);const leftBanner=w.document.createElement("div");leftBanner.className="left-banner";const rightBanner=w.document.createElement("div");rightBanner.className="right-banner";const elements=Array.from(banner.children);elements.forEach(el=>{if(el.classList.contains("skill-desc")||el.classList.contains("skill")||el.classList.contains("lastgain")){if(el.classList.contains("skill")){
 // Update driver skill snapshot (persist only if higher)
-this_driver.updateSkill(el.textContent);el.textContent=String(this_driver.skill)}leftBanner.appendChild(el)}else if(el.classList.contains("class-desc")||el.classList.contains("class-letter")){rightBanner.appendChild(el)}});banner.innerHTML="";banner.appendChild(leftBanner);banner.appendChild(rightBanner);
-// Fix active tab highlighting
-await fixActiveTabHighlighting();Logger.debug("DOM loaded.")};
+this_driver.updateSkill(el.textContent);el.textContent=String(this_driver.skill)}leftBanner.appendChild(el)}else if(el.classList.contains("class-desc")||el.classList.contains("class-letter")){rightBanner.appendChild(el)}});banner.innerHTML="";banner.appendChild(leftBanner);banner.appendChild(rightBanner)};
 /**
    * Fixes active tab highlighting for racing categories
    * @returns {Promise<void>}
@@ -333,7 +329,7 @@ let scriptData=Store.getValue(Store.keys.rplus_driver);if(!scriptData){
 // Create new driver - '#torn-user' a hidden input with JSON { id, ... }
 scriptData=await defer("#torn-user").value}this_driver=new TornDriver(JSON.parse(scriptData).id);this_driver.load()}catch(err){Logger.error(`Failed to load driver data. ${err}`)}
 // Add the Racing+ panel and button to the DOM
-const results=await Promise.allSettled([addRacingPlusPanel(),addRacingPlusButton(),loadDomElements()]);
+const results=await Promise.allSettled([addRacingPlusPanel(),addRacingPlusButton(),fixTopBanner(),fixActiveTabHighlighting()]);
 // Ensure all results are fulfilled else log rejected reasons then exit
 if(!results.every(r=>r.status==="fulfilled")){results.filter(r=>r.status==="rejected").forEach(r=>Logger.error(`${r.reason}`));return}
 // Initialize the settings panel
