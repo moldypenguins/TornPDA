@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.44-alpha
+// @version      1.0.45-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -364,12 +364,6 @@ const PART_CATEGORIES = {
 /* ------------------------------------------------------------------------
  * Torn models
  * --------------------------------------------------------------------- */
-
-/** Singletons */
-/** @type {TornAPI} */ let torn_api;
-/** @type {TornDriver} */ let this_driver;
-/** @type {TornRace} */ let this_race;
-
 /**
  * Comment shown in Torn API recent usage.
  */
@@ -510,8 +504,15 @@ class TornAPI {
  * Application start
  * --------------------------------------------------------------------- */
 (async (w) => {
+  /* Check if userscript has already been initialized */
   if (w.racing_plus) return;
+  /* Set application start time */
   w.racing_plus = Date.now();
+
+  /* Singletons */
+  /** @type {TornAPI} */ let torn_api;
+  /** @type {TornDriver} */ let this_driver;
+  /** @type {TornRace} */ let this_race;
 
   Logger.info(`Application loading...`);
 
@@ -882,7 +883,6 @@ class TornAPI {
    * @returns {Promise<void>}
    */
   const addStyles = async () => {
-    Logger.debug(`Injecting styles...`);
     // Dynamic per-part color hints (batched for fewer string writes).
     const dynRules = [];
     if (Store.getValue(Store.keys.rplus_showparts) === "1") {
@@ -897,7 +897,6 @@ class TornAPI {
       });
     }
     w.document.head.appendChild(newElement("style", { innerHTML: `__MINIFIED_CSS__` + dynRules.join("") }));
-    Logger.debug(`Styles injected.`);
   };
 
   /**
@@ -906,7 +905,6 @@ class TornAPI {
    * @returns {Promise<void>}
    */
   const addRacingPlusPanel = async () => {
-    Logger.debug("Adding settings panel...");
     /* Check if panel already exists */
     if (w.document.querySelector(".racing-plus-panel")) return;
     /* create panel */
@@ -968,8 +966,6 @@ class TornAPI {
     /* wait for the main container to be loaded then append panel to container */
     const main_container = await defer(SELECTORS.main_container);
     main_container.insertAdjacentElement("beforeBegin", rplus_panel);
-
-    Logger.debug("Settings panel added.");
   };
 
   /**
@@ -977,8 +973,6 @@ class TornAPI {
    * @returns {Promise<void>}
    */
   const initRacingPlusPanel = async () => {
-    Logger.debug("Initializing settings panel...");
-
     /** @type {HTMLInputElement} */ const apiInput = await defer("#rplus-apikey");
     /** @type {HTMLAnchorElement} */ const apiSave = await defer(".racing-plus-apikey-save");
     /** @type {HTMLAnchorElement} */ const apiReset = await defer(".racing-plus-apikey-reset");
@@ -1072,12 +1066,14 @@ class TornAPI {
         Logger.debug(`${el.id} saved ${t.checked ? "on" : "off"}.`);
       });
     });
-
-    Logger.debug("Settings panel initialized.");
   };
 
+  /**
+   * Adds the settings buttons to the DOM
+   * @param {HTMLElement} links_container
+   * @returns {Promise<void>}
+   */
   const addRacingPlusButton = async (links_container) => {
-    Logger.debug("Adding settings button...");
     /* Check if button already exists */
     if (w.document.querySelector("#racing-plus-button")) return;
     /* Load and validate required elements */
@@ -1109,17 +1105,19 @@ class TornAPI {
       Logger.debug("'rplus_button' clicked.");
       w.document.querySelector(".racing-plus-panel")?.classList.toggle("show");
     });
-    Logger.debug("Settings button added.");
   };
 
+  /**
+   * Fixes the top banner skill and class
+   * @returns {Promise<void>}
+   */
   const fixTopBanner = async () => {
-    Logger.debug("Fixing top banner...");
     const banner = await defer(SELECTORS.main_banner);
     const leftBanner = w.document.createElement("div");
     leftBanner.className = "left-banner";
     const rightBanner = w.document.createElement("div");
     rightBanner.className = "right-banner";
-
+    // TODO: add comment here */
     const elements = Array.from(banner.children);
     elements.forEach((el) => {
       if (el.classList.contains("skill-desc") || el.classList.contains("skill") || el.classList.contains("lastgain")) {
@@ -1145,7 +1143,7 @@ class TornAPI {
    * @returns {Promise<void>}
    */
   const fixActiveTabHighlighting = async () => {
-    Logger.debug("Fixing active tab highlighting...");
+    // TODO: add comments
     const container = await defer(SELECTORS.tabs_container);
     const tabs = container.querySelectorAll("li:not(.clear)");
     for (const tab of tabs) {
@@ -1166,7 +1164,9 @@ class TornAPI {
       Logger.info(`Application loaded. Starting...`, w.racing_plus);
 
       // Add styles
+      Logger.debug(`Injecting styles...`, w.racing_plus);
       await addStyles();
+      Logger.debug(`Styles injected.`, w.racing_plus);
 
       // Initialize torn_api
       torn_api = new TornAPI(Store.getValue(Store.keys.rplus_apikey));
@@ -1195,26 +1195,38 @@ class TornAPI {
       }
 
       // Add the Racing+ panel and button to the DOM
+      Logger.debug("Adding settings panel...", w.racing_plus);
       await addRacingPlusPanel();
+      Logger.debug("Settings panel added.", w.racing_plus);
 
       // Add Racing+ settings button
       const links_container = await defer(SELECTORS.links_container);
+      Logger.debug("Adding settings button...", w.racing_plus);
       await addRacingPlusButton(links_container);
+      Logger.debug("Settings button added.", w.racing_plus);
 
       // Set up observer to re-add Racing+ settings button if it gets removed
       const button_observer = new MutationObserver(async (mutations) => {
+        Logger.debug("Adding settings button...");
         await addRacingPlusButton(links_container);
+        Logger.debug("Settings button added.");
       });
       button_observer.observe(links_container, { childList: true, subtree: true });
 
       // Initialize the settings panel
+      Logger.debug("Initializing settings panel...", w.racing_plus);
       await initRacingPlusPanel(torn_api.key);
+      Logger.debug("Settings panel initialized.", w.racing_plus);
 
       // Fix top banner (skill, class)
+      Logger.debug("Fixing top banner...");
       await fixTopBanner();
+      Logger.debug("Top banner fixed.");
 
       // Update driver track records and available cars
+      Logger.debug("Updating driver records and cars...");
       // await this_driver.updateRecords(); await this_driver.updateCars();
+      // TODO: add condition/cache + fix possible store write conflict
       const results = await Promise.allSettled([this_driver.updateRecords(), this_driver.updateCars()]);
       if (!results.map((r) => r.status === "fulfilled")) {
         Logger.error(
@@ -1224,13 +1236,16 @@ class TornAPI {
             .join("\n")
         );
       }
+      Logger.debug("Driver records and cars updated.");
 
       /* -------------------- */
       // TODO: code goes here //
       /* -------------------- */
 
       // Fix tabs
+      Logger.debug("Fixing active tab highlighting...");
       await fixActiveTabHighlighting();
+      Logger.debug("Active tab highlighting fixed.");
 
       // If new race track, capture the track meta
       if (!this_race) {
