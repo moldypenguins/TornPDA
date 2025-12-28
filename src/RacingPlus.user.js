@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.31-alpha
+// @version      1.0.32-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -66,8 +66,8 @@ const SELECTORS = Object.freeze({
  * Description: Returns the current Unix timestamp (seconds since epoch).
  * @returns {number} Current Unix timestamp (seconds)
  */
-if (typeof Date.unix !== "function") {
-  Object.defineProperty(Date, "unix", {
+if (typeof Date.prototype.unix !== "function") {
+  Object.defineProperty(Date.prototype, "unix", {
     value: () => Math.floor(Date.now() / 1000),
     writable: true,
     configurable: true,
@@ -81,8 +81,8 @@ if (typeof Date.unix !== "function") {
  * @param {number} ms - Timestamp in milliseconds since epoch.
  * @returns {string} Formatted date string ("YYYY-MM-DD")
  */
-if (typeof Number.formatDate !== "function") {
-  Object.defineProperty(Number, "formatDate", {
+if (typeof Number.prototype.formatDate !== "function") {
+  Object.defineProperty(Number.prototype, "formatDate", {
     value: (ms) => {
       const dt = new Date(ms);
       return `${String(dt.getFullYear())}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
@@ -99,8 +99,8 @@ if (typeof Number.formatDate !== "function") {
  * @param {number} ms - Duration in milliseconds.
  * @returns {string} Formatted time string ("MM:SS.mmm")
  */
-if (typeof Number.formatTime !== "function") {
-  Object.defineProperty(Number, "formatTime", {
+if (typeof Number.prototype.formatTime !== "function") {
+  Object.defineProperty(Number.prototype, "formatTime", {
     value: (ms) => {
       const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((ms % (1000 * 60)) / 1000);
@@ -120,8 +120,8 @@ if (typeof Number.formatTime !== "function") {
  * @param {unknown} n - Value to test.
  * @returns {boolean} True if n is a finite number primitive.
  */
-if (typeof Number.isValid !== "function") {
-  Object.defineProperty(Number, "isValid", {
+if (typeof Number.prototype.isValid !== "function") {
+  Object.defineProperty(Number.prototype, "isValid", {
     value: (n) => typeof n === "number" && Number.isFinite(n),
     writable: true,
     configurable: true,

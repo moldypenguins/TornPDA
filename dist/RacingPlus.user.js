@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.31-alpha
+// @version      1.0.32-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -20,25 +20,25 @@ const APP_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const
  * Date.unix
  * Description: Returns the current Unix timestamp (seconds since epoch).
  * @returns {number} Current Unix timestamp (seconds)
- */if(typeof Date.unix!=="function"){Object.defineProperty(Date,"unix",{value:()=>Math.floor(Date.now()/1e3),writable:true,configurable:true,enumerable:false})}
+ */if(typeof Date.prototype.unix!=="function"){Object.defineProperty(Date.prototype,"unix",{value:()=>Math.floor(Date.now()/1e3),writable:true,configurable:true,enumerable:false})}
 /**
  * Number.formatDate
  * Description: Formats a timestamp (ms since epoch) as "YYYY-MM-DD" in local time.
  * @param {number} ms - Timestamp in milliseconds since epoch.
  * @returns {string} Formatted date string ("YYYY-MM-DD")
- */if(typeof Number.formatDate!=="function"){Object.defineProperty(Number,"formatDate",{value:ms=>{const dt=new Date(ms);return`${String(dt.getFullYear())}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`},writable:true,configurable:true,enumerable:false})}
+ */if(typeof Number.prototype.formatDate!=="function"){Object.defineProperty(Number.prototype,"formatDate",{value:ms=>{const dt=new Date(ms);return`${String(dt.getFullYear())}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`},writable:true,configurable:true,enumerable:false})}
 /**
  * Number.formatTime
  * Description: Formats a duration (ms) as "MM:SS.mmm".
  * @param {number} ms - Duration in milliseconds.
  * @returns {string} Formatted time string ("MM:SS.mmm")
- */if(typeof Number.formatTime!=="function"){Object.defineProperty(Number,"formatTime",{value:ms=>{const minutes=Math.floor(ms%(1e3*60*60)/(1e3*60));const seconds=Math.floor(ms%(1e3*60)/1e3);const millis=Math.floor(ms%1e3);return`${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}.${String(millis).padStart(3,"0")}`},writable:true,configurable:true,enumerable:false})}
+ */if(typeof Number.prototype.formatTime!=="function"){Object.defineProperty(Number.prototype,"formatTime",{value:ms=>{const minutes=Math.floor(ms%(1e3*60*60)/(1e3*60));const seconds=Math.floor(ms%(1e3*60)/1e3);const millis=Math.floor(ms%1e3);return`${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}.${String(millis).padStart(3,"0")}`},writable:true,configurable:true,enumerable:false})}
 /**
  * Number.isValid
  * Description: Returns true for number primitives that are finite (excludes NaN and ±Infinity).
  * @param {unknown} n - Value to test.
  * @returns {boolean} True if n is a finite number primitive.
- */if(typeof Number.isValid!=="function"){Object.defineProperty(Number,"isValid",{value:n=>typeof n==="number"&&Number.isFinite(n),writable:true,configurable:true,enumerable:false})}
+ */if(typeof Number.prototype.isValid!=="function"){Object.defineProperty(Number.prototype,"isValid",{value:n=>typeof n==="number"&&Number.isFinite(n),writable:true,configurable:true,enumerable:false})}
 /**
  * Error.prototype.toString
  * Description: Returns a human-readable error string (name + message).
