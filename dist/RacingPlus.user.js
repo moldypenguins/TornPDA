@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.36-alpha
+// @version      1.0.37-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -365,7 +365,7 @@ this_driver.updateSkill(el.textContent);el.textContent=String(this_driver.skill)
    * @param {MouseEvent} event
    * @param {} tabs
    * @returns {Promise<void>}
-   */const fixActiveTabHighlighting=async tabs=>{Logger.debug("Fixing active tab highlighting...");tabs.querySelectorAll(":not(.clear)").forEach(c=>{c.classList.toggle("active",c.className==event.target.className)})};
+   */const fixActiveTabHighlighting=async()=>{Logger.debug("Fixing active tab highlighting...");const tabs_container=await defer(`${SELECTORS.tabs_container}`);tabs_container.forEach(c=>{c.classList.toggle("active",!!c.querySelector(".official-events"))})};
 /**
    * start - Main entry point for the application.
    */const start=async()=>{try{Logger.info(`Application loaded. Starting...`,w.racing_plus);
@@ -395,7 +395,7 @@ await fixTopBanner();
 // await this_driver.updateRecords(); await this_driver.updateCars();
 const results=await Promise.allSettled([this_driver.updateRecords(),this_driver.updateCars()]);if(!results.map(r=>r.status==="fulfilled")){Logger.error(results.filter(r=>r.status==="rejected").map(r=>`${r.status} - ${r.reason}`).join("\n"))}
 // Fix tabs
-const tabs_container=await defer(SELECTORS.tabs_container);await fixActiveTabHighlighting(tabs_container);
+await fixActiveTabHighlighting();
 // If new race track, capture the track meta
 if(!this_race){try{Logger.info(`Loading Track Data...`,w.racing_plus);const leaderboard=await defer(SELECTORS.drivers_list_leaderboard);const driver=await defer(`${SELECTORS.drivers_list_leaderboard} #lbr-${this_driver.id}`);const dataId=driver.getAttribute("data-id")||"";const raceId=dataId.split("-")[0];const trackInfo=leaderboard.querySelector(".track-info");const distRaw=(trackInfo?.getAttribute("data-length")??"").trim();// e.g., "2.42mi"
 const distNum=parseFloat(distRaw);const lapsText=(leaderboard.textContent??"").split(" - ")[1]?.split(" ")[0]??"";const lapsNum=Number.parseInt(lapsText,10);
