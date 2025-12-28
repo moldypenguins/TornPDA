@@ -1,18 +1,19 @@
 // ==UserScript==
-// @name         TornPDA - Execute+
-// @namespace    TornPDA.ExecutePlus
-// @version      0.99.0
+// @name         TornPDA.Fatality+
+// @namespace    TornPDA.FatalityPlus
+// @version      0.99.1
 // @license      MIT
 // @description  Shows execute limit in health bar.
 // @author       moldypenguins [2881784]
 // @match        https://www.torn.com/loader.php?sid=attack*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
-// @updateURL    https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/ExecutePlus.user.js
-// @downloadURL  https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/ExecutePlus.user.js
+// @updateURL    https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/FatalityPlus.user.js
+// @downloadURL  https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/FatalityPlus.user.js
+// @grant        GM_get
 // @run-at       document-end
 // ==/UserScript==
-(async w=>{"use strict";
-
+"use strict";
+(async w=>{
 // Abort early if essentials are not present.
 if(!w.document||!w.location||!w.navigator)return;const DEBUG_MODE=true;// Turn on to log to console.
 const DEFERRAL_LIMIT=250;// Maximum amount of times the script will defer.

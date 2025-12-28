@@ -1,47 +1,18 @@
 # TornPDA UserScripts
 
 ```json
-TornPDA { ExecutePlus, RacingPlus }
+TornPDA { FatalityPlus, RacingPlus }
 ```
 
-## Quickstart
+## Fatality+ v0.99.0
 
-- Requirements: Node.js and npm installed.
-- Setup:
-
-```bash
-npm install
-```
-
-- Build once:
-
-```bash
-npm run build
-```
-
-- Develop with watch (build then monitor):
-
-```bash
-npm run start
-```
-
-- Install in Tampermonkey:
-	- Use the install links below to add the scripts directly from `dist/`.
-	- Or Tampermonkey → Utilities → Install from URL → paste the raw `dist/*.user.js` URL.
-	- Or Tampermonkey → Add a new script → paste contents from the built file in `dist/`.
-
-- Notes:
-	- Styles are authored in SCSS and inlined via the `__MINIFIED_CSS__` placeholder during build.
-	- Common.js was removed; no external `@require` is needed.
-
-## Execute+ v0.99.0
-
-Show level when execute will be effective.
-[Install Execute+ User Script](https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/ExecutePlus.user.js)
+Fatality options for attacks.
+- Show level when execute will be effective.
+[Install Fatality+ User Script](https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/ExecutePlus.user.js)
 
 ### Screenshots
 
-![execute](.github/images/execute.png)
+![fatality](.github/images/execute.png)
 
 ## Racing+ v0.99.49
 

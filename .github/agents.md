@@ -83,6 +83,7 @@ Purpose: quickly orient an AI coding assistant so it can be immediately producti
     - Use Gulp tasks for build/lint; do not introduce alternate pipelines without approval.
 
 * **Context Documentation** - The following official documentation sites are useful context for working in this repository:
+  + `https://www.torn.com/swagger/index.html`: Torn API v2 official documentation.
   + `https://www.tampermonkey.net/documentation.php`: Tampermonkey official documentation.
   + `https://gulpjs.com/docs`: Gulp official docs.
   + `https://eslint.org/docs/latest/extend/configure-flat-config`: ESLint Flat Config docs.
