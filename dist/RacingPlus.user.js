@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.42-alpha
+// @version      1.0.43-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -68,10 +68,10 @@ static error=error=>`${error?.name?String(error.name):"Error"}: ${error?.message
  * @class
  */class Logger{
 /** logs a debug-level message. */
-static debug(message,time=null){if(LOG_MODE>LOG_LEVEL.debug)return;const dt=Date.now();console.log("%c[DEBUG][TornPDA.Racing+]: ","color:#6aa84f;font-weight:600",message,time?` ${Format.duration(dt-time)}`:` ${Format.date(dt)}`)}
-/** logs an info-level message. */static info(message,time=null){if(LOG_MODE>LOG_LEVEL.info)return;const dt=Date.now();console.log("%c[INFO][TornPDA.Racing+]: ","color:#3d85c6;font-weight:600",message,time?` ${Format.duration(dt-time)}`:` ${Format.date(dt)}`)}
-/** Logs a warning-level message. */static warn(message,time=null){if(LOG_MODE>LOG_LEVEL.warn)return;const dt=Date.now();console.log("%c[WARN][TornPDA.Racing+]: ","color:#e69138;font-weight:600",message,time?` ${Format.duration(dt-time)}`:` ${Format.date(dt)}`)}
-/** Logs an error-level message. */static error(message,time=null){if(LOG_MODE>LOG_LEVEL.error)return;const dt=Date.now();console.log("%c[ERROR][TornPDA.Racing+]: ","color:#d93025;font-weight:600",message,time?` ${Format.duration(dt-time)}`:` ${Format.date(dt)}`)}}
+static debug(message,time=null){if(LOG_MODE>LOG_LEVEL.debug)return;const dt=Date.now();console.log("%c[DEBUG][TornPDA.Racing+]: ","color:#6aa84f;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}
+/** logs an info-level message. */static info(message,time=null){if(LOG_MODE>LOG_LEVEL.info)return;const dt=Date.now();console.log("%c[INFO][TornPDA.Racing+]: ","color:#3d85c6;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}
+/** Logs a warning-level message. */static warn(message,time=null){if(LOG_MODE>LOG_LEVEL.warn)return;const dt=Date.now();console.log("%c[WARN][TornPDA.Racing+]: ","color:#e69138;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}
+/** Logs an error-level message. */static error(message,time=null){if(LOG_MODE>LOG_LEVEL.error)return;const dt=Date.now();console.log("%c[ERROR][TornPDA.Racing+]: ","color:#d93025;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}}
 /**
  * Store Wrapper classs for localStorage.
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
@@ -376,11 +376,11 @@ torn_api=new TornAPI(Store.getValue(Store.keys.rplus_apikey));if(torn_api.key?.l
 // Store valid key
 Store.setValue(Store.keys.rplus_apikey,PDA_KEY)}}
 // Load driver data
-Logger.info(`Loading Driver Data...`,w.racing_plus);try{
+Logger.info(`Loading Driver Data...`,w.racing_plus);if(!this_driver){try{
 // Check for stored driver
 let scriptData=Store.getValue(Store.keys.rplus_driver);if(!scriptData){
 // Create new driver - '#torn-user' a hidden input with JSON { id, ... }
-scriptData=await defer("#torn-user").value}this_driver=new TornDriver(JSON.parse(scriptData).id);this_driver.load()}catch(err){Logger.error(`Failed to load driver data. ${err}`)}
+scriptData=await defer("#torn-user").value}this_driver=new TornDriver(JSON.parse(scriptData).id);this_driver.load()}catch(err){Logger.error(`Failed to load driver data. ${err}`)}}
 // Add the Racing+ panel and button to the DOM
 await addRacingPlusPanel();
 // Add Racing+ settings button
@@ -400,9 +400,7 @@ await fixActiveTabHighlighting();
 if(!this_race){try{Logger.info(`Loading Track Data...`,w.racing_plus);const leaderboard=await defer(SELECTORS.drivers_list_leaderboard);const driver=await defer(`${SELECTORS.drivers_list_leaderboard} #lbr-${this_driver.id}`);const dataId=driver.getAttribute("data-id")||"";const raceId=dataId.split("-")[0];const trackInfo=leaderboard.querySelector(".track-info");const distRaw=(trackInfo?.getAttribute("data-length")??"").trim();// e.g., "2.42mi"
 const distNum=parseFloat(distRaw);const lapsText=(leaderboard.textContent??"").split(" - ")[1]?.split(" ")[0]??"";const lapsNum=Number.parseInt(lapsText,10);
 // Create TornRace
-this_race=new TornRace({id:raceId,title:trackInfo?.getAttribute("title")??"",distance:isNumber(distNum)?distNum:null,laps:Number.isInteger(lapsNum)?lapsNum:null});this_driver.load()}catch(err){Logger.error(`Failed to load track data. ${err}`)}}Logger.info(`Adding page observer...`,w.racing_plus);const content_container=await defer(SELECTORS.content_container);const page_observer=new MutationObserver(async mutations=>{for(const mutation of mutations){if(mutation.type==="characterData"||mutation.type==="childList"){
-/** @type {Node} */
-const tNode=mutation.target;const el=tNode.nodeType===Node.ELEMENT_NODE?tNode:tNode.parentElement;if(el&&el.id==="infoSpot"){this_race?.updateStatus(el.textContent||"");
+this_race=new TornRace({id:raceId,title:trackInfo?.getAttribute("title")??"",distance:isNumber(distNum)?distNum:null,laps:Number.isInteger(lapsNum)?lapsNum:null});this_driver.load()}catch(err){Logger.error(`Failed to load track data. ${err}`)}}Logger.info(`Adding page observer...`,w.racing_plus);const content_container=await defer(SELECTORS.content_container);const page_observer=new MutationObserver(async mutations=>{for(const mutation of mutations){if(mutation.type==="characterData"||mutation.type==="childList"){const tNode=mutation.target;const el=tNode.nodeType===Node.ELEMENT_NODE?tNode:tNode.parentElement;if(el&&el.id==="infoSpot"){this_race?.updateStatus(el.textContent||"");
 //Logger.debug(`Race Status Update -> ${el.textContent}.`);
 }if(el&&el.id==="leaderBoard"){
 // await this_race?.updateLeaderBoard(el.childNodes || []);

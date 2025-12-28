@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.42-alpha
+// @version      1.0.43-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -141,25 +141,25 @@ class Logger {
   static debug(message, time = null) {
     if (LOG_MODE > LOG_LEVEL.debug) return;
     const dt = Date.now();
-    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#6aa84f;font-weight:600", message, time ? ` ${Format.duration(dt - time)}` : ` ${Format.date(dt)}`);
+    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#6aa84f;font-weight:600", message, time ? ` ${dt - time}ms` : ` ${Format.date(dt)} ${Format.time(dt)}`);
   }
   /** logs an info-level message. */
   static info(message, time = null) {
     if (LOG_MODE > LOG_LEVEL.info) return;
     const dt = Date.now();
-    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#3d85c6;font-weight:600", message, time ? ` ${Format.duration(dt - time)}` : ` ${Format.date(dt)}`);
+    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#3d85c6;font-weight:600", message, time ? ` ${dt - time}ms` : ` ${Format.date(dt)} ${Format.time(dt)}`);
   }
   /** Logs a warning-level message. */
   static warn(message, time = null) {
     if (LOG_MODE > LOG_LEVEL.warn) return;
     const dt = Date.now();
-    console.log("%c[WARN][TornPDA.Racing+]: ", "color:#e69138;font-weight:600", message, time ? ` ${Format.duration(dt - time)}` : ` ${Format.date(dt)}`);
+    console.log("%c[WARN][TornPDA.Racing+]: ", "color:#e69138;font-weight:600", message, time ? ` ${dt - time}ms` : ` ${Format.date(dt)} ${Format.time(dt)}`);
   }
   /** Logs an error-level message. */
   static error(message, time = null) {
     if (LOG_MODE > LOG_LEVEL.error) return;
     const dt = Date.now();
-    console.log("%c[ERROR][TornPDA.Racing+]: ", "color:#d93025;font-weight:600", message, time ? ` ${Format.duration(dt - time)}` : ` ${Format.date(dt)}`);
+    console.log("%c[ERROR][TornPDA.Racing+]: ", "color:#d93025;font-weight:600", message, time ? ` ${dt - time}ms` : ` ${Format.date(dt)} ${Format.time(dt)}`);
   }
 }
 
@@ -1164,8 +1164,10 @@ class TornAPI {
   const start = async () => {
     try {
       Logger.info(`Application loaded. Starting...`, w.racing_plus);
+
       // Add styles
       await addStyles();
+
       // Initialize torn_api
       torn_api = new TornAPI(Store.getValue(Store.keys.rplus_apikey));
       if (torn_api.key?.length == 0 && IS_PDA && PDA_KEY.length > 0) {
@@ -1174,25 +1176,31 @@ class TornAPI {
           Store.setValue(Store.keys.rplus_apikey, PDA_KEY);
         }
       }
+
       // Load driver data
       Logger.info(`Loading Driver Data...`, w.racing_plus);
-      try {
-        // Check for stored driver
-        let scriptData = Store.getValue(Store.keys.rplus_driver);
-        if (!scriptData) {
-          // Create new driver - '#torn-user' a hidden input with JSON { id, ... }
-          scriptData = await defer("#torn-user").value;
+      if (!this_driver) {
+        try {
+          // Check for stored driver
+          let scriptData = Store.getValue(Store.keys.rplus_driver);
+          if (!scriptData) {
+            // Create new driver - '#torn-user' a hidden input with JSON { id, ... }
+            scriptData = await defer("#torn-user").value;
+          }
+          this_driver = new TornDriver(JSON.parse(scriptData).id);
+          this_driver.load();
+        } catch (err) {
+          Logger.error(`Failed to load driver data. ${err}`);
         }
-        this_driver = new TornDriver(JSON.parse(scriptData).id);
-        this_driver.load();
-      } catch (err) {
-        Logger.error(`Failed to load driver data. ${err}`);
       }
+
       // Add the Racing+ panel and button to the DOM
       await addRacingPlusPanel();
+
       // Add Racing+ settings button
       const links_container = await defer(SELECTORS.links_container);
       await addRacingPlusButton(links_container);
+
       // Set up observer to re-add Racing+ settings button if it gets removed
       const button_observer = new MutationObserver(async (mutations) => {
         await addRacingPlusButton(links_container);
@@ -1265,7 +1273,6 @@ class TornAPI {
         for (const mutation of mutations) {
           /* If infospot text changed, update status */
           if (mutation.type === "characterData" || mutation.type === "childList") {
-            /** @type {Node} */
             const tNode = mutation.target;
             const el = tNode.nodeType === Node.ELEMENT_NODE ? tNode : tNode.parentElement;
             if (el && el.id === "infoSpot") {
