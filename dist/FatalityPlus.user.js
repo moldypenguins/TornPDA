@@ -12,9 +12,7 @@
 // @run-at       document-end
 // ==/UserScript==
 "use strict";
-const APP_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const MS_PER_HOUR=36e5;const SECONDS_PER_HOUR=3600;const DEBUG_MODE=true;// Turn on to log to console.
-const DEFERRAL_LIMIT=250;// Maximum amount of times the script will defer.
-const DEFERRAL_INTERVAL=100;// Amount of time in milliseconds deferrals will last.
+const APP_START=Date.now();const MS=Object.freeze({second:1e3,minute:6e4,hour:36e5,day:864e5});const DEFERRAL_TIMEOUT=15*MS.second;
 /**
  * unixTimestamp
  * Description: Returns the current Unix timestamp (seconds since epoch).
@@ -47,7 +45,7 @@ static time=timestamp=>{const dt=new Date(timestamp);return`${String(dt.getMinut
    * @param {number} ms - Duration in milliseconds.
    * @returns {string} Formatted time string ("MM:SS.mmm")
    */
-static duration=duration=>`${String(Math.floor(duration%MS_PER_HOUR/MS_PER_MINUTE)).padStart(2,"0")}:${String(Math.floor(duration%MS_PER_MINUTE/MS_PER_SECOND)).padStart(2,"0")}.${String(Math.floor(duration%MS_PER_SECOND)).padStart(3,"0")}`;
+static duration=duration=>`${String(Math.floor(duration%MS.hour/MS.minute)).padStart(2,"0")}:${String(Math.floor(duration%MS.minute/MS.second)).padStart(2,"0")}.${String(Math.floor(duration%MS.second)).padStart(3,"0")}`;
 /**
    * Returns a human-readable error string (name + message).
    * @returns {string}
@@ -105,23 +103,21 @@ static listValues=()=>Object.values(localStorage);
 /**
    * Map from toggle/control ids to persistent localStorage keys.
    */
-static keys=Object.freeze({fplus_executelevel:"FATALITYPLUS_EXECUTELEVEL"})}(async w=>{
+static keys=Object.freeze({fplus_executelevel:"FATALITYPLUS_EXECUTELEVEL"})}(async w=>{if(w.fatality_plus)return;w.fatality_plus=unixTimestamp();Logger.info(`Application loading...`);const EXECUTE_LEVEL=15;
 /**
-   * Wait for a single element matching selector to appear.
-   * Times out after DEFERRAL_LIMIT * DEFERRAL_INTERVAL ms.
-   * @param {string} selector
-   * @returns {Promise<Element>}
-   */
-const defer=selector=>{let count=0;return new Promise((resolve,reject)=>{const check=()=>{count++;if(count>DEFERRAL_LIMIT){reject(new Error("Deferral timed out."));return}const result=w.document.querySelector(selector);if(result){resolve(result)}else{if(DEBUG_MODE)console.log(`[TornPDA+]: '${selector}' - Deferring...`);setTimeout(check,DEFERRAL_INTERVAL)}};check()})};const STORE={
-/** Get a value by key (string or null). */
-getValue:key=>localStorage.getItem(key),
-/** Set a value by key (string). */
-setValue:(key,value)=>localStorage.setItem(key,value),
-/** Delete a value by key. */
-deleteValue:key=>localStorage.removeItem(key),
-/** List stored values (strings). Mainly for debugging. */
-listValues(){return Object.values(localStorage)},
-/** Map logical toggle IDs to persistent keys. */
-getKey(id){return{eplus_level:"EXECUTEPLUS_LEVEL"}[id]}};if(DEBUG_MODE)console.log(`[TornPDA+]: Common loaded.`);if(w.execute_plus)return;w.execute_plus=unixTimestamp();const EXECUTE_LEVEL=15;const checkExecute=async progress=>{if(DEBUG_MODE){console.log("[Execute+]: Checking HealthBar...")}if(!progress){console.log("[Execute+]: Error - Invalid progress.");return}
-//let progress = healthBar.querySelector('[aria-label^="Progress:"]');
-let targetHealth=parseFloat(progress.ariaLabel.replace(/Progress: (\d{1,3}\.?\d{0,2})%/,"$1"));if(targetHealth<=EXECUTE_LEVEL){progress.classList.toggle("execute",true)}else{progress.classList.toggle("execute",false)}};let user=await defer("#torn-user");let userdata=JSON.parse(user.value);let healthBar=await defer(`div[class^="playersModelWrap_"] div[class^="header_"]:not([aria-describedby^="player-name_${userdata.playername}"])`);if(healthBar){if(DEBUG_MODE)console.log("[Execute+]: Adding HealthBar Observer...");let healthBarObserver=new MutationObserver(async mutations=>{for(const mutation of mutations){if(mutation.type==="attributes"&&mutation.attributeName==="aria-label"&&mutation.target.ariaLabel&&mutation.target.ariaLabel.startsWith("Progress:")){await checkExecute(mutation.target)}}});healthBarObserver.observe(healthBar.parentElement,{subtree:true,attributes:true});await checkExecute(healthBar.querySelector('[aria-label^="Progress:"]'))}if(DEBUG_MODE)console.log("[Execute+]: Adding styles...");if(!w.document.head)await new Promise(r=>w.addEventListener("DOMContentLoaded",r,{once:true}));const s=w.document.createElement("style");s.innerHTML=`.execute{background-image:linear-gradient(#ffb46c,#ffa737)!important}`;w.document.head.appendChild(s);if(DEBUG_MODE)console.log("[Execute+]: Styles added.")})();
+   * defer - Wait for a selector to appear using MutationObserver with timeout.
+   * @param {string} selectors - CSS selector(s)
+   * @returns {Promise<Element>} Resolved element
+   */const defer=selectors=>new Promise((resolve,reject)=>{const found=w.document.querySelector(selectors);if(found)return resolve(found);let obs;const timer=setTimeout(()=>{cleanup();reject(new Error(`deferral timed out: '${selectors}'`))},DEFERRAL_TIMEOUT);const cleanup=()=>{clearTimeout(timer);obs?.disconnect()};obs=new MutationObserver(()=>{const el=w.document.querySelector(selectors);if(el){cleanup();resolve(el)}});obs.observe(w.document.documentElement||w.document,{childList:true,subtree:true})});
+/**
+   * Creates an element with supplied properties.
+   * @param {keyof HTMLElementTagNameMap} tag - The HTML tag to create.
+   * @param {Object} props - HTML element properties + optional 'children' array/element.
+   * @returns {HTMLElement} The constructed element.
+   */const newElement=(tag,props={})=>{const{children:children,...rest}=props;const el=Object.assign(w.document.createElement(tag),rest);if(children){
+// Convert single child to array and append all
+const childrenArray=Array.isArray(children)?children:[children];el.append(...childrenArray)}return el};
+/**
+   * addStyles - Injects Racing+ CSS into document head.
+   * @returns {Promise<void>}
+   */const addStyles=async()=>{Logger.debug(`Injecting styles...`);w.document.head.appendChild(newElement("style",{innerHTML:`.execute{background-image:linear-gradient(#ffb46c,#ffa737)!important}`}));Logger.debug(`Styles injected.`)};const checkExecute=async progress=>{Logger.debug("Checking HealthBar...");if(!progress){Logger.error("Invalid progress.");return}let targetHealth=parseFloat(progress.ariaLabel.replace(/Progress: (\d{1,3}\.?\d{0,2})%/,"$1"));if(targetHealth<=EXECUTE_LEVEL){progress.classList.toggle("execute",true)}else{progress.classList.toggle("execute",false)}};let user=await defer("#torn-user");let userdata=JSON.parse(user.value);let healthBar=await defer(`div[class^="playersModelWrap_"] div[class^="header_"]:not([aria-describedby^="player-name_${userdata.playername}"])`);if(healthBar){Logger.debug("Adding HealthBar Observer...");let healthBarObserver=new MutationObserver(async mutations=>{for(const mutation of mutations){if(mutation.type==="attributes"&&mutation.attributeName==="aria-label"&&mutation.target.ariaLabel&&mutation.target.ariaLabel.startsWith("Progress:")){await checkExecute(mutation.target)}}});healthBarObserver.observe(healthBar.parentElement,{subtree:true,attributes:true});await checkExecute(healthBar.querySelector('[aria-label^="Progress:"]'))}await addStyles()})();

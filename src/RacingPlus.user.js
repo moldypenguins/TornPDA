@@ -19,19 +19,19 @@
 /* ------------------------------------------------------------------------
  * Constants
  * --------------------------------------------------------------------- */
-/* Application start time. */
-const APP_START = Date.now();
+/* Number of characters in a valid API key. */
+const API_KEY_LENGTH = 16;
 
-/* Number of milliseconds. */
+/* Number of kilometers in 1 mile. */
+const KMS_PER_MI = 1.609344;
+
+/* Number of milliseconds per somethings. */
 const MS = Object.freeze({
   second: 1000,
   minute: 60000,
   hour: 3600000,
   day: 86400000,
 });
-
-/* Number of kilometers in 1 mile. */
-const KMS_PER_MI = 1.609344;
 
 /* Number of milliseconds to wait for an API request. */
 const API_FETCH_TIMEOUT = 10 * MS.second;
@@ -42,8 +42,6 @@ const SPEED_INTERVAL = MS.second;
 /* Number of milliseconds to cache API responses. Default = 1 hour. */
 const CACHE_TTL = MS.hour;
 
-/* Number of characters in a valid API key. */
-const API_KEY_LENGTH = 16;
 /* CSS Selectors */
 const SELECTORS = Object.freeze({
   links_container: "#racing-leaderboard-header-root div[class^='linksContainer']",
@@ -512,6 +510,9 @@ class TornAPI {
  * Application start
  * --------------------------------------------------------------------- */
 (async (w) => {
+  if (w.racing_plus) return;
+  w.racing_plus = unixTimestamp();
+
   Logger.info(`Application loading...`);
 
   // TornPDA Integration Stub
@@ -882,13 +883,9 @@ class TornAPI {
    */
   const addStyles = async () => {
     Logger.debug(`Injecting styles...`);
-
-    const s = w.document.createElement("style");
-    s.innerHTML = `__MINIFIED_CSS__`;
-
     // Dynamic per-part color hints (batched for fewer string writes).
+    const dynRules = [];
     if (Store.getValue(Store.keys.rplus_showparts) === "1") {
-      const dynRules = [];
       Object.entries(PART_CATEGORIES).forEach(([, parts]) => {
         parts.forEach((g, i) => {
           dynRules.push(
@@ -898,10 +895,8 @@ class TornAPI {
           );
         });
       });
-      s.innerHTML += dynRules.join("");
     }
-
-    w.document.head.appendChild(s);
+    w.document.head.appendChild(newElement("style", { innerHTML: `__MINIFIED_CSS__` + dynRules.join("") }));
     Logger.debug(`Styles injected.`);
   };
 
@@ -1165,7 +1160,7 @@ class TornAPI {
    */
   const start = async () => {
     try {
-      Logger.info(`Application loaded. Starting...`, APP_START);
+      Logger.info(`Application loaded. Starting...`, w.racing_plus);
       // Add styles
       await addStyles();
       // Initialize torn_api
@@ -1177,7 +1172,7 @@ class TornAPI {
         }
       }
       // Load driver data
-      Logger.info(`Loading Driver Data...`, APP_START);
+      Logger.info(`Loading Driver Data...`, w.racing_plus);
       try {
         // Check for stored driver
         let scriptData = Store.getValue(Store.keys.rplus_driver);
@@ -1230,7 +1225,7 @@ class TornAPI {
       // If new race track, capture the track meta
       if (!this_race) {
         try {
-          Logger.info(`Loading Track Data...`, APP_START);
+          Logger.info(`Loading Track Data...`, w.racing_plus);
           // TODO: error check vars below
           const leaderboard = await defer(SELECTORS.drivers_list_leaderboard);
           const driver = await defer(`${SELECTORS.drivers_list_leaderboard} #lbr-${this_driver.id}`);
@@ -1259,7 +1254,7 @@ class TornAPI {
       // TODO: code goes here //
       /* -------------------- */
 
-      Logger.info(`Adding page observer...`, APP_START);
+      Logger.info(`Adding page observer...`, w.racing_plus);
 
       const content_container = await defer(SELECTORS.content_container);
       /* Setup content container observer */
@@ -1301,7 +1296,7 @@ class TornAPI {
       w.addEventListener("pagehide", disconnectObservers, { once: true });
       w.addEventListener("beforeunload", disconnectObservers, { once: true });
 
-      Logger.info(`Application started.`, APP_START);
+      Logger.info(`Application started.`, w.racing_plus);
     } catch (err) {
       Logger.error(err);
     }
