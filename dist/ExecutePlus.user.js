@@ -9,7 +9,6 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
 // @updateURL    https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/ExecutePlus.user.js
 // @downloadURL  https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/ExecutePlus.user.js
-// @require      https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/Common.js
 // @run-at       document-end
 // ==/UserScript==
 (async w=>{"use strict";

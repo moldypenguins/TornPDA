@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.30-alpha
+// @version      1.0.31-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -533,147 +533,6 @@ class TornAPI {
   }
 }
 
-/**
- * TornDriver - Stores skill and per-track best records for current user
- * @class
- */
-class TornDriver {
-  /**
-   * Creates a TornDriver instance for a driver id.
-   * @param {string|number} driver_id - Driver user ID
-   */
-  constructor(driver_id) {
-    this.id = driver_id;
-    this.skill = 0;
-    this.records = {};
-    this.cars = {};
-  }
-
-  /**
-   * Load driver data from localStorage
-   */
-  load() {
-    const raw = Store.getValue(Store.keys.rplus_driver);
-    if (raw) {
-      try {
-        const driver = JSON.parse(raw);
-        if (driver && driver.id === this.id) {
-          this.skill = Number(driver.skill) || 0;
-          this.records = driver.records || {};
-          this.cars = driver.cars || {};
-        }
-      } catch (err) {
-        // Log parse errors in debug mode
-        Logger.warn(`Failed to load driver cache.\n${err}`);
-      }
-    }
-  }
-
-  /**
-   * Save driver data to localStorage
-   */
-  save() {
-    const payload = JSON.stringify({
-      id: this.id,
-      skill: this.skill,
-      records: this.records,
-      cars: this.cars,
-    });
-    Store.setValue(Store.keys.rplus_driver, payload);
-  }
-
-  /**
-   * Update stored skill if newer value is higher (skill increases only)
-   * @param {number|string} skill - New skill value
-   */
-  updateSkill(skill) {
-    const v = Number(skill);
-    if (Number.isValid(v)) {
-      this.skill = Math.max(this.skill, v);
-      this.save();
-    }
-  }
-
-  /**
-   * Fetch racing records from API and store best lap per car/track
-   * @returns {Promise<void>}
-   */
-  async updateRecords() {
-    // TODO: add logging
-    try {
-      if (!torn_api || !torn_api.key) throw new Error("TornAPI not initialized.");
-      const results = await torn_api.request("user", "racingrecords", {
-        timestamp: `${Date.unix()}`,
-      });
-      if (Array.isArray(results?.racingrecords)) {
-        results.racingrecords.forEach(({ track, records }) => {
-          if (!track?.id || !Array.isArray(records)) return;
-          this.records[track.id] = records.reduce((acc, rec) => {
-            if (!acc[rec.car_id]) {
-              acc[rec.car_id] = {
-                name: rec.car_name,
-                lap_time: rec.lap_time,
-                count: 1,
-              };
-            } else {
-              acc[rec.car_id].lap_time = Math.min(acc[rec.car_id].lap_time, rec.lap_time);
-              acc[rec.car_id].count += 1;
-            }
-            return acc;
-          }, {});
-        });
-        this.save();
-      } else {
-        Logger.debug("Racing records response missing 'racingrecords' array.");
-      }
-    } catch (err) {
-      Logger.warn(`Racing records fetch failed.\n${err}`);
-    }
-  }
-
-  /**
-   * Fetch and store enlisted cars with win rate calculation
-   * @returns {Promise<void>}
-   */
-  async updateCars() {
-    // TODO: add logging
-    try {
-      if (!torn_api || !torn_api.key) throw new Error("TornAPI not initialized.");
-      const results = await torn_api.request("user", "enlistedcars", {
-        timestamp: `${Date.unix()}`,
-      });
-      if (Array.isArray(results?.enlistedcars)) {
-        this.cars = results.enlistedcars
-          .filter((car) => !car.is_removed)
-          .reduce((acc, car) => {
-            acc[car.car_item_id] = {
-              name: car.car_item_name,
-              top_speed: car.top_speed,
-              acceleration: car.acceleration,
-              braking: car.braking,
-              handling: car.handling,
-              safety: car.safety,
-              dirt: car.dirt,
-              tarmac: car.tarmac,
-              class: car.car_class,
-              worth: car.worth,
-              points_spent: car.points_spent,
-              races_entered: car.races_entered,
-              races_won: car.races_won,
-              win_rate: car.races_entered > 0 ? car.races_won / car.races_entered : 0,
-            };
-            return acc;
-          }, {});
-        this.save();
-      } else {
-        Logger.debug("Enlisted cars response missing 'enlistedcars' array.");
-      }
-    } catch (err) {
-      Logger.warn(`Enlisted cars fetch failed.\n${err}`);
-    }
-  }
-}
-
 /* ------------------------------------------------------------------------
  * Application start
  * --------------------------------------------------------------------- */
@@ -685,6 +544,310 @@ class TornDriver {
 
   // IS_PDA is a boolean indicating whether script is running in TornPDA.
   const IS_PDA = !PDA_KEY.includes("###") && typeof w.flutter_inappwebview !== "undefined" && typeof w.flutter_inappwebview.callHandler === "function";
+
+  /* ------------------------------------------------------------------------
+   * Models
+   * --------------------------------------------------------------------- */
+  /**
+   * TornDriver - Stores skill and per-track best records for current user
+   * @class
+   */
+  class TornDriver {
+    /**
+     * Creates a TornDriver instance for a driver id.
+     * @param {string|number} driver_id - Driver user ID
+     */
+    constructor(driver_id) {
+      this.id = driver_id;
+      this.skill = 0;
+      this.records = {};
+      this.cars = {};
+    }
+
+    /**
+     * Load driver data from localStorage
+     */
+    load() {
+      const raw = Store.getValue(Store.keys.rplus_driver);
+      if (raw) {
+        try {
+          const driver = JSON.parse(raw);
+          if (driver && driver.id === this.id) {
+            this.skill = Number(driver.skill) || 0;
+            this.records = driver.records || {};
+            this.cars = driver.cars || {};
+          }
+        } catch (err) {
+          // Log parse errors in debug mode
+          Logger.warn(`Failed to load driver cache.\n${err}`);
+        }
+      }
+    }
+
+    /**
+     * Save driver data to localStorage
+     */
+    save() {
+      const payload = JSON.stringify({
+        id: this.id,
+        skill: this.skill,
+        records: this.records,
+        cars: this.cars,
+      });
+      Store.setValue(Store.keys.rplus_driver, payload);
+    }
+
+    /**
+     * Update stored skill if newer value is higher (skill increases only)
+     * @param {number|string} skill - New skill value
+     */
+    updateSkill(skill) {
+      const v = Number(skill);
+      if (Number.isValid(v)) {
+        this.skill = Math.max(this.skill, v);
+        this.save();
+      }
+    }
+
+    /**
+     * Fetch racing records from API and store best lap per car/track
+     * @returns {Promise<void>}
+     */
+    async updateRecords() {
+      // TODO: add logging
+      try {
+        if (!torn_api || !torn_api.key) throw new Error("TornAPI not initialized.");
+        const results = await torn_api.request("user", "racingrecords", {
+          timestamp: `${Date.unix()}`,
+        });
+        if (Array.isArray(results?.racingrecords)) {
+          results.racingrecords.forEach(({ track, records }) => {
+            if (!track?.id || !Array.isArray(records)) return;
+            this.records[track.id] = records.reduce((acc, rec) => {
+              if (!acc[rec.car_id]) {
+                acc[rec.car_id] = {
+                  name: rec.car_name,
+                  lap_time: rec.lap_time,
+                  count: 1,
+                };
+              } else {
+                acc[rec.car_id].lap_time = Math.min(acc[rec.car_id].lap_time, rec.lap_time);
+                acc[rec.car_id].count += 1;
+              }
+              return acc;
+            }, {});
+          });
+          this.save();
+        } else {
+          Logger.debug("Racing records response missing 'racingrecords' array.");
+        }
+      } catch (err) {
+        Logger.warn(`Racing records fetch failed.\n${err}`);
+      }
+    }
+
+    /**
+     * Fetch and store enlisted cars with win rate calculation
+     * @returns {Promise<void>}
+     */
+    async updateCars() {
+      // TODO: add logging
+      try {
+        if (!torn_api || !torn_api.key) throw new Error("TornAPI not initialized.");
+        const results = await torn_api.request("user", "enlistedcars", {
+          timestamp: `${Date.unix()}`,
+        });
+        if (Array.isArray(results?.enlistedcars)) {
+          this.cars = results.enlistedcars
+            .filter((car) => !car.is_removed)
+            .reduce((acc, car) => {
+              acc[car.car_item_id] = {
+                name: car.car_item_name,
+                top_speed: car.top_speed,
+                acceleration: car.acceleration,
+                braking: car.braking,
+                handling: car.handling,
+                safety: car.safety,
+                dirt: car.dirt,
+                tarmac: car.tarmac,
+                class: car.car_class,
+                worth: car.worth,
+                points_spent: car.points_spent,
+                races_entered: car.races_entered,
+                races_won: car.races_won,
+                win_rate: car.races_entered > 0 ? car.races_won / car.races_entered : 0,
+              };
+              return acc;
+            }, {});
+          this.save();
+        } else {
+          Logger.debug("Enlisted cars response missing 'enlistedcars' array.");
+        }
+      } catch (err) {
+        Logger.warn(`Enlisted cars fetch failed.\n${err}`);
+      }
+    }
+  }
+
+  /**
+   * TornRace class - Helper to compile race metadata and compute status
+   * @class
+   */
+  class TornRace {
+    /**
+     * Creates a TornRace instance
+     * @param {object} [args={}] - Race properties
+     * @param {string} [args.id] - Race ID
+     * @param {number} [args.trackid] - Track ID
+     * @param {string} [args.title] - Race title
+     * @param {number} [args.distance] - Race distance
+     * @param {number} [args.laps] - Number of laps
+     */
+    constructor(args = {}) {
+      this.id = args.id ?? null;
+      this.track = args.trackid ? RACE_TRACKS[args.trackid] : null;
+      this.title = args.title ?? "";
+      this.distance = args.distance ?? null;
+      this.laps = args.laps ?? null;
+      this.status = "unknown";
+    }
+
+    /**
+     * Updates race status from info spot text
+     * @param {string} info_spot - Info spot text content
+     * @returns {'unknown'|'racing'|'finished'|'waiting'|'joined'} Updated status
+     */
+    updateStatus(info_spot) {
+      const text = (info_spot ?? "").toLowerCase();
+      switch (text) {
+        case "":
+          this.status = "unknown";
+          break;
+        case "race started":
+        case "race in progress":
+          this.status = "racing";
+          break;
+        case "race finished":
+          this.status = "finished";
+          break;
+        default:
+          // Case-insensitive check for "Starts:" marker
+          this.status = text.includes("starts: ") ? "joined" : "waiting";
+          break;
+      }
+      return this.status;
+    }
+
+    /**
+     * Normalizes leaderboard DOM entries and adds driver info
+     * @param {NodeList|Array} drivers - List of driver DOM elements
+     */
+    async updateLeaderBoard(drivers) {
+      Logger.debug("Updating Leaderboard...");
+
+      const addLinks = Store.getValue(Store.keys.rplus_addlinks) === "1";
+      const showSpeed = Store.getValue(Store.keys.rplus_showspeed) === "1";
+      const showSkill = Store.getValue(Store.keys.rplus_showskill) === "1";
+
+      // Fix driver status
+      for (const drvr of Array.from(drivers)) {
+        //Array.from(drivers).forEach(async (drvr) => {
+        // Cache frequently used lookups to avoid repeated DOM queries.
+        const driverId = (drvr.id || "").substring(4);
+        const driverStatus = drvr.querySelector(".status");
+        const drvrName = drvr.querySelector("li.name");
+        // TODO: better null safety check
+        const nameLink = drvrName?.querySelector("a");
+        const nameSpan = drvrName?.querySelector("span");
+        const drvrColour = drvr.querySelector("li.color");
+
+        // Update status icon classes
+        if (driverStatus) {
+          switch (this.status) {
+            case "joined":
+              driverStatus.className = "status success";
+              driverStatus.textContent = "";
+              break;
+            case "waiting":
+              driverStatus.className = "status waiting";
+              driverStatus.textContent = "";
+              break;
+            case "racing":
+              driverStatus.className = "status racing";
+              driverStatus.textContent = "";
+              break;
+            case "finished":
+            default:
+              break;
+          }
+        }
+
+        // Fix driver colours
+        if (drvrColour && nameSpan) {
+          drvrColour.classList.remove("color");
+          nameSpan.className = drvrColour.className;
+        }
+
+        // Add driver profile links
+        if (addLinks) {
+          if (!nameLink && nameSpan) {
+            nameSpan.outerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${nameSpan.outerHTML}</a>`;
+          }
+        } else {
+          if (nameLink) {
+            drvrName.innerHTML = `${nameLink.innerHTML}`;
+          }
+        }
+
+        // Fix driver race stats
+        if (!drvr.querySelector(".statistics")) {
+          // Add stats container
+          drvrName.insertAdjacentHTML("beforeEnd", `<div class="statistics"></div>`);
+        }
+        const stats = drvr.querySelector(".statistics");
+
+        // Adjust time
+        const timeLi = drvr.querySelector("li.time");
+        if (timeLi) {
+          if (timeLi.textContent === "") {
+            timeLi.textContent = "0.00 %";
+          }
+          const timeContainer = w.document.createElement("ul");
+          timeContainer.appendChild(timeLi);
+          stats.insertAdjacentElement("afterEnd", timeContainer);
+        }
+
+        // Show driver speed
+        if (showSpeed) {
+          if (!stats.querySelector(".speed")) {
+            stats.insertAdjacentHTML("beforeEnd", '<div class="speed">0.00mph</div>');
+          }
+          // if (!["joined", "finished"].includes(racestatus) && !speedIntervalByDriverId.has(driverId)) {
+          //   Logger.debug(`Adding speed interval for driver ${driverId}.`);
+          //   speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId));
+          // }
+        }
+        // Show driver skill
+        if (showSkill) {
+          if (!stats.querySelector(".skill")) {
+            stats.insertAdjacentHTML("afterBegin", '<div class="skill">RS: ?</div>');
+          }
+          if (torn_api.key) {
+            // Fetch racing skill data from the Torn API for the given driver id
+            try {
+              let user = await torn_api.request(`user/${driverId}/personalStats`, { stat: "racingskill" });
+              if (user) {
+                let skill = stats.querySelector(".skill");
+                skill.textContent = `RS: ${user.personalstats?.racing?.skill ?? "?"}`;
+              }
+            } catch (err) {
+              console.log(`[TornPDA.Racing+]: ${err.error ?? err}`);
+            }
+          }
+        }
+      } //);
+    }
+  }
 
   /* ------------------------------------------------------------------------
    * Helpers
@@ -1027,7 +1190,7 @@ class TornDriver {
    * @param {} tabs
    * @returns {Promise<void>}
    */
-  const fixActiveTabHighlighting = async (event, tabs) => {
+  const fixActiveTabHighlighting = async (tabs) => {
     Logger.debug("Fixing active tab highlighting...");
     /* Only select elements without 'clear' class and toggle their active state */
     tabs.querySelectorAll(":not(.clear)").forEach((c) => {
@@ -1085,26 +1248,52 @@ class TornDriver {
       // Fix top banner (skill, class)
       await fixTopBanner();
 
-      // Fix tabs
-      const tabs_container = await defer(SELECTORS.tabs_container);
-      const official_tab = tabs_container.querySelector('a[tab-value="race"]');
-      const custom_tab = tabs_container.querySelector('a[tab-value="customrace"]');
-      // Official Events tab click event handler.
-      official_tab.addEventListener("click", async (ev) => {
-        await fixActiveTabHighlighting(ev, tabs_container);
-      });
-      // Custom Events tab click event handler.
-      custom_tab.addEventListener("click", async (ev) => {
-        await fixActiveTabHighlighting(ev, tabs_container);
-      });
-
       // Update driver track records and available cars
-      await this_driver.updateRecords();
-      await this_driver.updateCars();
-
+      // await this_driver.updateRecords(); await this_driver.updateCars();
+      const results = await Promise.allSettled([this_driver.updateRecords(), this_driver.updateCars()]);
+      if (!results.map((r) => r.status === "fulfilled")) {
+        Logger.error(
+          results
+            .filter((r) => r.status === "rejected")
+            .map((r) => `${r.status} - ${r.reason}`)
+            .join("\n")
+        );
+      }
       /* -------------------- */
       // TODO: code goes here //
       /* -------------------- */
+
+      // Fix tabs
+      const tabs_container = await defer(SELECTORS.tabs_container);
+      await fixActiveTabHighlighting(tabs_container);
+
+      // If new race track, capture the track meta
+      if (!this_race) {
+        try {
+          Logger.info(`Loading Track Data...`, APP_START);
+          // TODO: error check vars below
+          const leaderboard = await defer(SELECTORS.drivers_list_leaderboard);
+          const driver = await defer(`${SELECTORS.drivers_list_leaderboard} #lbr-${this_driver.id}`);
+          const dataId = driver.getAttribute("data-id") || "";
+          const raceId = dataId.split("-")[0];
+          const trackInfo = leaderboard.querySelector(".track-info");
+          const distRaw = (trackInfo?.getAttribute("data-length") ?? "").trim(); // e.g., "2.42mi"
+          const distNum = parseFloat(distRaw);
+          const lapsText = (leaderboard.textContent ?? "").split(" - ")[1]?.split(" ")[0] ?? "";
+          const lapsNum = Number.parseInt(lapsText, 10);
+
+          // Create TornRace
+          this_race = new TornRace({
+            id: raceId,
+            title: trackInfo?.getAttribute("title") ?? "",
+            distance: Number.isValid(distNum) ? distNum : null,
+            laps: Number.isInteger(lapsNum) ? lapsNum : null,
+          });
+          this_driver.load();
+        } catch (err) {
+          Logger.error(`Failed to load track data. ${err}`);
+        }
+      }
 
       Logger.info(`Adding page observer...`, APP_START);
 
@@ -1119,8 +1308,8 @@ class TornDriver {
             const tNode = mutation.target;
             const el = tNode.nodeType === Node.ELEMENT_NODE ? tNode : tNode.parentElement;
             if (el && el.id === "infoSpot") {
-              // this_race?.updateStatus(el.textContent || "");
-              Logger.debug(`Race Status Update -> ${el.textContent}.`);
+              this_race?.updateStatus(el.textContent || "");
+              //Logger.debug(`Race Status Update -> ${el.textContent}.`);
             }
             if (el && el.id === "leaderBoard") {
               // await this_race?.updateLeaderBoard(el.childNodes || []);
