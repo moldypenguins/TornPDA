@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TornPDA.Fatality+
 // @namespace    TornPDA.FatalityPlus
-// @version      0.99.1-alpha
+// @version      0.99.2-alpha
 // @license      MIT
 // @description  Shows execute limit in health bar.
 // @author       moldypenguins [2881784]
