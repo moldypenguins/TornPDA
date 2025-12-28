@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.41-alpha
+// @version      1.0.42-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -1149,7 +1149,7 @@ class TornAPI {
     const container = await defer(SELECTORS.tabs_container);
     const tabs = container.querySelectorAll("li:not(.clear)");
     for (const tab of tabs) {
-      if (!tab.classList.includes("clear")) {
+      if (!tab.classList.contains("clear")) {
         tab.classList.toggle("active", !!tab.querySelector(".official-events"));
       }
     }

@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.41-alpha
+// @version      1.0.42-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -365,7 +365,7 @@ this_driver.updateSkill(el.textContent);el.textContent=String(this_driver.skill)
    * @param {MouseEvent} event
    * @param {} tabs
    * @returns {Promise<void>}
-   */const fixActiveTabHighlighting=async()=>{Logger.debug("Fixing active tab highlighting...");const container=await defer(SELECTORS.tabs_container);const tabs=container.querySelectorAll("li:not(.clear)");for(const tab of tabs){if(!tab.classList.includes("clear")){tab.classList.toggle("active",!!tab.querySelector(".official-events"))}}};
+   */const fixActiveTabHighlighting=async()=>{Logger.debug("Fixing active tab highlighting...");const container=await defer(SELECTORS.tabs_container);const tabs=container.querySelectorAll("li:not(.clear)");for(const tab of tabs){if(!tab.classList.contains("clear")){tab.classList.toggle("active",!!tab.querySelector(".official-events"))}}};
 /**
    * start - Main entry point for the application.
    */const start=async()=>{try{Logger.info(`Application loaded. Starting...`,w.racing_plus);
