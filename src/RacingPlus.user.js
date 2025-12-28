@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.33-alpha
+// @version      1.0.34-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -22,25 +22,25 @@
 /* Application start time. */
 const APP_START = Date.now();
 
-/* Number of milliseconds in 1 second. */
-const MS_PER_SECOND = 1000;
-/* Number of milliseconds in 1 minute. */
-const MS_PER_MINUTE = 60000;
-/* Number of milliseconds in 1 hour. */
-const MS_PER_HOUR = 3600000;
-/* Number of seconds in 1 hour. */
-const SECONDS_PER_HOUR = 3600;
+/* Number of milliseconds. */
+const MS = Object.freeze({
+  second: 1000,
+  minute: 60000,
+  hour: 3600000,
+  day: 86400000,
+});
+
 /* Number of kilometers in 1 mile. */
 const KMS_PER_MI = 1.609344;
 
 /* Number of milliseconds to wait for an API request. */
-const API_FETCH_TIMEOUT = 10 * MS_PER_SECOND;
+const API_FETCH_TIMEOUT = 10 * MS.second;
 /* Number of milliseconds to wait for a selector to appear. Default = 15 seconds. */
-const DEFERRAL_TIMEOUT = 15 * MS_PER_SECOND;
+const DEFERRAL_TIMEOUT = 15 * MS.second;
 /* Number of milliseconds to update speed. Default = 1 second. */
-const SPEED_INTERVAL = MS_PER_SECOND;
+const SPEED_INTERVAL = MS.second;
 /* Number of milliseconds to cache API responses. Default = 1 hour. */
-const CACHE_TTL = MS_PER_HOUR;
+const CACHE_TTL = MS.hour;
 
 /* Number of characters in a valid API key. */
 const API_KEY_LENGTH = 16;
@@ -106,7 +106,7 @@ class Format {
    * @returns {string} Formatted time string ("MM:SS.mmm")
    */
   static duration = (duration) => {
-    return `${String(Math.floor((duration % MS_PER_HOUR) / MS_PER_MINUTE)).padStart(2, "0")}:${String(Math.floor((duration % MS_PER_MINUTE) / MS_PER_SECOND)).padStart(2, "0")}.${String(Math.floor(duration % MS_PER_SECOND)).padStart(3, "0")}`;
+    return `${String(Math.floor((duration % MS.hour) / MS.minute)).padStart(2, "0")}:${String(Math.floor((duration % MS.minute) / MS.second)).padStart(2, "0")}.${String(Math.floor(duration % MS.second)).padStart(3, "0")}`;
   };
 
   /**
@@ -293,7 +293,7 @@ class Speed {
     if (!Number.isInteger(seconds) || seconds <= 0) {
       throw new TypeError("seconds must be an integer > 0.");
     }
-    this._mph = distance.mi / (seconds / SECONDS_PER_HOUR);
+    this._mph = distance.mi / (seconds / (MS.second * MS.hour));
     this._units = Store.getValue(Store.keys.rplus_units) ?? "mph";
   }
 

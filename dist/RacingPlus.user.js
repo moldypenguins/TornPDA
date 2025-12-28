@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.33-alpha
+// @version      1.0.34-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -15,7 +15,7 @@
 // @run-at       document-start
 // ==/UserScript==
 "use strict";
-const APP_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const MS_PER_HOUR=36e5;const SECONDS_PER_HOUR=3600;const KMS_PER_MI=1.609344;const API_FETCH_TIMEOUT=10*MS_PER_SECOND;const DEFERRAL_TIMEOUT=15*MS_PER_SECOND;const SPEED_INTERVAL=MS_PER_SECOND;const CACHE_TTL=MS_PER_HOUR;const API_KEY_LENGTH=16;const SELECTORS=Object.freeze({links_container:"#racing-leaderboard-header-root div[class^='linksContainer']",main_container:"#racingMainContainer",main_banner:"#racingMainContainer .header-wrap div.banner",tabs_container:"#racingMainContainer .header-wrap ul.categories",content_container:"#racingAdditionalContainer",car_selected:"#racingupdates .car-selected",drivers_list:"#racingupdates .drivers-list",drivers_list_title:"#racingupdates .drivers-list div[class^='title']",drivers_list_leaderboard:"#racingupdates .drivers-list #leaderBoard"});
+const APP_START=Date.now();const MS=Object.freeze({second:1e3,minute:6e4,hour:36e5,day:864e5});const KMS_PER_MI=1.609344;const API_FETCH_TIMEOUT=10*MS.second;const DEFERRAL_TIMEOUT=15*MS.second;const SPEED_INTERVAL=MS.second;const CACHE_TTL=MS.hour;const API_KEY_LENGTH=16;const SELECTORS=Object.freeze({links_container:"#racing-leaderboard-header-root div[class^='linksContainer']",main_container:"#racingMainContainer",main_banner:"#racingMainContainer .header-wrap div.banner",tabs_container:"#racingMainContainer .header-wrap ul.categories",content_container:"#racingAdditionalContainer",car_selected:"#racingupdates .car-selected",drivers_list:"#racingupdates .drivers-list",drivers_list_title:"#racingupdates .drivers-list div[class^='title']",drivers_list_leaderboard:"#racingupdates .drivers-list #leaderBoard"});
 /**
  * unixTimestamp
  * Description: Returns the current Unix timestamp (seconds since epoch).
@@ -48,7 +48,7 @@ static time=timestamp=>{const dt=new Date(timestamp);return`${String(dt.getMinut
    * @param {number} ms - Duration in milliseconds.
    * @returns {string} Formatted time string ("MM:SS.mmm")
    */
-static duration=duration=>`${String(Math.floor(duration%MS_PER_HOUR/MS_PER_MINUTE)).padStart(2,"0")}:${String(Math.floor(duration%MS_PER_MINUTE/MS_PER_SECOND)).padStart(2,"0")}.${String(Math.floor(duration%MS_PER_SECOND)).padStart(3,"0")}`;
+static duration=duration=>`${String(Math.floor(duration%MS.hour/MS.minute)).padStart(2,"0")}:${String(Math.floor(duration%MS.minute/MS.second)).padStart(2,"0")}.${String(Math.floor(duration%MS.second)).padStart(3,"0")}`;
 /**
    * Returns a human-readable error string (name + message).
    * @returns {string}
@@ -142,7 +142,7 @@ constructor(args={}){const{miles:miles,kilometers:kilometers}=args;if(miles==nul
    * @param {number} args.seconds - Elapsed time in seconds (> 0)
    * @throws {TypeError} If distance is not a Distance instance or seconds invalid
    */
-constructor(args={}){const{distance:distance,seconds:seconds}=args;if(!(distance instanceof Distance)){throw new TypeError("distance must be a Distance instance.")}if(!Number.isInteger(seconds)||seconds<=0){throw new TypeError("seconds must be an integer > 0.")}this._mph=distance.mi/(seconds/SECONDS_PER_HOUR);this._units=Store.getValue(Store.keys.rplus_units)??"mph"}
+constructor(args={}){const{distance:distance,seconds:seconds}=args;if(!(distance instanceof Distance)){throw new TypeError("distance must be a Distance instance.")}if(!Number.isInteger(seconds)||seconds<=0){throw new TypeError("seconds must be an integer > 0.")}this._mph=distance.mi/(seconds/(MS.second*MS.hour));this._units=Store.getValue(Store.keys.rplus_units)??"mph"}
 /**
    * Get speed in miles per hour
    * @returns {number} Speed in mph
