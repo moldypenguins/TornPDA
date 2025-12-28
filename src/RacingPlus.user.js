@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.43-alpha
+// @version      1.0.44-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -511,7 +511,7 @@ class TornAPI {
  * --------------------------------------------------------------------- */
 (async (w) => {
   if (w.racing_plus) return;
-  w.racing_plus = unixTimestamp();
+  w.racing_plus = Date.now();
 
   Logger.info(`Application loading...`);
 
@@ -718,7 +718,7 @@ class TornAPI {
      * Normalizes leaderboard DOM entries and adds driver info
      * @param {NodeList|Array} drivers - List of driver DOM elements
      */
-    async updateLeaderBoard(drivers) {
+    async updateLeaderboard(drivers) {
       Logger.debug("Updating Leaderboard...");
 
       const addLinks = Store.getValue(Store.keys.rplus_addlinks) === "1";
@@ -1280,8 +1280,8 @@ class TornAPI {
               //Logger.debug(`Race Status Update -> ${el.textContent}.`);
             }
             if (el && el.id === "leaderBoard") {
-              // await this_race?.updateLeaderBoard(el.childNodes || []);
-              Logger.debug(`Leader Board Update.`);
+              // await this_race?.updateLeaderboard(el.childNodes || []);
+              Logger.debug(`Leaderboard Update.`);
             }
           }
         }

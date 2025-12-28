@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.43-alpha
+// @version      1.0.44-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -232,7 +232,7 @@ this.cache.set(queryURL,{data:results,timestamp:Date.now()});return results}catc
 // use candidate key for probe call, store current key
 const prev_key=this.key;this.key=key;const data=await this.request("key","info",{timestamp:`${unixTimestamp()}`});if(data?.info?.access&&Number(data.info.access.level)>=ACCESS_LEVEL.Minimal){Logger.debug("Valid API key.");return true}
 // invalid key, reset to previous key
-this.key=prev_key;throw new Error("Invalid API key: unexpected response.")}}(async w=>{if(w.racing_plus)return;w.racing_plus=unixTimestamp();Logger.info(`Application loading...`);
+this.key=prev_key;throw new Error("Invalid API key: unexpected response.")}}(async w=>{if(w.racing_plus)return;w.racing_plus=Date.now();Logger.info(`Application loading...`);
 // TornPDA Integration Stub
 const PDA_KEY="###PDA-APIKEY###";
 // IS_PDA is a boolean indicating whether script is running in TornPDA.
@@ -290,7 +290,7 @@ this.status=text.includes("starts: ")?"joined":"waiting";break}return this.statu
 /**
      * Normalizes leaderboard DOM entries and adds driver info
      * @param {NodeList|Array} drivers - List of driver DOM elements
-     */async updateLeaderBoard(drivers){Logger.debug("Updating Leaderboard...");const addLinks=Store.getValue(Store.keys.rplus_addlinks)==="1";const showSpeed=Store.getValue(Store.keys.rplus_showspeed)==="1";const showSkill=Store.getValue(Store.keys.rplus_showskill)==="1";
+     */async updateLeaderboard(drivers){Logger.debug("Updating Leaderboard...");const addLinks=Store.getValue(Store.keys.rplus_addlinks)==="1";const showSpeed=Store.getValue(Store.keys.rplus_showspeed)==="1";const showSkill=Store.getValue(Store.keys.rplus_showskill)==="1";
 // Fix driver status
 for(const drvr of Array.from(drivers)){
 //Array.from(drivers).forEach(async (drvr) => {
@@ -403,8 +403,8 @@ const distNum=parseFloat(distRaw);const lapsText=(leaderboard.textContent??"").s
 this_race=new TornRace({id:raceId,title:trackInfo?.getAttribute("title")??"",distance:isNumber(distNum)?distNum:null,laps:Number.isInteger(lapsNum)?lapsNum:null});this_driver.load()}catch(err){Logger.error(`Failed to load track data. ${err}`)}}Logger.info(`Adding page observer...`,w.racing_plus);const content_container=await defer(SELECTORS.content_container);const page_observer=new MutationObserver(async mutations=>{for(const mutation of mutations){if(mutation.type==="characterData"||mutation.type==="childList"){const tNode=mutation.target;const el=tNode.nodeType===Node.ELEMENT_NODE?tNode:tNode.parentElement;if(el&&el.id==="infoSpot"){this_race?.updateStatus(el.textContent||"");
 //Logger.debug(`Race Status Update -> ${el.textContent}.`);
 }if(el&&el.id==="leaderBoard"){
-// await this_race?.updateLeaderBoard(el.childNodes || []);
-Logger.debug(`Leader Board Update.`)}}}});page_observer.observe(content_container,{characterData:true,childList:true,subtree:true});
+// await this_race?.updateLeaderboard(el.childNodes || []);
+Logger.debug(`Leaderboard Update.`)}}}});page_observer.observe(content_container,{characterData:true,childList:true,subtree:true});
 /**
        * Safely disconnect all mutation observers.
        * @returns {void}
