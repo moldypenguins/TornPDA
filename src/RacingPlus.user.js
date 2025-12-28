@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.35-alpha
+// @version      1.0.36-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -238,7 +238,7 @@ class Distance {
       throw new TypeError("One of miles or kilometers must be specified.");
     }
     const mi = miles ?? (kilometers != null ? kilometers / KMS_PER_MI : 0);
-    if (!Number.isValid(mi)) {
+    if (!isNumber(mi)) {
       throw new TypeError("Miles or Kilometers must be a number.");
     }
     this._mi = mi;
@@ -579,7 +579,7 @@ class TornAPI {
      */
     updateSkill(skill) {
       const v = Number(skill);
-      if (Number.isValid(v)) {
+      if (isNumber(v)) {
         this.skill = Math.max(this.skill, v);
         this.save();
       }
@@ -1241,7 +1241,7 @@ class TornAPI {
           this_race = new TornRace({
             id: raceId,
             title: trackInfo?.getAttribute("title") ?? "",
-            distance: Number.isValid(distNum) ? distNum : null,
+            distance: isNumber(distNum) ? distNum : null,
             laps: Number.isInteger(lapsNum) ? lapsNum : null,
           });
           this_driver.load();

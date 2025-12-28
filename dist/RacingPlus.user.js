@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.35-alpha
+// @version      1.0.36-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -118,7 +118,7 @@ static keys=Object.freeze({rplus_apikey:"RACINGPLUS_APIKEY",rplus_units:"RACINGP
    * @param {number} [args.kilometers=null] - Distance in kilometers
    * @throws {TypeError} If miles is not a finite number
    */
-constructor(args={}){const{miles:miles,kilometers:kilometers}=args;if(miles==null&&kilometers==null){throw new TypeError("One of miles or kilometers must be specified.")}const mi=miles??(kilometers!=null?kilometers/KMS_PER_MI:0);if(!Number.isValid(mi)){throw new TypeError("Miles or Kilometers must be a number.")}this._mi=mi;this._units=kilometers!=null?"km":"mi"}
+constructor(args={}){const{miles:miles,kilometers:kilometers}=args;if(miles==null&&kilometers==null){throw new TypeError("One of miles or kilometers must be specified.")}const mi=miles??(kilometers!=null?kilometers/KMS_PER_MI:0);if(!isNumber(mi)){throw new TypeError("Miles or Kilometers must be a number.")}this._mi=mi;this._units=kilometers!=null?"km":"mi"}
 /**
    * Get distance in miles
    * @returns {number} Distance in miles
@@ -257,7 +257,7 @@ Logger.warn(`Failed to load driver cache.\n${err}`)}}}
 /**
      * Update stored skill if newer value is higher (skill increases only)
      * @param {number|string} skill - New skill value
-     */updateSkill(skill){const v=Number(skill);if(Number.isValid(v)){this.skill=Math.max(this.skill,v);this.save()}}
+     */updateSkill(skill){const v=Number(skill);if(isNumber(v)){this.skill=Math.max(this.skill,v);this.save()}}
 /**
      * Fetch racing records from API and store best lap per car/track
      * @returns {Promise<void>}
@@ -400,7 +400,7 @@ const tabs_container=await defer(SELECTORS.tabs_container);await fixActiveTabHig
 if(!this_race){try{Logger.info(`Loading Track Data...`,w.racing_plus);const leaderboard=await defer(SELECTORS.drivers_list_leaderboard);const driver=await defer(`${SELECTORS.drivers_list_leaderboard} #lbr-${this_driver.id}`);const dataId=driver.getAttribute("data-id")||"";const raceId=dataId.split("-")[0];const trackInfo=leaderboard.querySelector(".track-info");const distRaw=(trackInfo?.getAttribute("data-length")??"").trim();// e.g., "2.42mi"
 const distNum=parseFloat(distRaw);const lapsText=(leaderboard.textContent??"").split(" - ")[1]?.split(" ")[0]??"";const lapsNum=Number.parseInt(lapsText,10);
 // Create TornRace
-this_race=new TornRace({id:raceId,title:trackInfo?.getAttribute("title")??"",distance:Number.isValid(distNum)?distNum:null,laps:Number.isInteger(lapsNum)?lapsNum:null});this_driver.load()}catch(err){Logger.error(`Failed to load track data. ${err}`)}}Logger.info(`Adding page observer...`,w.racing_plus);const content_container=await defer(SELECTORS.content_container);const page_observer=new MutationObserver(async mutations=>{for(const mutation of mutations){if(mutation.type==="characterData"||mutation.type==="childList"){
+this_race=new TornRace({id:raceId,title:trackInfo?.getAttribute("title")??"",distance:isNumber(distNum)?distNum:null,laps:Number.isInteger(lapsNum)?lapsNum:null});this_driver.load()}catch(err){Logger.error(`Failed to load track data. ${err}`)}}Logger.info(`Adding page observer...`,w.racing_plus);const content_container=await defer(SELECTORS.content_container);const page_observer=new MutationObserver(async mutations=>{for(const mutation of mutations){if(mutation.type==="characterData"||mutation.type==="childList"){
 /** @type {Node} */
 const tNode=mutation.target;const el=tNode.nodeType===Node.ELEMENT_NODE?tNode:tNode.parentElement;if(el&&el.id==="infoSpot"){this_race?.updateStatus(el.textContent||"");
 //Logger.debug(`Race Status Update -> ${el.textContent}.`);
