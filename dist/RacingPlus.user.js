@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.29-alpha
+// @version      1.0.30-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -15,26 +15,7 @@
 // @run-at       document-start
 // ==/UserScript==
 "use strict";
-const SCRIPT_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const MS_PER_HOUR=36e5;const SECONDS_PER_HOUR=3600;const KMS_PER_MI=1.609344;const API_FETCH_TIMEOUT=10*MS_PER_SECOND;const DEFERRAL_TIMEOUT=15*MS_PER_SECOND;const SPEED_INTERVAL=MS_PER_SECOND;const CACHE_TTL=MS_PER_HOUR;const API_KEY_LENGTH=16;const SELECTORS=Object.freeze({links_container:"#racing-leaderboard-header-root div[class^='linksContainer']",main_container:"#racingMainContainer",main_banner:"#racingMainContainer .header-wrap div.banner",tabs_container:"#racingMainContainer .header-wrap ul.categories",content_container:"#racingAdditionalContainer",car_selected:"#racingupdates .car-selected",drivers_list:"#racingupdates .drivers-list",drivers_list_title:"#racingupdates .drivers-list div[class^='title']",drivers_list_leaderboard:"#racingupdates .drivers-list #leaderBoard"});
-/**
- * LOG_LEVEL - Log level enumeration
- * @readonly
- * @enum {number}
- */const LOG_LEVEL=Object.freeze({debug:10,info:20,warn:30,error:40,silent:50});
-/**
- * LOG_MODE - Log level threshold LOG_LEVEL[debug|info|warn|error|silent]
- * @type {number}
- */const LOG_MODE=LOG_LEVEL.debug;
-/**
- * Static methods for leveled console logging.
- * @class
- */class Logger{
-/** Returns elapsed time since SCRIPT_START. */
-static get time(){const t=Date.now()-SCRIPT_START;return t>0?` ${t} msec`:""}
-/** logs a debug-level message. */static debug(...args){if(LOG_MODE>LOG_LEVEL.debug)return;console.log("%c[DEBUG][TornPDA.Racing+]: ","color:#6aa84f;font-weight:600",...args,this.time)}
-/** logs an info-level message. */static info(...args){if(LOG_MODE>LOG_LEVEL.info)return;console.log("%c[INFO][TornPDA.Racing+]: ","color:#3d85c6;font-weight:600",...args,this.time)}
-/** Logs a warning-level message. */static warn(...args){if(LOG_MODE>LOG_LEVEL.warn)return;console.log("%c[WARN][TornPDA.Racing+]: ","color:#e69138;font-weight:600",...args)}
-/** Logs an error-level message. */static error(...args){if(LOG_MODE>LOG_LEVEL.error)return;console.log("%c[ERROR][TornPDA.Racing+]: ","color:#d93025;font-weight:600",...args)}}
+const APP_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const MS_PER_HOUR=36e5;const SECONDS_PER_HOUR=3600;const KMS_PER_MI=1.609344;const API_FETCH_TIMEOUT=10*MS_PER_SECOND;const DEFERRAL_TIMEOUT=15*MS_PER_SECOND;const SPEED_INTERVAL=MS_PER_SECOND;const CACHE_TTL=MS_PER_HOUR;const API_KEY_LENGTH=16;const SELECTORS=Object.freeze({links_container:"#racing-leaderboard-header-root div[class^='linksContainer']",main_container:"#racingMainContainer",main_banner:"#racingMainContainer .header-wrap div.banner",tabs_container:"#racingMainContainer .header-wrap ul.categories",content_container:"#racingAdditionalContainer",car_selected:"#racingupdates .car-selected",drivers_list:"#racingupdates .drivers-list",drivers_list_title:"#racingupdates .drivers-list div[class^='title']",drivers_list_leaderboard:"#racingupdates .drivers-list #leaderBoard"});
 /**
  * Date.unix
  * Description: Returns the current Unix timestamp (seconds since epoch).
@@ -63,6 +44,24 @@ static get time(){const t=Date.now()-SCRIPT_START;return t>0?` ${t} msec`:""}
  * Description: Returns a human-readable error string (name + message).
  * @returns {string}
  */if(typeof Error.prototype.toString!=="function"){Object.defineProperty(Error.prototype,"toString",{value:function toString(){const name=this&&this.name?String(this.name):"Error";const msg=this&&this.message?String(this.message):"";return msg?`${name}: ${msg}`:name},writable:true,configurable:true,enumerable:false})}
+/**
+ * LOG_LEVEL - Log level enumeration
+ * @readonly
+ * @enum {number}
+ */const LOG_LEVEL=Object.freeze({debug:10,info:20,warn:30,error:40,silent:50});
+/**
+ * LOG_MODE - Log level threshold LOG_LEVEL[debug|info|warn|error|silent]
+ * @type {number}
+ */const LOG_MODE=LOG_LEVEL.debug;
+/**
+ * Static methods for leveled console logging.
+ * @class
+ */class Logger{
+/** logs a debug-level message. */
+static debug(message,time=null){if(LOG_MODE>LOG_LEVEL.debug)return;console.log("%c[DEBUG][TornPDA.Racing+]: ","color:#6aa84f;font-weight:600",message,time?` ${Date.now()-time} msec`:` ${Date.now().formatDate()}`)}
+/** logs an info-level message. */static info(message,time=null){if(LOG_MODE>LOG_LEVEL.info)return;console.log("%c[INFO][TornPDA.Racing+]: ","color:#3d85c6;font-weight:600",message,time?` ${Date.now()-time} msec`:` ${Date.now().formatDate()}`)}
+/** Logs a warning-level message. */static warn(message,time=null){if(LOG_MODE>LOG_LEVEL.warn)return;console.log("%c[WARN][TornPDA.Racing+]: ","color:#e69138;font-weight:600",message,time?` ${Date.now()-time} msec`:` ${Date.now().formatDate()}`)}
+/** Logs an error-level message. */static error(message,time=null){if(LOG_MODE>LOG_LEVEL.error)return;console.log("%c[ERROR][TornPDA.Racing+]: ","color:#d93025;font-weight:600",message,time?` ${Date.now()-time} msec`:` ${Date.now().formatDate()}`)}}
 /**
  * Store Wrapper classs for localStorage.
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
@@ -252,7 +251,7 @@ Logger.warn(`Failed to load driver cache.\n${err}`)}}}
 /**
    * Fetch and store enlisted cars with win rate calculation
    * @returns {Promise<void>}
-   */async updateCars(){try{if(!torn_api||!torn_api.key)throw new Error("TornAPI not initialized.");const results=await torn_api.request("user","enlistedcars",{timestamp:`${Date.unix()}`});if(Array.isArray(results?.enlistedcars)){this.cars=results.enlistedcars.filter(car=>!car.is_removed).reduce((acc,car)=>{acc[car.car_item_id]={name:car.car_item_name,top_speed:car.top_speed,acceleration:car.acceleration,braking:car.braking,handling:car.handling,safety:car.safety,dirt:car.dirt,tarmac:car.tarmac,class:car.car_class,worth:car.worth,points_spent:car.points_spent,races_entered:car.races_entered,races_won:car.races_won,win_rate:car.races_entered>0?car.races_won/car.races_entered:0};return acc},{});this.save()}else{Logger.debug("Enlisted cars response missing 'enlistedcars' array.")}}catch(err){Logger.warn(`Enlisted cars fetch failed.\n${err}`)}}}(async w=>{Logger.info(`Application loading... ${new Date(SCRIPT_START).toISOString()}`);
+   */async updateCars(){try{if(!torn_api||!torn_api.key)throw new Error("TornAPI not initialized.");const results=await torn_api.request("user","enlistedcars",{timestamp:`${Date.unix()}`});if(Array.isArray(results?.enlistedcars)){this.cars=results.enlistedcars.filter(car=>!car.is_removed).reduce((acc,car)=>{acc[car.car_item_id]={name:car.car_item_name,top_speed:car.top_speed,acceleration:car.acceleration,braking:car.braking,handling:car.handling,safety:car.safety,dirt:car.dirt,tarmac:car.tarmac,class:car.car_class,worth:car.worth,points_spent:car.points_spent,races_entered:car.races_entered,races_won:car.races_won,win_rate:car.races_entered>0?car.races_won/car.races_entered:0};return acc},{});this.save()}else{Logger.debug("Enlisted cars response missing 'enlistedcars' array.")}}catch(err){Logger.warn(`Enlisted cars fetch failed.\n${err}`)}}}(async w=>{Logger.info(`Application loading...`);
 // TornPDA Integration Stub
 const PDA_KEY="###PDA-APIKEY###";
 // IS_PDA is a boolean indicating whether script is running in TornPDA.
@@ -316,7 +315,7 @@ this_driver.updateSkill(el.textContent);el.textContent=String(this_driver.skill)
    */const fixActiveTabHighlighting=async(event,tabs)=>{Logger.debug("Fixing active tab highlighting...");tabs.querySelectorAll(":not(.clear)").forEach(c=>{c.classList.toggle("active",c.className==event.target.className)})};
 /**
    * start - Main entry point for the application.
-   */const start=async()=>{try{Logger.info(`Application loaded. Starting...`);
+   */const start=async()=>{try{Logger.info(`Application loaded. Starting...`,APP_START);
 // Add styles
 await addStyles();
 // Initialize torn_api
@@ -324,7 +323,7 @@ torn_api=new TornAPI(Store.getValue(Store.keys.rplus_apikey));if(torn_api.key?.l
 // Store valid key
 Store.setValue(Store.keys.rplus_apikey,PDA_KEY)}}
 // Load driver data
-Logger.debug(`Loading Driver Data...`);try{
+Logger.info(`Loading Driver Data...`,APP_START);try{
 // Check for stored driver
 let scriptData=Store.getValue(Store.keys.rplus_driver);if(!scriptData){
 // Create new driver - '#torn-user' a hidden input with JSON { id, ... }
@@ -346,7 +345,7 @@ official_tab.addEventListener("click",async ev=>{await fixActiveTabHighlighting(
 // Custom Events tab click event handler.
 custom_tab.addEventListener("click",async ev=>{await fixActiveTabHighlighting(ev,tabs_container)});
 // Update driver track records and available cars
-await this_driver.updateRecords();await this_driver.updateCars();const content_container=await defer(SELECTORS.content_container);const page_observer=new MutationObserver(async mutations=>{for(const mutation of mutations){if(mutation.type==="characterData"||mutation.type==="childList"){
+await this_driver.updateRecords();await this_driver.updateCars();Logger.info(`Adding page observer...`,APP_START);const content_container=await defer(SELECTORS.content_container);const page_observer=new MutationObserver(async mutations=>{for(const mutation of mutations){if(mutation.type==="characterData"||mutation.type==="childList"){
 /** @type {Node} */
 const tNode=mutation.target;const el=tNode.nodeType===Node.ELEMENT_NODE?tNode:tNode.parentElement;if(el&&el.id==="infoSpot"){
 // this_race?.updateStatus(el.textContent || "");
@@ -357,7 +356,7 @@ Logger.debug(`Leader Board Update.`)}}}});page_observer.observe(content_containe
        * Safely disconnect all mutation observers.
        * @returns {void}
        */const disconnectObservers=()=>{try{button_observer?.disconnect();page_observer?.disconnect()}catch(err){Logger.error(err)}};
-/** Safely disconnect the page MutationObserver */w.addEventListener("pagehide",disconnectObservers,{once:true});w.addEventListener("beforeunload",disconnectObservers,{once:true});Logger.info(`Application started.`)}catch(err){Logger.error(err)}};
+/** Safely disconnect the page MutationObserver */w.addEventListener("pagehide",disconnectObservers,{once:true});w.addEventListener("beforeunload",disconnectObservers,{once:true});Logger.info(`Application started.`,APP_START)}catch(err){Logger.error(err)}};
 // Start application
 await start()})(window);
 // End of file: RacingPlus.user.js

@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.29-alpha
+// @version      1.0.30-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -20,8 +20,8 @@
 /* ------------------------------------------------------------------------
  * Constants
  * --------------------------------------------------------------------- */
-/* Script start time. */
-const SCRIPT_START = Date.now();
+/* Application start time. */
+const APP_START = Date.now();
 
 /* Number of milliseconds in 1 second. */
 const MS_PER_SECOND = 1000;
@@ -57,54 +57,6 @@ const SELECTORS = Object.freeze({
   drivers_list_title: "#racingupdates .drivers-list div[class^='title']",
   drivers_list_leaderboard: "#racingupdates .drivers-list #leaderBoard",
 });
-
-/* ------------------------------------------------------------------------
- * Logger
- * --------------------------------------------------------------------- */
-/**
- * LOG_LEVEL - Log level enumeration
- * @readonly
- * @enum {number}
- */
-const LOG_LEVEL = Object.freeze({ debug: 10, info: 20, warn: 30, error: 40, silent: 50 });
-
-/**
- * LOG_MODE - Log level threshold LOG_LEVEL[debug|info|warn|error|silent]
- * @type {number}
- */
-const LOG_MODE = LOG_LEVEL.debug;
-
-/**
- * Static methods for leveled console logging.
- * @class
- */
-class Logger {
-  /** Returns elapsed time since SCRIPT_START. */
-  static get time() {
-    const t = Date.now() - SCRIPT_START;
-    return t > 0 ? ` ${t} msec` : "";
-  }
-  /** logs a debug-level message. */
-  static debug(...args) {
-    if (LOG_MODE > LOG_LEVEL.debug) return;
-    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#6aa84f;font-weight:600", ...args, this.time);
-  }
-  /** logs an info-level message. */
-  static info(...args) {
-    if (LOG_MODE > LOG_LEVEL.info) return;
-    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#3d85c6;font-weight:600", ...args, this.time);
-  }
-  /** Logs a warning-level message. */
-  static warn(...args) {
-    if (LOG_MODE > LOG_LEVEL.warn) return;
-    console.log("%c[WARN][TornPDA.Racing+]: ", "color:#e69138;font-weight:600", ...args);
-  }
-  /** Logs an error-level message. */
-  static error(...args) {
-    if (LOG_MODE > LOG_LEVEL.error) return;
-    console.log("%c[ERROR][TornPDA.Racing+]: ", "color:#d93025;font-weight:600", ...args);
-  }
-}
 
 /* ------------------------------------------------------------------------
  * Polyfill / Shim Extensions
@@ -193,6 +145,49 @@ if (typeof Error.prototype.toString !== "function") {
     configurable: true,
     enumerable: false,
   });
+}
+
+/* ------------------------------------------------------------------------
+ * Logger
+ * --------------------------------------------------------------------- */
+/**
+ * LOG_LEVEL - Log level enumeration
+ * @readonly
+ * @enum {number}
+ */
+const LOG_LEVEL = Object.freeze({ debug: 10, info: 20, warn: 30, error: 40, silent: 50 });
+
+/**
+ * LOG_MODE - Log level threshold LOG_LEVEL[debug|info|warn|error|silent]
+ * @type {number}
+ */
+const LOG_MODE = LOG_LEVEL.debug;
+
+/**
+ * Static methods for leveled console logging.
+ * @class
+ */
+class Logger {
+  /** logs a debug-level message. */
+  static debug(message, time = null) {
+    if (LOG_MODE > LOG_LEVEL.debug) return;
+    console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#6aa84f;font-weight:600", message, time ? ` ${Date.now() - time} msec` : ` ${Date.now().formatDate()}`);
+  }
+  /** logs an info-level message. */
+  static info(message, time = null) {
+    if (LOG_MODE > LOG_LEVEL.info) return;
+    console.log("%c[INFO][TornPDA.Racing+]: ", "color:#3d85c6;font-weight:600", message, time ? ` ${Date.now() - time} msec` : ` ${Date.now().formatDate()}`);
+  }
+  /** Logs a warning-level message. */
+  static warn(message, time = null) {
+    if (LOG_MODE > LOG_LEVEL.warn) return;
+    console.log("%c[WARN][TornPDA.Racing+]: ", "color:#e69138;font-weight:600", message, time ? ` ${Date.now() - time} msec` : ` ${Date.now().formatDate()}`);
+  }
+  /** Logs an error-level message. */
+  static error(message, time = null) {
+    if (LOG_MODE > LOG_LEVEL.error) return;
+    console.log("%c[ERROR][TornPDA.Racing+]: ", "color:#d93025;font-weight:600", message, time ? ` ${Date.now() - time} msec` : ` ${Date.now().formatDate()}`);
+  }
 }
 
 /* ------------------------------------------------------------------------
@@ -683,7 +678,7 @@ class TornDriver {
  * Application start
  * --------------------------------------------------------------------- */
 (async (w) => {
-  Logger.info(`Application loading... ${new Date(SCRIPT_START).toISOString()}`);
+  Logger.info(`Application loading...`);
 
   // TornPDA Integration Stub
   const PDA_KEY = "###PDA-APIKEY###";
@@ -1048,7 +1043,7 @@ class TornDriver {
    */
   const start = async () => {
     try {
-      Logger.info(`Application loaded. Starting...`);
+      Logger.info(`Application loaded. Starting...`, APP_START);
       // Add styles
       await addStyles();
       // Initialize torn_api
@@ -1060,7 +1055,7 @@ class TornDriver {
         }
       }
       // Load driver data
-      Logger.debug(`Loading Driver Data...`);
+      Logger.info(`Loading Driver Data...`, APP_START);
       try {
         // Check for stored driver
         let scriptData = Store.getValue(Store.keys.rplus_driver);
@@ -1111,6 +1106,8 @@ class TornDriver {
       // TODO: code goes here //
       /* -------------------- */
 
+      Logger.info(`Adding page observer...`, APP_START);
+
       const content_container = await defer(SELECTORS.content_container);
       /* Setup content container observer */
       const page_observer = new MutationObserver(async (mutations) => {
@@ -1151,7 +1148,7 @@ class TornDriver {
       w.addEventListener("pagehide", disconnectObservers, { once: true });
       w.addEventListener("beforeunload", disconnectObservers, { once: true });
 
-      Logger.info(`Application started.`);
+      Logger.info(`Application started.`, APP_START);
     } catch (err) {
       Logger.error(err);
     }
