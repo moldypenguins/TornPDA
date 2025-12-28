@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.39-alpha
+// @version      1.0.40-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -1147,12 +1147,9 @@ class TornAPI {
   const fixActiveTabHighlighting = async () => {
     Logger.debug("Fixing active tab highlighting...");
     const tabs_container = await defer(SELECTORS.tabs_container);
-    tabs_container
-      .children()
-      .querySelectorAll(":not(.clear)")
-      .forEach((c) => {
-        c.classList.toggle("active", !!c.querySelector(".official-events"));
-      });
+    tabs_container.children.querySelectorAll(":not(.clear)").forEach((c) => {
+      c.classList.toggle("active", !!c.querySelector(".official-events"));
+    });
   };
 
   /* ------------------------------------------------------------------------
