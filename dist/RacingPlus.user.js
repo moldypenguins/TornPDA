@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.32-alpha
+// @version      1.0.33-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -17,33 +17,43 @@
 "use strict";
 const APP_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const MS_PER_HOUR=36e5;const SECONDS_PER_HOUR=3600;const KMS_PER_MI=1.609344;const API_FETCH_TIMEOUT=10*MS_PER_SECOND;const DEFERRAL_TIMEOUT=15*MS_PER_SECOND;const SPEED_INTERVAL=MS_PER_SECOND;const CACHE_TTL=MS_PER_HOUR;const API_KEY_LENGTH=16;const SELECTORS=Object.freeze({links_container:"#racing-leaderboard-header-root div[class^='linksContainer']",main_container:"#racingMainContainer",main_banner:"#racingMainContainer .header-wrap div.banner",tabs_container:"#racingMainContainer .header-wrap ul.categories",content_container:"#racingAdditionalContainer",car_selected:"#racingupdates .car-selected",drivers_list:"#racingupdates .drivers-list",drivers_list_title:"#racingupdates .drivers-list div[class^='title']",drivers_list_leaderboard:"#racingupdates .drivers-list #leaderBoard"});
 /**
- * Date.unix
+ * unixTimestamp
  * Description: Returns the current Unix timestamp (seconds since epoch).
  * @returns {number} Current Unix timestamp (seconds)
- */if(typeof Date.prototype.unix!=="function"){Object.defineProperty(Date.prototype,"unix",{value:()=>Math.floor(Date.now()/1e3),writable:true,configurable:true,enumerable:false})}
+ */const unixTimestamp=()=>Math.floor(Date.now()/1e3);
 /**
- * Number.formatDate
- * Description: Formats a timestamp (ms since epoch) as "YYYY-MM-DD" in local time.
- * @param {number} ms - Timestamp in milliseconds since epoch.
- * @returns {string} Formatted date string ("YYYY-MM-DD")
- */if(typeof Number.prototype.formatDate!=="function"){Object.defineProperty(Number.prototype,"formatDate",{value:ms=>{const dt=new Date(ms);return`${String(dt.getFullYear())}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`},writable:true,configurable:true,enumerable:false})}
-/**
- * Number.formatTime
- * Description: Formats a duration (ms) as "MM:SS.mmm".
- * @param {number} ms - Duration in milliseconds.
- * @returns {string} Formatted time string ("MM:SS.mmm")
- */if(typeof Number.prototype.formatTime!=="function"){Object.defineProperty(Number.prototype,"formatTime",{value:ms=>{const minutes=Math.floor(ms%(1e3*60*60)/(1e3*60));const seconds=Math.floor(ms%(1e3*60)/1e3);const millis=Math.floor(ms%1e3);return`${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}.${String(millis).padStart(3,"0")}`},writable:true,configurable:true,enumerable:false})}
-/**
- * Number.isValid
+ * isNumber
  * Description: Returns true for number primitives that are finite (excludes NaN and ±Infinity).
  * @param {unknown} n - Value to test.
  * @returns {boolean} True if n is a finite number primitive.
- */if(typeof Number.prototype.isValid!=="function"){Object.defineProperty(Number.prototype,"isValid",{value:n=>typeof n==="number"&&Number.isFinite(n),writable:true,configurable:true,enumerable:false})}
+ */const isNumber=n=>typeof n==="number"&&Number.isFinite(n);
 /**
- * Error.prototype.toString
- * Description: Returns a human-readable error string (name + message).
- * @returns {string}
- */if(typeof Error.prototype.toString!=="function"){Object.defineProperty(Error.prototype,"toString",{value:function toString(){const name=this&&this.name?String(this.name):"Error";const msg=this&&this.message?String(this.message):"";return msg?`${name}: ${msg}`:name},writable:true,configurable:true,enumerable:false})}
+ * Format helper
+ * @class
+ */class Format{
+/**
+   * Formats a timestamp as "YYYY-MM-DD" in local time.
+   * @param {number} ms - Timestamp in milliseconds since epoch.
+   * @returns {string} Formatted date string ("YYYY-MM-DD")
+   */
+static date=timestamp=>{const dt=new Date(timestamp);return`${String(dt.getFullYear())}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`};
+/**
+   * Formats a timestamp as "MM:SS.mmm".
+   * @param {number} ms - Duration in milliseconds.
+   * @returns {string} Formatted time string ("MM:SS.mmm")
+   */
+static time=timestamp=>{const dt=new Date(timestamp);return`${String(dt.getMinutes()).padStart(2,"0")}:${String(dt.getSeconds()).padStart(2,"0")}.${String(dt.getMilliseconds()).padStart(3,"0")}`};
+/**
+   * Formats a duration (ms) as "MM:SS.mmm".
+   * @param {number} ms - Duration in milliseconds.
+   * @returns {string} Formatted time string ("MM:SS.mmm")
+   */
+static duration=duration=>`${String(Math.floor(duration%MS_PER_HOUR/MS_PER_MINUTE)).padStart(2,"0")}:${String(Math.floor(duration%MS_PER_MINUTE/MS_PER_SECOND)).padStart(2,"0")}.${String(Math.floor(duration%MS_PER_SECOND)).padStart(3,"0")}`;
+/**
+   * Returns a human-readable error string (name + message).
+   * @returns {string}
+   */
+static error=error=>`${error?.name?String(error.name):"Error"}: ${error?.message?String(error.message):error}`}
 /**
  * LOG_LEVEL - Log level enumeration
  * @readonly
@@ -58,10 +68,10 @@ const APP_START=Date.now();const MS_PER_SECOND=1e3;const MS_PER_MINUTE=6e4;const
  * @class
  */class Logger{
 /** logs a debug-level message. */
-static debug(message,time=null){if(LOG_MODE>LOG_LEVEL.debug)return;console.log("%c[DEBUG][TornPDA.Racing+]: ","color:#6aa84f;font-weight:600",message,time?` ${Date.now()-time} msec`:` ${Date.now().formatDate()}`)}
-/** logs an info-level message. */static info(message,time=null){if(LOG_MODE>LOG_LEVEL.info)return;console.log("%c[INFO][TornPDA.Racing+]: ","color:#3d85c6;font-weight:600",message,time?` ${Date.now()-time} msec`:` ${Date.now().formatDate()}`)}
-/** Logs a warning-level message. */static warn(message,time=null){if(LOG_MODE>LOG_LEVEL.warn)return;console.log("%c[WARN][TornPDA.Racing+]: ","color:#e69138;font-weight:600",message,time?` ${Date.now()-time} msec`:` ${Date.now().formatDate()}`)}
-/** Logs an error-level message. */static error(message,time=null){if(LOG_MODE>LOG_LEVEL.error)return;console.log("%c[ERROR][TornPDA.Racing+]: ","color:#d93025;font-weight:600",message,time?` ${Date.now()-time} msec`:` ${Date.now().formatDate()}`)}}
+static debug(message,time=null){if(LOG_MODE>LOG_LEVEL.debug)return;const dt=Date.now();console.log("%c[DEBUG][TornPDA.Racing+]: ","color:#6aa84f;font-weight:600",message,time?` ${Format.duration(dt-time)}`:` ${Format.date(dt)}`)}
+/** logs an info-level message. */static info(message,time=null){if(LOG_MODE>LOG_LEVEL.info)return;const dt=Date.now();console.log("%c[INFO][TornPDA.Racing+]: ","color:#3d85c6;font-weight:600",message,time?` ${Format.duration(dt-time)}`:` ${Format.date(dt)}`)}
+/** Logs a warning-level message. */static warn(message,time=null){if(LOG_MODE>LOG_LEVEL.warn)return;const dt=Date.now();console.log("%c[WARN][TornPDA.Racing+]: ","color:#e69138;font-weight:600",message,time?` ${Format.duration(dt-time)}`:` ${Format.date(dt)}`)}
+/** Logs an error-level message. */static error(message,time=null){if(LOG_MODE>LOG_LEVEL.error)return;const dt=Date.now();console.log("%c[ERROR][TornPDA.Racing+]: ","color:#d93025;font-weight:600",message,time?` ${Format.duration(dt-time)}`:` ${Format.date(dt)}`)}}
 /**
  * Store Wrapper classs for localStorage.
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
@@ -220,7 +230,7 @@ this.cache.set(queryURL,{data:results,timestamp:Date.now()});return results}catc
    * @throws {Error}
    */async validate(key){if(!key||typeof key!=="string"||key.length!==API_KEY_LENGTH){throw new Error("Invalid API key: local validation.")}
 // use candidate key for probe call, store current key
-const prev_key=this.key;this.key=key;const data=await this.request("key","info",{timestamp:`${Date.unix()}`});if(data?.info?.access&&Number(data.info.access.level)>=ACCESS_LEVEL.Minimal){Logger.debug("Valid API key.");return true}
+const prev_key=this.key;this.key=key;const data=await this.request("key","info",{timestamp:`${unixTimestamp()}`});if(data?.info?.access&&Number(data.info.access.level)>=ACCESS_LEVEL.Minimal){Logger.debug("Valid API key.");return true}
 // invalid key, reset to previous key
 this.key=prev_key;throw new Error("Invalid API key: unexpected response.")}}(async w=>{Logger.info(`Application loading...`);
 // TornPDA Integration Stub
@@ -251,11 +261,11 @@ Logger.warn(`Failed to load driver cache.\n${err}`)}}}
 /**
      * Fetch racing records from API and store best lap per car/track
      * @returns {Promise<void>}
-     */async updateRecords(){try{if(!torn_api||!torn_api.key)throw new Error("TornAPI not initialized.");const results=await torn_api.request("user","racingrecords",{timestamp:`${Date.unix()}`});if(Array.isArray(results?.racingrecords)){results.racingrecords.forEach(({track:track,records:records})=>{if(!track?.id||!Array.isArray(records))return;this.records[track.id]=records.reduce((acc,rec)=>{if(!acc[rec.car_id]){acc[rec.car_id]={name:rec.car_name,lap_time:rec.lap_time,count:1}}else{acc[rec.car_id].lap_time=Math.min(acc[rec.car_id].lap_time,rec.lap_time);acc[rec.car_id].count+=1}return acc},{})});this.save()}else{Logger.debug("Racing records response missing 'racingrecords' array.")}}catch(err){Logger.warn(`Racing records fetch failed.\n${err}`)}}
+     */async updateRecords(){try{if(!torn_api||!torn_api.key)throw new Error("TornAPI not initialized.");const results=await torn_api.request("user","racingrecords",{timestamp:`${unixTimestamp()}`});if(Array.isArray(results?.racingrecords)){results.racingrecords.forEach(({track:track,records:records})=>{if(!track?.id||!Array.isArray(records))return;this.records[track.id]=records.reduce((acc,rec)=>{if(!acc[rec.car_id]){acc[rec.car_id]={name:rec.car_name,lap_time:rec.lap_time,count:1}}else{acc[rec.car_id].lap_time=Math.min(acc[rec.car_id].lap_time,rec.lap_time);acc[rec.car_id].count+=1}return acc},{})});this.save()}else{Logger.debug("Racing records response missing 'racingrecords' array.")}}catch(err){Logger.warn(`Racing records fetch failed.\n${err}`)}}
 /**
      * Fetch and store enlisted cars with win rate calculation
      * @returns {Promise<void>}
-     */async updateCars(){try{if(!torn_api||!torn_api.key)throw new Error("TornAPI not initialized.");const results=await torn_api.request("user","enlistedcars",{timestamp:`${Date.unix()}`});if(Array.isArray(results?.enlistedcars)){this.cars=results.enlistedcars.filter(car=>!car.is_removed).reduce((acc,car)=>{acc[car.car_item_id]={name:car.car_item_name,top_speed:car.top_speed,acceleration:car.acceleration,braking:car.braking,handling:car.handling,safety:car.safety,dirt:car.dirt,tarmac:car.tarmac,class:car.car_class,worth:car.worth,points_spent:car.points_spent,races_entered:car.races_entered,races_won:car.races_won,win_rate:car.races_entered>0?car.races_won/car.races_entered:0};return acc},{});this.save()}else{Logger.debug("Enlisted cars response missing 'enlistedcars' array.")}}catch(err){Logger.warn(`Enlisted cars fetch failed.\n${err}`)}}}
+     */async updateCars(){try{if(!torn_api||!torn_api.key)throw new Error("TornAPI not initialized.");const results=await torn_api.request("user","enlistedcars",{timestamp:`${unixTimestamp()}`});if(Array.isArray(results?.enlistedcars)){this.cars=results.enlistedcars.filter(car=>!car.is_removed).reduce((acc,car)=>{acc[car.car_item_id]={name:car.car_item_name,top_speed:car.top_speed,acceleration:car.acceleration,braking:car.braking,handling:car.handling,safety:car.safety,dirt:car.dirt,tarmac:car.tarmac,class:car.car_class,worth:car.worth,points_spent:car.points_spent,races_entered:car.races_entered,races_won:car.races_won,win_rate:car.races_entered>0?car.races_won/car.races_entered:0};return acc},{});this.save()}else{Logger.debug("Enlisted cars response missing 'enlistedcars' array.")}}catch(err){Logger.warn(`Enlisted cars fetch failed.\n${err}`)}}}
 /**
    * TornRace class - Helper to compile race metadata and compute status
    * @class
@@ -323,17 +333,6 @@ try{let user=await torn_api.request(`user/${driverId}/personalStats`,{stat:"raci
    */const newElement=(tag,props={})=>{const{children:children,...rest}=props;const el=Object.assign(w.document.createElement(tag),rest);if(children){
 // Convert single child to array and append all
 const childrenArray=Array.isArray(children)?children:[children];el.append(...childrenArray)}return el};
-/**
-   * @typedef {Object} CheckboxOptions
-   * @description Named-arguments container for common label and checkbox.
-   * @property {string} [id] - Value for the `id` attributes.
-   * @property {string} [label] - Value for the `label` content.
-   */
-/**
-   * Creates a label and checkbox HTML string from a required options object.
-   * @param {CheckboxOptions} options - Label/checkbox configuration (id + label).
-   * @returns {string} HTML string for the label + checkbox.
-   */const createCheckbox=options=>`<label for="${options.id}">${options.label}</label><div><input type="checkbox" id="${options.id}" /></div>`;
 /**
    * addStyles - Injects Racing+ CSS into document head.
    * @returns {Promise<void>}
