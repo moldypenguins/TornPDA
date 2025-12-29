@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.46-alpha
+// @version      1.0.50-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -434,15 +434,16 @@ class TornAPI {
    * @throws {Error} If path/root inputs are invalid
    */
   async request(root, path, params = {}) {
-    // validate root
+    /* Validate root against allowed API endpoints */
     if (!API_VALID_ROOTS.includes(root)) {
       throw new Error(`Invalid API root. Must be one of: ${API_VALID_ROOTS.join(", ")}`);
     }
-    // validate path
+    /* Validate path is a string */
     if (typeof path !== "string") throw new Error("Invalid path. Must be a string.");
-    // validate args
-    // ...
-    // build query string
+
+    // TODO: validate args
+
+    /* Build query string from params object */
     let queryString = "";
     if (params != null && typeof params === "object" && Object.entries(params).length > 0) {
       queryString = Object.entries(params)
@@ -451,34 +452,34 @@ class TornAPI {
     } else {
       throw new Error("Invalid argument. Params must be an object.");
     }
-    // build query url
+    /* build query url */
     const queryURL =
       "https://api.torn.com/v2" +
       `/${root}/${path.replace(/^\/+|\/+$/g, "")}` +
       `?comment=${API_COMMENT}${this.key ? `&key=${this.key}` : ""}${queryString ? `&${queryString}` : ""}`;
 
-    // check for cached copy, then return results
+    /* check for cached copy, then return results */
     const cached = this.cache.get(queryURL);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
 
-    // no cached copy, request new copy
+    /* no cached copy, request new copy */
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), API_FETCH_TIMEOUT);
 
     try {
-      // get response
+      /* Fetch from API with abort signal for timeout */
       const response = await fetch(queryURL, { signal: controller.signal });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status} ${response.statusText || ""}`.trim());
       }
-      // parse response
+      /* Parse JSON response and check for API errors */
       const results = await response.json().catch((err) => {
         throw new Error(`Invalid JSON response: ${err}`);
       });
       if (!results || results.error) {
         throw new Error(`API request failed: ${results?.error?.error ?? "Unknown error."}`);
       }
-      // cache new copy, then return results
+      /* Cache valid response and return data */
       this.cache.set(queryURL, { data: results, timestamp: Date.now() });
       return results;
     } catch (err) {
@@ -499,7 +500,7 @@ class TornAPI {
     if (!key || typeof key !== "string" || key.length !== API_KEY_LENGTH) {
       throw new Error("Invalid API key: local validation.");
     }
-    // use candidate key for probe call, store current key
+    /* Temporarily use candidate key for validation probe, storing current key */
     const prev_key = this.key;
     this.key = key;
     const data = await this.request("key", "info", {
@@ -509,7 +510,7 @@ class TornAPI {
       Logger.debug("Valid API key.");
       return true;
     }
-    // invalid key, reset to previous key
+    /* Invalid key; restore previous key and throw error */
     this.key = prev_key;
     throw new Error("Invalid API key: unexpected response.");
   }
@@ -613,6 +614,7 @@ class TornAPI {
           timestamp: `${unixTimestamp()}`,
         });
         if (Array.isArray(results?.racingrecords)) {
+          /* Parse records array and store best lap time per car per track */
           results.racingrecords.forEach(({ track, records }) => {
             if (!track?.id || !Array.isArray(records)) return;
             this.records[track.id] = records.reduce((acc, rec) => {
@@ -650,6 +652,7 @@ class TornAPI {
           timestamp: `${unixTimestamp()}`,
         });
         if (Array.isArray(results?.enlistedcars)) {
+          /* Filter active cars and reduce to object indexed by car_item_id with win rate calculation */
           this.cars = results.enlistedcars
             .filter((car) => !car.is_removed)
             .reduce((acc, car) => {
@@ -741,10 +744,10 @@ class TornAPI {
       const showSpeed = Store.getValue(Store.keys.rplus_showspeed) === "1";
       const showSkill = Store.getValue(Store.keys.rplus_showskill) === "1";
 
-      // Fix driver status
+      /* Process each driver entry in the leaderboard */
       for (const drvr of Array.from(drivers)) {
         //Array.from(drivers).forEach(async (drvr) => {
-        // Cache frequently used lookups to avoid repeated DOM queries.
+        /* Cache frequently used lookups to avoid repeated DOM queries */
         const driverId = (drvr.id || "").substring(4);
         const driverStatus = drvr.querySelector(".status");
         const drvrName = drvr.querySelector("li.name");
@@ -753,7 +756,7 @@ class TornAPI {
         const nameSpan = drvrName?.querySelector("span");
         const drvrColour = drvr.querySelector("li.color");
 
-        // Update status icon classes
+        /* Update status icon based on current race state */
         if (driverStatus) {
           switch (this.status) {
             case "joined":
@@ -774,13 +777,13 @@ class TornAPI {
           }
         }
 
-        // Fix driver colours
+        /* Move color styling from separate element to name span */
         if (drvrColour && nameSpan) {
           drvrColour.classList.remove("color");
           nameSpan.className = drvrColour.className;
         }
 
-        // Add driver profile links
+        /* Conditionally add clickable profile links to driver names */
         if (addLinks) {
           if (!nameLink && nameSpan) {
             nameSpan.outerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${nameSpan.outerHTML}</a>`;
@@ -791,14 +794,13 @@ class TornAPI {
           }
         }
 
-        // Fix driver race stats
+        /* Create stats container if missing */
         if (!drvr.querySelector(".statistics")) {
-          // Add stats container
           drvrName.insertAdjacentHTML("beforeEnd", `<div class="statistics"></div>`);
         }
         const stats = drvr.querySelector(".statistics");
 
-        // Adjust time
+        /* Move time element into separate container next to stats */
         const timeLi = drvr.querySelector("li.time");
         if (timeLi) {
           if (timeLi.textContent === "") {
@@ -809,7 +811,7 @@ class TornAPI {
           stats.insertAdjacentElement("afterEnd", timeContainer);
         }
 
-        // Show driver speed
+        /* Add real-time speed display if enabled */
         if (showSpeed) {
           if (!stats.querySelector(".speed")) {
             stats.insertAdjacentHTML("beforeEnd", '<div class="speed">0.00mph</div>');
@@ -819,13 +821,13 @@ class TornAPI {
           //   speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId));
           // }
         }
-        // Show driver skill
+        /* Add racing skill display if enabled */
         if (showSkill) {
           if (!stats.querySelector(".skill")) {
             stats.insertAdjacentHTML("afterBegin", '<div class="skill">RS: ?</div>');
           }
           if (torn_api.key) {
-            // Fetch racing skill data from the Torn API for the given driver id
+            /* Fetch racing skill from API and update display */
             try {
               let user = await torn_api.request(`user/${driverId}/personalStats`, { stat: "racingskill" });
               if (user) {
@@ -853,18 +855,15 @@ class TornAPI {
     new Promise((resolve, reject) => {
       const found = w.document.querySelector(selectors);
       if (found) return resolve(found);
-
       let obs;
       const timer = setTimeout(() => {
         cleanup();
         reject(new Error(`deferral timed out: '${selectors}'`));
       }, DEFERRAL_TIMEOUT);
-
       const cleanup = () => {
         clearTimeout(timer);
         obs?.disconnect();
       };
-
       obs = new MutationObserver(() => {
         const el = w.document.querySelector(selectors);
         if (el) {
@@ -872,7 +871,6 @@ class TornAPI {
           resolve(el);
         }
       });
-
       obs.observe(w.document.documentElement || w.document, { childList: true, subtree: true });
     });
 
@@ -886,7 +884,7 @@ class TornAPI {
     const { children, ...rest } = props;
     const el = Object.assign(w.document.createElement(tag), rest);
     if (children) {
-      // Convert single child to array and append all
+      /* Convert single child to array and append all */
       const childrenArray = Array.isArray(children) ? children : [children];
       el.append(...childrenArray);
     }
@@ -898,7 +896,7 @@ class TornAPI {
    * @returns {Promise<void>}
    */
   const addStyles = async () => {
-    // Dynamic per-part color hints (batched for fewer string writes).
+    // Build dynamic CSS rules for part colors if parts display is enabled
     const dynRules = [];
     if (Store.getValue(Store.keys.rplus_showparts) === "1") {
       Object.entries(PART_CATEGORIES).forEach(([, parts]) => {
@@ -995,6 +993,7 @@ class TornAPI {
 
     const apikey = torn_api.key ?? "";
     if (IS_PDA) {
+      /* In TornPDA, API key is managed by app; make field read-only */
       apiInput.value = apikey;
       apiInput.disabled = true;
       apiInput.readOnly = true;
@@ -1003,6 +1002,7 @@ class TornAPI {
       apiSave.classList.toggle("show", false);
       apiReset.classList.toggle("show", false);
     } else {
+      /* In browser, toggle between edit and saved states */
       if (apikey.length > 0) {
         apiInput.value = apikey;
         apiInput.disabled = true;
@@ -1020,7 +1020,7 @@ class TornAPI {
         apiReset.classList.toggle("show", false);
       }
 
-      // Save button handler: validate and persist key.
+      /* Save button handler: validate and persist API key */
       apiSave.addEventListener("click", async (ev) => {
         ev.preventDefault();
 
@@ -1052,7 +1052,7 @@ class TornAPI {
         }
       });
 
-      // Reset button handler: clear stored key and make input editable.
+      /* Reset button handler: clear stored key and make input editable */
       apiReset.addEventListener("click", (ev) => {
         ev.preventDefault();
         if (!apiInput) return;
@@ -1070,7 +1070,7 @@ class TornAPI {
       });
     }
 
-    // Initialize toggles from storage & persist on click.
+    /* Initialize all checkbox toggles from localStorage and set up change handlers */
     w.document.querySelectorAll(".racing-plus-settings input[type=checkbox]").forEach((el) => {
       const key = Store.keys[el.id];
       if (!key) return;
@@ -1114,7 +1114,7 @@ class TornAPI {
       ],
     });
     city_button.insertAdjacentElement("beforeBegin", rplus_button);
-    /* Settings button click event handler */
+    /* Toggle settings panel visibility on button click */
     rplus_button.addEventListener("click", (ev) => {
       ev.preventDefault();
       Logger.debug("'rplus_button' clicked.");
@@ -1137,7 +1137,7 @@ class TornAPI {
     elements.forEach((el) => {
       if (el.classList.contains("skill-desc") || el.classList.contains("skill") || el.classList.contains("lastgain")) {
         if (el.classList.contains("skill")) {
-          // Update driver skill snapshot (persist only if higher)
+          /* Update cached skill value (only if higher) and replace DOM content */
           this_driver.updateSkill(el.textContent);
           el.textContent = String(this_driver.skill);
         }
@@ -1178,28 +1178,28 @@ class TornAPI {
     try {
       Logger.info(`Application loaded. Starting...`, w.racing_plus);
 
-      // Add styles
+      /* Inject Racing+ CSS into document head */
       Logger.debug(`Injecting styles...`, w.racing_plus);
       await addStyles();
       Logger.debug(`Styles injected.`, w.racing_plus);
 
-      // Initialize torn_api
+      /* Initialize Torn API client with stored key or PDA key if available */
       torn_api = new TornAPI(Store.getValue(Store.keys.rplus_apikey));
       if (torn_api.key?.length == 0 && IS_PDA && PDA_KEY.length > 0) {
         if (await torn_api.validate(PDA_KEY)) {
-          // Store valid key
+          /* PDA key is valid; persist it to localStorage */
           Store.setValue(Store.keys.rplus_apikey, PDA_KEY);
         }
       }
 
-      // Load driver data
+      /* Load or initialize current driver data from storage or DOM */
       Logger.info(`Loading Driver Data...`, w.racing_plus);
       if (!this_driver) {
         try {
-          // Check for stored driver
+          /* Attempt to load from storage first */
           let scriptData = Store.getValue(Store.keys.rplus_driver);
           if (!scriptData) {
-            // Create new driver - '#torn-user' a hidden input with JSON { id, ... }
+            /* Create new driver - '#torn-user' a hidden input with JSON { id, ... } */
             scriptData = await defer("#torn-user").value;
           }
           this_driver = new TornDriver(JSON.parse(scriptData).id);
@@ -1209,18 +1209,18 @@ class TornAPI {
         }
       }
 
-      // Add the Racing+ panel and button to the DOM
+      /* Add settings panel to the DOM */
       Logger.debug("Adding settings panel...", w.racing_plus);
       await addRacingPlusPanel();
       Logger.debug("Settings panel added.", w.racing_plus);
 
-      // Add Racing+ settings button
+      /* Add settings button to the DOM */
       const links_container = await defer(SELECTORS.links_container);
       Logger.debug("Adding settings button...", w.racing_plus);
       await addRacingPlusButton(links_container);
       Logger.debug("Settings button added.", w.racing_plus);
 
-      // Set up observer to re-add Racing+ settings button if it gets removed
+      /* Watch for settings button removal and re-add if necessary */
       const button_observer = new MutationObserver(async (mutations) => {
         Logger.debug("Adding settings button...");
         await addRacingPlusButton(links_container);
@@ -1228,17 +1228,17 @@ class TornAPI {
       });
       button_observer.observe(links_container, { childList: true, subtree: true });
 
-      // Initialize the settings panel
+      /* Initialize the settings panel */
       Logger.debug("Initializing settings panel...", w.racing_plus);
       await initRacingPlusPanel(torn_api.key);
       Logger.debug("Settings panel initialized.", w.racing_plus);
 
-      // Fix top banner (skill, class)
+      /* Fix top banner (skill, class) */
       Logger.debug("Fixing top banner...");
       await fixTopBanner();
       Logger.debug("Top banner fixed.");
 
-      // Update driver track records and available cars
+      /* Fetch driver racing records and enlisted cars in parallel */
       Logger.debug("Updating driver records and cars...");
       // await this_driver.updateRecords(); await this_driver.updateCars();
       // TODO: add condition/cache + fix possible store write conflict
@@ -1257,18 +1257,19 @@ class TornAPI {
       // TODO: code goes here //
       /* -------------------- */
 
-      // Fix tabs
+      /* Fix tabs */
       Logger.debug("Fixing active tab highlighting...");
       await fixActiveTabHighlighting();
       Logger.debug("Active tab highlighting fixed.");
 
-      // If new race track, capture the track meta
+      /* Initialize race object from current track if not already set */
       if (!this_race) {
         try {
           Logger.info(`Loading Track Data...`, w.racing_plus);
           // TODO: error check vars below
           const leaderboard = await defer(SELECTORS.drivers_list_leaderboard);
           const driver = await defer(`${SELECTORS.drivers_list_leaderboard} #lbr-${this_driver.id}`);
+          /* Parse race ID from driver row's data-id attribute */
           const dataId = driver.getAttribute("data-id") || "";
           const raceId = dataId.split("-")[0];
           const trackInfo = leaderboard.querySelector(".track-info");
@@ -1277,7 +1278,7 @@ class TornAPI {
           const lapsText = (leaderboard.textContent ?? "").split(" - ")[1]?.split(" ")[0] ?? "";
           const lapsNum = Number.parseInt(lapsText, 10);
 
-          // Create TornRace
+          /* Instantiate TornRace with extracted metadata */
           this_race = new TornRace({
             id: raceId,
             title: trackInfo?.getAttribute("title") ?? "",
