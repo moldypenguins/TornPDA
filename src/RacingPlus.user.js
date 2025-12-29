@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.52-alpha
+// @version      1.0.54-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -738,12 +738,7 @@ class TornAPI {
      * @param {NodeList|Array} drivers - List of driver DOM elements
      */
     async updateLeaderboard(drivers) {
-      Logger.debug("Updating Leaderboard...");
-
-      const addLinks = Store.getValue(Store.keys.rplus_addlinks) === "1";
-      const showSpeed = Store.getValue(Store.keys.rplus_showspeed) === "1";
-      const showSkill = Store.getValue(Store.keys.rplus_showskill) === "1";
-
+      /* Logger.debug("Updating Leaderboard..."); */
       /* Process each driver entry in the leaderboard */
       for (const drvr of Array.from(drivers)) {
         //Array.from(drivers).forEach(async (drvr) => {
@@ -784,7 +779,7 @@ class TornAPI {
         }
 
         /* Conditionally add clickable profile links to driver names */
-        if (addLinks) {
+        if (Store.getValue(Store.keys.rplus_addlinks) === "1") {
           if (!nameLink && nameSpan) {
             nameSpan.outerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${nameSpan.outerHTML}</a>`;
           }
@@ -812,7 +807,7 @@ class TornAPI {
         }
 
         /* Add real-time speed display if enabled */
-        if (showSpeed) {
+        if (Store.getValue(Store.keys.rplus_showspeed) === "1") {
           if (!stats.querySelector(".speed")) {
             stats.insertAdjacentHTML("beforeEnd", '<div class="speed">0.00mph</div>');
           }
@@ -822,14 +817,14 @@ class TornAPI {
           // }
         }
         /* Add racing skill display if enabled */
-        if (showSkill) {
+        if (Store.getValue(Store.keys.rplus_showskill) === "1") {
           if (!stats.querySelector(".skill")) {
             stats.insertAdjacentHTML("afterBegin", '<div class="skill">RS: ?</div>');
           }
           if (torn_api.key) {
             /* Fetch racing skill from API and update display */
             try {
-              let user = await torn_api.request(`user/${driverId}/personalStats`, { stat: "racingskill" });
+              let user = await torn_api.request("user", `${driverId}/personalStats`, { stat: "racingskill" });
               if (user) {
                 let skill = stats.querySelector(".skill");
                 skill.textContent = `RS: ${user.personalstats?.racing?.skill ?? "?"}`;
@@ -1253,9 +1248,9 @@ class TornAPI {
       }
       Logger.debug("Driver records and cars updated.", w.racing_plus);
 
-      /* -------------------- */
-      // TODO: code goes here //
-      /* -------------------- */
+      /* ------------------------------------------------------------ */
+      // TODO: start loading the official events tab
+      /* ------------------------------------------------------------ */
 
       /* Fix tabs */
       Logger.debug("Fixing active tab highlighting...", w.racing_plus);
@@ -1292,9 +1287,9 @@ class TornAPI {
         }
       }
 
-      /* -------------------- */
-      // TODO: code goes here //
-      /* -------------------- */
+      /* ------------------------------------------------------------ */
+      // TODO: end loading the official events tab
+      /* ------------------------------------------------------------ */
 
       /* Setup content container observer */
       Logger.debug(`Adding page observer...`, w.racing_plus);

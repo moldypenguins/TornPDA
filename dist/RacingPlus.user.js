@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.52-alpha
+// @version      1.0.54-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -274,14 +274,14 @@ this.status=text.includes("starts: ")?"joined":"waiting";break}return this.statu
 /**
      * Normalizes leaderboard DOM entries and adds driver info
      * @param {NodeList|Array} drivers - List of driver DOM elements
-     */async updateLeaderboard(drivers){Logger.debug("Updating Leaderboard...");const addLinks=Store.getValue(Store.keys.rplus_addlinks)==="1";const showSpeed=Store.getValue(Store.keys.rplus_showspeed)==="1";const showSkill=Store.getValue(Store.keys.rplus_showskill)==="1";for(const drvr of Array.from(drivers)){
+     */async updateLeaderboard(drivers){for(const drvr of Array.from(drivers)){
 //Array.from(drivers).forEach(async (drvr) => {
-const driverId=(drvr.id||"").substring(4);const driverStatus=drvr.querySelector(".status");const drvrName=drvr.querySelector("li.name");const nameLink=drvrName?.querySelector("a");const nameSpan=drvrName?.querySelector("span");const drvrColour=drvr.querySelector("li.color");if(driverStatus){switch(this.status){case"joined":driverStatus.className="status success";driverStatus.textContent="";break;case"waiting":driverStatus.className="status waiting";driverStatus.textContent="";break;case"racing":driverStatus.className="status racing";driverStatus.textContent="";break;case"finished":default:break}}if(drvrColour&&nameSpan){drvrColour.classList.remove("color");nameSpan.className=drvrColour.className}if(addLinks){if(!nameLink&&nameSpan){nameSpan.outerHTML=`<a target="_blank" href="/profiles.php?XID=${driverId}">${nameSpan.outerHTML}</a>`}}else{if(nameLink){drvrName.innerHTML=`${nameLink.innerHTML}`}}if(!drvr.querySelector(".statistics")){drvrName.insertAdjacentHTML("beforeEnd",`<div class="statistics"></div>`)}const stats=drvr.querySelector(".statistics");const timeLi=drvr.querySelector("li.time");if(timeLi){if(timeLi.textContent===""){timeLi.textContent="0.00 %"}const timeContainer=w.document.createElement("ul");timeContainer.appendChild(timeLi);stats.insertAdjacentElement("afterEnd",timeContainer)}if(showSpeed){if(!stats.querySelector(".speed")){stats.insertAdjacentHTML("beforeEnd",'<div class="speed">0.00mph</div>')}
+const driverId=(drvr.id||"").substring(4);const driverStatus=drvr.querySelector(".status");const drvrName=drvr.querySelector("li.name");const nameLink=drvrName?.querySelector("a");const nameSpan=drvrName?.querySelector("span");const drvrColour=drvr.querySelector("li.color");if(driverStatus){switch(this.status){case"joined":driverStatus.className="status success";driverStatus.textContent="";break;case"waiting":driverStatus.className="status waiting";driverStatus.textContent="";break;case"racing":driverStatus.className="status racing";driverStatus.textContent="";break;case"finished":default:break}}if(drvrColour&&nameSpan){drvrColour.classList.remove("color");nameSpan.className=drvrColour.className}if(Store.getValue(Store.keys.rplus_addlinks)==="1"){if(!nameLink&&nameSpan){nameSpan.outerHTML=`<a target="_blank" href="/profiles.php?XID=${driverId}">${nameSpan.outerHTML}</a>`}}else{if(nameLink){drvrName.innerHTML=`${nameLink.innerHTML}`}}if(!drvr.querySelector(".statistics")){drvrName.insertAdjacentHTML("beforeEnd",`<div class="statistics"></div>`)}const stats=drvr.querySelector(".statistics");const timeLi=drvr.querySelector("li.time");if(timeLi){if(timeLi.textContent===""){timeLi.textContent="0.00 %"}const timeContainer=w.document.createElement("ul");timeContainer.appendChild(timeLi);stats.insertAdjacentElement("afterEnd",timeContainer)}if(Store.getValue(Store.keys.rplus_showspeed)==="1"){if(!stats.querySelector(".speed")){stats.insertAdjacentHTML("beforeEnd",'<div class="speed">0.00mph</div>')}
 // if (!["joined", "finished"].includes(racestatus) && !speedIntervalByDriverId.has(driverId)) {
 //   Logger.debug(`Adding speed interval for driver ${driverId}.`);
 //   speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId));
 // }
-}if(showSkill){if(!stats.querySelector(".skill")){stats.insertAdjacentHTML("afterBegin",'<div class="skill">RS: ?</div>')}if(torn_api.key){try{let user=await torn_api.request(`user/${driverId}/personalStats`,{stat:"racingskill"});if(user){let skill=stats.querySelector(".skill");skill.textContent=`RS: ${user.personalstats?.racing?.skill??"?"}`}}catch(err){console.log(`[TornPDA.Racing+]: ${err.error??err}`)}}}}//);
+}if(Store.getValue(Store.keys.rplus_showskill)==="1"){if(!stats.querySelector(".skill")){stats.insertAdjacentHTML("afterBegin",'<div class="skill">RS: ?</div>')}if(torn_api.key){try{let user=await torn_api.request("user",`${driverId}/personalStats`,{stat:"racingskill"});if(user){let skill=stats.querySelector(".skill");skill.textContent=`RS: ${user.personalstats?.racing?.skill??"?"}`}}catch(err){console.log(`[TornPDA.Racing+]: ${err.error??err}`)}}}}//);
 }}
 /**
    * defer - Wait for a selector to appear using MutationObserver with timeout.
