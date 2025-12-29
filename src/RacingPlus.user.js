@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.51-alpha
+// @version      1.0.52-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -1309,11 +1309,11 @@ class TornAPI {
             /* If info spot changed, update race status */
             if (el && el.id === "infoSpot") {
               this_race?.updateStatus(el.textContent || "");
-              //Logger.debug(`Race Status Update -> ${el.textContent}.`);
+              /* Logger.debug(`Race Status Update -> ${el.textContent}.`); */
             }
             if (el && el.id === "leaderBoard") {
-              // await this_race?.updateLeaderboard(el.childNodes || []);
-              Logger.debug(`Leaderboard Update.`);
+              await this_race?.updateLeaderboard(el.childNodes || []);
+              /* Logger.debug(`Leaderboard Update.`); */
             }
           }
         }
