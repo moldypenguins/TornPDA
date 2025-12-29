@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.45-alpha
+// @version      1.0.46-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -59,28 +59,26 @@ const SELECTORS = Object.freeze({
  * Helpers
  * --------------------------------------------------------------------- */
 /**
- * unixTimestamp
- * Description: Returns the current Unix timestamp (seconds since epoch).
+ * Returns the current Unix timestamp (seconds since epoch).
  * @returns {number} Current Unix timestamp (seconds)
  */
 const unixTimestamp = () => Math.floor(Date.now() / 1000);
 
 /**
- * isNumber
- * Description: Returns true for number primitives that are finite (excludes NaN and ±Infinity).
+ * Returns true for number primitives that are finite (excludes NaN and ±Infinity).
  * @param {unknown} n - Value to test.
  * @returns {boolean} True if n is a finite number primitive.
  */
 const isNumber = (n) => typeof n === "number" && Number.isFinite(n);
 
 /**
- * Format helper
+ * Static utility methods for formatting timestamps, durations, and errors.
  * @class
  */
 class Format {
   /**
    * Formats a timestamp as "YYYY-MM-DD" in local time.
-   * @param {number} ms - Timestamp in milliseconds since epoch.
+   * @param {number} timestamp - Timestamp in milliseconds since epoch.
    * @returns {string} Formatted date string ("YYYY-MM-DD")
    */
   static date = (timestamp) => {
@@ -90,7 +88,7 @@ class Format {
 
   /**
    * Formats a timestamp as "MM:SS.mmm".
-   * @param {number} ms - Duration in milliseconds.
+   * @param {number} timestamp - Timestamp in milliseconds since epoch.
    * @returns {string} Formatted time string ("MM:SS.mmm")
    */
   static time = (timestamp) => {
@@ -99,8 +97,8 @@ class Format {
   };
 
   /**
-   * Formats a duration (ms) as "MM:SS.mmm".
-   * @param {number} ms - Duration in milliseconds.
+   * Formats a duration as "MM:SS.mmm".
+   * @param {number} duration - Duration in milliseconds.
    * @returns {string} Formatted time string ("MM:SS.mmm")
    */
   static duration = (duration) => {
@@ -109,6 +107,7 @@ class Format {
 
   /**
    * Returns a human-readable error string (name + message).
+   * @param {Error|object|string} error - Error object or string
    * @returns {string}
    */
   static error = (error) => {
@@ -133,29 +132,45 @@ const LOG_LEVEL = Object.freeze({ debug: 10, info: 20, warn: 30, error: 40, sile
 const LOG_MODE = LOG_LEVEL.debug;
 
 /**
- * Static methods for leveled console logging.
+ * Static methods for leveled console logging with timestamp and color formatting.
  * @class
  */
 class Logger {
-  /** logs a debug-level message. */
+  /**
+   * Logs a debug-level message.
+   * @param {string} message - Message to log
+   * @param {number|null} time - Optional start timestamp for duration calculation
+   */
   static debug(message, time = null) {
     if (LOG_MODE > LOG_LEVEL.debug) return;
     const dt = Date.now();
     console.log("%c[DEBUG][TornPDA.Racing+]: ", "color:#6aa84f;font-weight:600", message, time ? ` ${dt - time}ms` : ` ${Format.date(dt)} ${Format.time(dt)}`);
   }
-  /** logs an info-level message. */
+  /**
+   * Logs an info-level message.
+   * @param {string} message - Message to log
+   * @param {number|null} time - Optional start timestamp for duration calculation
+   */
   static info(message, time = null) {
     if (LOG_MODE > LOG_LEVEL.info) return;
     const dt = Date.now();
     console.log("%c[INFO][TornPDA.Racing+]: ", "color:#3d85c6;font-weight:600", message, time ? ` ${dt - time}ms` : ` ${Format.date(dt)} ${Format.time(dt)}`);
   }
-  /** Logs a warning-level message. */
+  /**
+   * Logs a warning-level message.
+   * @param {string} message - Message to log
+   * @param {number|null} time - Optional start timestamp for duration calculation
+   */
   static warn(message, time = null) {
     if (LOG_MODE > LOG_LEVEL.warn) return;
     const dt = Date.now();
     console.log("%c[WARN][TornPDA.Racing+]: ", "color:#e69138;font-weight:600", message, time ? ` ${dt - time}ms` : ` ${Format.date(dt)} ${Format.time(dt)}`);
   }
-  /** Logs an error-level message. */
+  /**
+   * Logs an error-level message.
+   * @param {string} message - Message to log
+   * @param {number|null} time - Optional start timestamp for duration calculation
+   */
   static error(message, time = null) {
     if (LOG_MODE > LOG_LEVEL.error) return;
     const dt = Date.now();
@@ -167,7 +182,7 @@ class Logger {
  * Helper Classes
  * --------------------------------------------------------------------- */
 /**
- * Store Wrapper classs for localStorage.
+ * Wrapper class for localStorage with typed keys and convenience methods.
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
  * @class
  */
@@ -324,10 +339,10 @@ class Speed {
 /* ------------------------------------------------------------------------
  * Torn racing data
  * --------------------------------------------------------------------- */
-// Colours for car parts.
+/* Color palette for car parts (used in CSS generation) */
 const RACE_COLOURS = ["#5D9CEC", "#48CFAD", "#FFCE54", "#ED5565", "#EC87C0", "#AC92EC", "#FC6E51", "#A0D468", "#4FC1E9"];
 
-// Tracks metadata with Distance instances
+/* Track metadata indexed by track ID with pre-instantiated Distance objects */
 const RACE_TRACKS = {
   6: { name: "Uptown", distance: new Distance({ miles: 2.25 }), laps: 7 },
   7: { name: "Withdrawal", distance: new Distance({ miles: 3.4 }), laps: 5 },
@@ -347,7 +362,7 @@ const RACE_TRACKS = {
   24: { name: "Convict", distance: new Distance({ miles: 1.64 }), laps: 10 },
 };
 
-// Car part categories (used by the CSS injector).
+/* Car parts grouped by category (used for CSS injection and part filtering) */
 const PART_CATEGORIES = {
   "Aerodynamics": ["Spoiler", "Engine Cooling", "Brake Cooling", "Front Diffuser", "Rear Diffuser"],
   "Brakes": ["Pads", "Discs", "Fluid", "Brake Accessory", "Brake Control", "Callipers"],
@@ -1286,10 +1301,11 @@ class TornAPI {
       const page_observer = new MutationObserver(async (mutations) => {
         /* Iterate through mutations */
         for (const mutation of mutations) {
-          /* If infospot text changed, update status */
+          /* Check for info spot updates (race status) */
           if (mutation.type === "characterData" || mutation.type === "childList") {
             const tNode = mutation.target;
             const el = tNode.nodeType === Node.ELEMENT_NODE ? tNode : tNode.parentElement;
+            /* If info spot changed, update race status */
             if (el && el.id === "infoSpot") {
               this_race?.updateStatus(el.textContent || "");
               //Logger.debug(`Race Status Update -> ${el.textContent}.`);
@@ -1304,8 +1320,7 @@ class TornAPI {
       page_observer.observe(content_container, { characterData: true, childList: true, subtree: true });
 
       /**
-       * Safely disconnect all mutation observers.
-       * @returns {void}
+       * Safely disconnects all mutation observers on page unload.
        */
       const disconnectObservers = () => {
         try {
@@ -1316,7 +1331,7 @@ class TornAPI {
         }
       };
 
-      /** Safely disconnect the page MutationObserver */
+      /* Register cleanup on page hide and unload */
       w.addEventListener("pagehide", disconnectObservers, { once: true });
       w.addEventListener("beforeunload", disconnectObservers, { once: true });
 

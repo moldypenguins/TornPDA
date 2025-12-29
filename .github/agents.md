@@ -27,7 +27,17 @@ Purpose: quickly orient an AI coding assistant so it can be immediately producti
   + `gulpfile.js`, `eslint.config.js`, `stylelint.config.js`, `prettier.config.js`: build and standards.
 
 * **Project-specific conventions**
-  + Comments: comment code following the project's conventions; keep comments concise, consistent, and helpful.
+  + Comments:
+    - JSDoc (`/** */`): all functions/methods; no name/description prefix, just the explanation directly
+      ```javascript
+      /**
+       * Returns the current Unix timestamp (seconds since epoch).
+       * @returns {number} Current Unix timestamp (seconds)
+       */
+      ```
+    - Block comments (`/* */`): explanatory sections where intent isn't obvious; stripped in build
+    - Inline comments (`//`): used for userscript metadata, preserved in build;
+    - After `// ==/UserScript==`: all comments must be block style (`/* */`), not inline (`//`), except `// TODO:`, which are stripped in build
   + Strings: no hardcoded user‑visible text.
   + Styling: scss that is compiled and injected during build.
   + Commit convention: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `style:`).
