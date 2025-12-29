@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.50-alpha
+// @version      1.0.51-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -1234,12 +1234,12 @@ class TornAPI {
       Logger.debug("Settings panel initialized.", w.racing_plus);
 
       /* Fix top banner (skill, class) */
-      Logger.debug("Fixing top banner...");
+      Logger.debug("Fixing top banner...", w.racing_plus);
       await fixTopBanner();
-      Logger.debug("Top banner fixed.");
+      Logger.debug("Top banner fixed.", w.racing_plus);
 
       /* Fetch driver racing records and enlisted cars in parallel */
-      Logger.debug("Updating driver records and cars...");
+      Logger.debug("Updating driver records and cars...", w.racing_plus);
       // await this_driver.updateRecords(); await this_driver.updateCars();
       // TODO: add condition/cache + fix possible store write conflict
       const results = await Promise.allSettled([this_driver.updateRecords(), this_driver.updateCars()]);
@@ -1251,21 +1251,21 @@ class TornAPI {
             .join("\n")
         );
       }
-      Logger.debug("Driver records and cars updated.");
+      Logger.debug("Driver records and cars updated.", w.racing_plus);
 
       /* -------------------- */
       // TODO: code goes here //
       /* -------------------- */
 
       /* Fix tabs */
-      Logger.debug("Fixing active tab highlighting...");
+      Logger.debug("Fixing active tab highlighting...", w.racing_plus);
       await fixActiveTabHighlighting();
-      Logger.debug("Active tab highlighting fixed.");
+      Logger.debug("Active tab highlighting fixed.", w.racing_plus);
 
       /* Initialize race object from current track if not already set */
       if (!this_race) {
         try {
-          Logger.info(`Loading Track Data...`, w.racing_plus);
+          Logger.info(`Loading track data...`, w.racing_plus);
           // TODO: error check vars below
           const leaderboard = await defer(SELECTORS.drivers_list_leaderboard);
           const driver = await defer(`${SELECTORS.drivers_list_leaderboard} #lbr-${this_driver.id}`);
@@ -1286,6 +1286,7 @@ class TornAPI {
             laps: Number.isInteger(lapsNum) ? lapsNum : null,
           });
           this_driver.load();
+          Logger.info(`Track data loaded.`, w.racing_plus);
         } catch (err) {
           Logger.error(`Failed to load track data. ${err}`);
         }
@@ -1295,10 +1296,9 @@ class TornAPI {
       // TODO: code goes here //
       /* -------------------- */
 
-      Logger.info(`Adding page observer...`, w.racing_plus);
-
-      const content_container = await defer(SELECTORS.content_container);
       /* Setup content container observer */
+      Logger.debug(`Adding page observer...`, w.racing_plus);
+      const content_container = await defer(SELECTORS.content_container);
       const page_observer = new MutationObserver(async (mutations) => {
         /* Iterate through mutations */
         for (const mutation of mutations) {
@@ -1319,6 +1319,7 @@ class TornAPI {
         }
       });
       page_observer.observe(content_container, { characterData: true, childList: true, subtree: true });
+      Logger.debug(`Page observer added.`, w.racing_plus);
 
       /**
        * Safely disconnects all mutation observers on page unload.
