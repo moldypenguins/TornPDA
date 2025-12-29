@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.54-alpha
+// @version      1.0.55-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -1258,27 +1258,46 @@ class TornAPI {
       Logger.debug("Active tab highlighting fixed.", w.racing_plus);
 
       /* Initialize race object from current track if not already set */
+      const drivers_list = await defer(SELECTORS.drivers_list);
+      const list_title = await defer(SELECTORS.drivers_list_title);
+      const leaderboard = await defer(SELECTORS.drivers_list_leaderboard);
+      /* Wait for leaderboard to have child nodes */
+      /** @type {NodeListOf<ChildNode>} */
+      const drivers = await new Promise((resolve) => {
+        if (leaderboard.childNodes.length > 0) {
+          resolve(leaderboard.childNodes);
+        } else {
+          const observer = new MutationObserver(() => {
+            if (leaderboard.childNodes.length > 0) {
+              observer.disconnect();
+              resolve(leaderboard.childNodes);
+            }
+          });
+          observer.observe(leaderboard, { childList: true });
+        }
+      });
+
+      /* Instantiate this_race if it does not exist */
       if (!this_race) {
         try {
           Logger.info(`Loading track data...`, w.racing_plus);
-          // TODO: error check vars below
-          const leaderboard = await defer(SELECTORS.drivers_list_leaderboard);
-          const driver = await defer(`${SELECTORS.drivers_list_leaderboard} #lbr-${this_driver.id}`);
-          /* Parse race ID from driver row's data-id attribute */
-          const dataId = driver.getAttribute("data-id") || "";
-          const raceId = dataId.split("-")[0];
-          const trackInfo = leaderboard.querySelector(".track-info");
-          const distRaw = (trackInfo?.getAttribute("data-length") ?? "").trim(); // e.g., "2.42mi"
-          const distNum = parseFloat(distRaw);
-          const lapsText = (leaderboard.textContent ?? "").split(" - ")[1]?.split(" ")[0] ?? "";
-          const lapsNum = Number.parseInt(lapsText, 10);
 
+          // TODO: error check vars below
+
+          /* Find this_driver in leaderboard */
+          const driver = Array.from(drivers).find((d) => d.id === `lbr-${this_driver.id}`);
+          /* Parse race ID from driver row's data-id attribute */
+          const dataId = driver.getAttribute("data-id");
+          const raceId = dataId?.split("-")[0] ?? -1;
+          /* Use track-info to find track object */
+          const trackInfo = drivers_list.querySelector(".track-info");
+          const track = Object.values(RACE_TRACKS).find((t) => t.name === trackInfo.getAttribute("title"));
           /* Instantiate TornRace with extracted metadata */
           this_race = new TornRace({
             id: raceId,
-            title: trackInfo?.getAttribute("title") ?? "",
-            distance: isNumber(distNum) ? distNum : null,
-            laps: Number.isInteger(lapsNum) ? lapsNum : null,
+            title: track.name,
+            distance: track.distance,
+            laps: track.laps,
           });
           this_driver.load();
           Logger.info(`Track data loaded.`, w.racing_plus);
@@ -1286,6 +1305,8 @@ class TornAPI {
           Logger.error(`Failed to load track data. ${err}`);
         }
       }
+
+      await this_race.updateLeaderboard(leaderboard.childNodes);
 
       /* ------------------------------------------------------------ */
       // TODO: end loading the official events tab
