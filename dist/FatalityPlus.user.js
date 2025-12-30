@@ -1,14 +1,16 @@
 // ==UserScript==
 // @name         TornPDA.Fatality+
 // @namespace    TornPDA.FatalityPlus
-// @version      0.99.2-alpha
+// @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
+// @version      0.99.2-alpha
 // @description  Shows execute limit in health bar.
 // @author       moldypenguins [2881784]
 // @match        https://www.torn.com/loader.php?sid=attack*
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=torn.com
+// @icon64       https://www.google.com/s2/favicons?sz=64&domain=torn.com
 // @updateURL    https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/FatalityPlus.user.js
 // @downloadURL  https://raw.githubusercontent.com/moldypenguins/TornPDA/refs/heads/main/dist/FatalityPlus.user.js
+// @grant        none
 // @run-at       document-end
 // ==/UserScript==
 "use strict";

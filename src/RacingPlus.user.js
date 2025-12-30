@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.59-alpha
+// @version      1.0.60-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -19,12 +19,6 @@
 /* ------------------------------------------------------------------------
  * Constants
  * --------------------------------------------------------------------- */
-/* Number of characters in a valid API key. */
-const API_KEY_LENGTH = 16;
-
-/* Number of kilometers in 1 mile. */
-const KMS_PER_MI = 1.609344;
-
 /* Number of milliseconds per somethings. */
 const MS = Object.freeze({
   second: 1000,
@@ -32,7 +26,8 @@ const MS = Object.freeze({
   hour: 3600000,
   day: 86400000,
 });
-
+/* Number of kilometers in 1 mile. */
+const KMS_PER_MI = 1.609344;
 /* Number of milliseconds to wait for an API request. */
 const API_FETCH_TIMEOUT = 10 * MS.second;
 /* Number of milliseconds to wait for a selector to appear. Default = 15 seconds. */
@@ -41,7 +36,6 @@ const DEFERRAL_TIMEOUT = 15 * MS.second;
 const SPEED_INTERVAL = MS.second;
 /* Number of milliseconds to cache API responses. Default = 1 hour. */
 const CACHE_TTL = MS.hour;
-
 /* CSS Selectors */
 const SELECTORS = Object.freeze({
   links_container: "#racing-leaderboard-header-root div[class^='linksContainer']",
@@ -380,22 +374,19 @@ const PART_CATEGORIES = {
  * Torn models
  * --------------------------------------------------------------------- */
 /**
- * Comment shown in Torn API recent usage.
- */
-const API_COMMENT = "RacingPlus";
-
-/**
  * List of valid Torn API root strings.
  * @readonly
  * @type {readonly ["user","faction","market","racing","forum","property","key","torn"]}
  */
 const API_VALID_ROOTS = Object.freeze(/** @type {const} */ (["user", "faction", "market", "racing", "forum", "property", "key", "torn"]));
-
 /**
  * Union type of valid roots, derived from API_VALID_ROOTS.
  * @typedef {typeof API_VALID_ROOTS[number]} ApiRoot
  */
-
+/* Number of characters in a valid API key. */
+const API_KEY_LENGTH = 16;
+/* Comment shown in Torn API recent usage. */
+const API_COMMENT = "RacingPlus";
 /**
  * TornAPI access level enumeration
  * @readonly
@@ -418,11 +409,11 @@ class TornAPI {
    * Creates a TornAPI instance
    * @param {string|null} key
    */
-  constructor(key = null) {
+  constructor() {
     /** @type {Map<string, {data:any, timestamp:number}>} */
     this.cache = new Map();
     /** @type {string|null} */
-    this.key = key;
+    this.key = Store.getValue(Store.keys.rplus_apikey);
   }
 
   /**
@@ -508,11 +499,21 @@ class TornAPI {
     });
     if (data?.info?.access && Number(data.info.access.level) >= ACCESS_LEVEL.Minimal) {
       Logger.debug("Valid API key.");
+      /* Valid key; persist to localStorage */
+      Store.setValue(Store.keys.rplus_apikey, this.key);
       return true;
     }
     /* Invalid key; restore previous key and throw error */
     this.key = prev_key;
     throw new Error("Invalid API key: unexpected response.");
+  }
+
+  /**
+   * Clear the key and localStorage
+   */
+  clear() {
+    Store.deleteValue(Store.keys.rplus_apikey);
+    this.key = null;
   }
 }
 
@@ -925,7 +926,7 @@ class TornAPI {
       newElement("div", {
         className: "racing-plus-settings",
         children: [
-          newElement("label", { for: "rplus-apikey" }),
+          newElement("label", { for: "rplus-apikey", innerHTML: 'API Key (<span class="api-key-minimal">Minimal Access</span>)' }),
           newElement("div", {
             className: "flex-col",
             children: [
@@ -957,13 +958,27 @@ class TornAPI {
               newElement("span", { className: "racing-plus-apikey-status" }),
             ],
           }),
-          newElement("input", { type: "checkbox", id: "rplus_addlinks", label: "Add profile links" }),
-          newElement("input", { type: "checkbox", id: "rplus_showskill", label: "Show racing skill" }),
-          newElement("input", { type: "checkbox", id: "rplus_showspeed", label: "Show current speed" }),
-          newElement("input", { type: "checkbox", id: "rplus_showracelink", label: "Add race link" }),
-          newElement("input", { type: "checkbox", id: "rplus_showexportlink", label: "Add export link" }),
-          newElement("input", { type: "checkbox", id: "rplus_showwinrate", label: "Show car win rate" }),
-          newElement("input", { type: "checkbox", id: "rplus_showparts", label: "Show available parts" }),
+
+          newElement("label", { for: "rplus_addlinks", innerText: "Add profile links" }),
+          newElement("div", { children: [newElement("input", { type: "checkbox", id: "rplus_addlinks" })] }),
+
+          newElement("label", { for: "rplus_showskill", innerText: "Show racing skill" }),
+          newElement("div", { children: [newElement("input", { type: "checkbox", id: "rplus_showskill" })] }),
+
+          newElement("label", { for: "rplus_showspeed", innerText: "Show current speed" }),
+          newElement("div", { children: [newElement("input", { type: "checkbox", id: "rplus_showspeed" })] }),
+
+          newElement("label", { for: "rplus_showracelink", innerText: "Add race link" }),
+          newElement("div", { children: [newElement("input", { type: "checkbox", id: "rplus_showracelink" })] }),
+
+          newElement("label", { for: "rplus_showexportlink", innerText: "Add export link" }),
+          newElement("div", { children: [newElement("input", { type: "checkbox", id: "rplus_showexportlink" })] }),
+
+          newElement("label", { for: "rplus_showwinrate", innerText: "Show car win rate" }),
+          newElement("div", { children: [newElement("input", { type: "checkbox", id: "rplus_showwinrate" })] }),
+
+          newElement("label", { for: "rplus_showparts", innerText: "Show available parts" }),
+          newElement("div", { children: [newElement("input", { type: "checkbox", id: "rplus_showparts" })] }),
         ],
       })
     );
@@ -1050,12 +1065,13 @@ class TornAPI {
       /* Reset button handler: clear stored key and make input editable */
       apiReset.addEventListener("click", (ev) => {
         ev.preventDefault();
+        torn_api.clear();
+
         if (!apiInput) return;
         apiInput.value = "";
         apiInput.disabled = false;
         apiInput.readOnly = false;
         apiInput.classList.remove("valid", "invalid");
-        torn_api.deleteKey();
         apiSave?.classList.toggle("show", true);
         apiReset.classList.toggle("show", false);
         if (apiStatus) {
@@ -1179,12 +1195,9 @@ class TornAPI {
       Logger.debug(`Styles injected.`, w.racing_plus);
 
       /* Initialize Torn API client with stored key or PDA key if available */
-      torn_api = new TornAPI(Store.getValue(Store.keys.rplus_apikey));
+      torn_api = new TornAPI();
       if (torn_api.key?.length == 0 && IS_PDA && PDA_KEY.length > 0) {
-        if (await torn_api.validate(PDA_KEY)) {
-          /* PDA key is valid; persist it to localStorage */
-          Store.setValue(Store.keys.rplus_apikey, PDA_KEY);
-        }
+        await torn_api.validate(PDA_KEY);
       }
 
       /* Load or initialize current driver data from storage or DOM */
@@ -1215,14 +1228,6 @@ class TornAPI {
       await addRacingPlusButton(links_container);
       Logger.debug("Settings button added.", w.racing_plus);
 
-      /* Watch for settings button removal and re-add if necessary */
-      const button_observer = new MutationObserver(async (mutations) => {
-        Logger.debug("Adding settings button...");
-        await addRacingPlusButton(links_container);
-        Logger.debug("Settings button added.");
-      });
-      button_observer.observe(links_container, { childList: true, subtree: true });
-
       /* Initialize the settings panel */
       Logger.debug("Initializing settings panel...", w.racing_plus);
       await initRacingPlusPanel(torn_api.key);
@@ -1232,6 +1237,11 @@ class TornAPI {
       Logger.debug("Fixing top banner...", w.racing_plus);
       await fixTopBanner();
       Logger.debug("Top banner fixed.", w.racing_plus);
+
+      /* Fix tabs */
+      Logger.debug("Fixing active tab highlighting...", w.racing_plus);
+      await fixActiveTabHighlighting();
+      Logger.debug("Active tab highlighting fixed.", w.racing_plus);
 
       /* Fetch driver racing records and enlisted cars in parallel */
       Logger.debug("Updating driver records and cars...", w.racing_plus);
@@ -1251,11 +1261,6 @@ class TornAPI {
       /* ------------------------------------------------------------ */
       // TODO: start loading the official events tab
       /* ------------------------------------------------------------ */
-
-      /* Fix tabs */
-      Logger.debug("Fixing active tab highlighting...", w.racing_plus);
-      await fixActiveTabHighlighting();
-      Logger.debug("Active tab highlighting fixed.", w.racing_plus);
 
       /* Initialize race object from current track if not already set */
       const drivers_list = await defer(SELECTORS.drivers_list);
@@ -1311,6 +1316,16 @@ class TornAPI {
       // TODO: end loading the official events tab
       /* ------------------------------------------------------------ */
 
+      // /* Watch for settings button removal and re-add if necessary */
+      // const button_observer = new MutationObserver(async (mutations) => {
+      //   //for (const mutation of mutations) {}
+
+      //   Logger.debug("Adding settings button...");
+      //   await addRacingPlusButton(links_container);
+      //   Logger.debug("Settings button added.");
+      // });
+      // button_observer.observe(links_container, { childList: true, subtree: true });
+
       /* Setup content container observer */
       Logger.debug(`Adding page observer...`, w.racing_plus);
       const content_container = await defer(SELECTORS.content_container);
@@ -1330,6 +1345,8 @@ class TornAPI {
               await this_race?.updateLeaderboard(el.childNodes || []);
               /* Logger.debug(`Leaderboard Update -> ${el.childNodes.length}.`); */
             }
+
+            /* await fixActiveTabHighlighting(); */
           }
         }
       });
@@ -1341,7 +1358,7 @@ class TornAPI {
        */
       const disconnectObservers = () => {
         try {
-          button_observer?.disconnect();
+          //button_observer?.disconnect();
           page_observer?.disconnect();
         } catch (err) {
           Logger.error(err);

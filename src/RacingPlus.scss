@@ -1,3 +1,10 @@
+.d .flex-col {
+  display: flex;
+  flex-direction: column;
+}
+.d .nowrap {
+  white-space: nowrap !important;
+}
 .d .racing-plus-footer::before,
 .d .racing-plus-header::after {
   position: absolute;
@@ -126,12 +133,25 @@
     border-color: #c00 !important;
   }
 }
-.d .flex-col {
-  display: flex;
-  flex-direction: column;
+.d .racing-plus-settings .api-key-public {
+  color: #ddd;
+  color: var(--preferences-api-type-public-access-color);
 }
-.d .nowrap {
-  white-space: nowrap !important;
+.d .racing-plus-settings .api-key-minimal {
+  color: #94d82d;
+  color: var(--preferences-api-type-minimal-access-color);
+}
+.d .racing-plus-settings .api-key-limited {
+  color: #fcc419;
+  color: var(--preferences-api-type-limited-access-color);
+}
+.d .racing-plus-settings .api-key-full {
+  color: #ff6b6b;
+  color: var(--preferences-api-type-full-access-color);
+}
+.d .racing-plus-settings .api-key-custom {
+  color: #da77f2;
+  color: var(--preferences-api-type-custom-access-color);
 }
 .d .racing-plus-apikey-actions {
   margin-right: 10px;
@@ -279,6 +299,10 @@
 }
 .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item {
   font-size: 0.7rem !important;
+  display: none !important;
+  &.show {
+    display: flex !important;
+  }
 }
 .d .racing-main-wrap .car-selected-wrap .drivers-list .driver-item > li.car {
   padding: 0 5px;
