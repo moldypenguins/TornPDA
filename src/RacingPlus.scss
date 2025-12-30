@@ -133,25 +133,40 @@
     border-color: #c00 !important;
   }
 }
+/* PUBLIC ACCESS */
 .d .racing-plus-settings .api-key-public {
-  color: #ddd;
-  color: var(--preferences-api-type-public-access-color);
+  color: var(--preferences-api-type-public-access-color, #444);
 }
+.d.dark-mode .racing-plus-settings .api-key-public {
+  color: var(--preferences-api-type-public-access-color, #ddd);
+}
+/* MINIMAL ACCESS */
 .d .racing-plus-settings .api-key-minimal {
-  color: #94d82d;
-  color: var(--preferences-api-type-minimal-access-color);
+  color: var(--preferences-api-type-minimal-access-color, #698c00);
 }
+.d.dark-mode .racing-plus-settings .api-key-minimal {
+  color: var(--preferences-api-type-minimal-access-color, #94d82d);
+}
+/* LIMITED ACCESS */
 .d .racing-plus-settings .api-key-limited {
-  color: #fcc419;
-  color: var(--preferences-api-type-limited-access-color);
+  color: var(--preferences-api-type-limited-access-color, #b28500);
 }
+.d.dark-mode .racing-plus-settings .api-key-limited {
+  color: var(--preferences-api-type-limited-access-color, #fcc419);
+}
+/* FULL ACCESS */
 .d .racing-plus-settings .api-key-full {
-  color: #ff6b6b;
-  color: var(--preferences-api-type-full-access-color);
+  color: var(--preferences-api-type-full-access-color, #d93600);
 }
+.d.dark-mode .racing-plus-settings .api-key-full {
+  color: var(--preferences-api-type-full-access-color, #ff6b6b);
+}
+/* CUSTOM ACCESS */
 .d .racing-plus-settings .api-key-custom {
-  color: #da77f2;
-  color: var(--preferences-api-type-custom-access-color);
+  color: var(--preferences-api-type-custom-access-color, #5f3dc4);
+}
+.d.dark-mode .racing-plus-settings .api-key-custom {
+  color: var(--preferences-api-type-custom-access-color, #da77f2);
 }
 .d .racing-plus-apikey-actions {
   margin-right: 10px;
