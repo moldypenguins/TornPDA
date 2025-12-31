@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.62-alpha
+// @version      1.0.64-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -1346,21 +1346,26 @@ class TornAPI {
       Logger.debug(`Adding page observer...`, w.racing_plus);
       const content_container = await defer(SELECTORS.content_container);
       const page_observer = new MutationObserver(async (mutations) => {
-        Logger.debug(`Content Update -> ${mutations}.`);
+        Logger.debug(`Content Update -> '${mutations.target}'`);
         /* Iterate through mutations */
         for (const mutation of mutations) {
           /* Check for info spot updates (race status) */
           if (mutation.type === "characterData" || mutation.type === "childList") {
             const tNode = mutation.target;
-            const el = tNode.nodeType === Node.ELEMENT_NODE ? tNode : tNode.parentElement;
+            let el;
+            if (tNode.nodeType === Node.ELEMENT_NODE) {
+              el = tNode;
+            } else {
+              el = tNode.parentElement;
+            }
             /* If info spot changed, update race status */
             if (el && el.id === "infoSpot") {
               this_race?.updateStatus(el.textContent || "");
-              /* Logger.debug(`Race Status Update -> ${el.textContent}.`); */
+              /* Logger.debug(`Race Status Update -> ${el.textContent}`); */
             }
             if (el && el.id === "leaderBoard") {
               await this_race?.updateLeaderboard(el.childNodes || []);
-              /* Logger.debug(`Leaderboard Update -> ${el.childNodes.length}.`); */
+              /* Logger.debug(`Leaderboard Update -> ${el.childNodes.length}`); */
             }
 
             /* await fixActiveTabHighlighting(); */
