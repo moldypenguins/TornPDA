@@ -1346,7 +1346,11 @@ class TornAPI {
       Logger.debug(`Adding page observer...`, w.racing_plus);
       const content_container = await defer(SELECTORS.content_container);
       const page_observer = new MutationObserver(async (mutations) => {
-        Logger.debug(`Content Update -> '${mutations.target}'`);
+        Logger.debug(
+          `Content Update -> '${Object.values(mutations)
+            .map((m) => m.target)
+            .join(", ")}'`
+        );
         /* Iterate through mutations */
         for (const mutation of mutations) {
           /* Check for info spot updates (race status) */
