@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.65-alpha
+// @version      1.0.66-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -1350,7 +1350,7 @@ class TornAPI {
           `Content Update -> '${Object.values(mutations)
             .map(
               (m) =>
-                `target: ${m.target.tagName?.toLowerCase()}${m.target.id ? `#${m.target.id}` : m.target.className.length > 0 ? `.${m.target.className}` : ""}`
+                `target: [${m.type}] ${m.target.tagName?.toLowerCase()}${m.target.id ? `#${m.target.id}` : m.target.className.length > 0 ? `.${m.target.className}` : ""}`
             )
             .join(", ")}'`
         );
@@ -1365,6 +1365,21 @@ class TornAPI {
             } else {
               el = tNode.parentElement;
             }
+
+            if (el) {
+              switch (el.id) {
+                case "racingAdditionalContainer":
+                  //
+                  break;
+                case "infoSpot":
+                  //
+                  break;
+                case "leaderBoard":
+                  //
+                  break;
+              }
+            }
+
             /* If info spot changed, update race status */
             if (el && el.id === "infoSpot") {
               this_race?.updateStatus(el.textContent || "");
