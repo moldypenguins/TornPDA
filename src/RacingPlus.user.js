@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.64-alpha
+// @version      1.0.65-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -1348,7 +1348,10 @@ class TornAPI {
       const page_observer = new MutationObserver(async (mutations) => {
         Logger.debug(
           `Content Update -> '${Object.values(mutations)
-            .map((m) => m.target)
+            .map(
+              (m) =>
+                `target: ${m.target.tagName?.toLowerCase()}${m.target.id ? `#${m.target.id}` : m.target.className.length > 0 ? `.${m.target.className}` : ""}`
+            )
             .join(", ")}'`
         );
         /* Iterate through mutations */

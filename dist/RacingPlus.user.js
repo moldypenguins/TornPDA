@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.64-alpha
+// @version      1.0.65-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -342,7 +342,7 @@ const results=await Promise.allSettled([this_driver.updateRecords(),this_driver.
 //   Logger.debug("Settings button added.");
 // });
 // button_observer.observe(links_container, { childList: true, subtree: true });
-Logger.debug(`Adding page observer...`,w.racing_plus);const content_container=await defer(SELECTORS.content_container);const page_observer=new MutationObserver(async mutations=>{Logger.debug(`Content Update -> '${Object.values(mutations).map(m=>m.target).join(", ")}'`);for(const mutation of mutations){if(mutation.type==="characterData"||mutation.type==="childList"){const tNode=mutation.target;let el;if(tNode.nodeType===Node.ELEMENT_NODE){el=tNode}else{el=tNode.parentElement}if(el&&el.id==="infoSpot"){this_race?.updateStatus(el.textContent||"")}if(el&&el.id==="leaderBoard"){await(this_race?.updateLeaderboard(el.childNodes||[]))}}}});page_observer.observe(content_container,{characterData:true,childList:true,subtree:true});Logger.debug(`Page observer added.`,w.racing_plus);
+Logger.debug(`Adding page observer...`,w.racing_plus);const content_container=await defer(SELECTORS.content_container);const page_observer=new MutationObserver(async mutations=>{Logger.debug(`Content Update -> '${Object.values(mutations).map(m=>`target: ${m.target.tagName?.toLowerCase()}${m.target.id?`#${m.target.id}`:m.target.className.length>0?`.${m.target.className}`:""}`).join(", ")}'`);for(const mutation of mutations){if(mutation.type==="characterData"||mutation.type==="childList"){const tNode=mutation.target;let el;if(tNode.nodeType===Node.ELEMENT_NODE){el=tNode}else{el=tNode.parentElement}if(el&&el.id==="infoSpot"){this_race?.updateStatus(el.textContent||"")}if(el&&el.id==="leaderBoard"){await(this_race?.updateLeaderboard(el.childNodes||[]))}}}});page_observer.observe(content_container,{characterData:true,childList:true,subtree:true});Logger.debug(`Page observer added.`,w.racing_plus);
 /**
        * Safely disconnects all mutation observers on page unload.
        */const disconnectObservers=()=>{try{
