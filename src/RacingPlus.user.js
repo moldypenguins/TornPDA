@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.68-alpha
+// @version      1.0.70-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -741,7 +741,7 @@ class TornAPI {
      * @param {NodeList|Array} drivers - List of driver DOM elements
      */
     async updateLeaderboard(drivers) {
-      Logger.debug("Updating Leaderboard...");
+      // Logger.debug("Updating Leaderboard...");
 
       // TODO: FIX THIS
 
@@ -793,7 +793,7 @@ class TornAPI {
 
         /* Conditionally add clickable profile links to driver names */
         if (Store.getValue(Store.keys.rplus_addlinks) === "1") {
-          if (!nameLink && nameSpan) {
+          if (!nameLink && nameSpan?.outerHTML) {
             nameSpan.outerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${nameSpan.outerHTML}</a>`;
           }
         } else {
@@ -1325,16 +1325,16 @@ class TornAPI {
 
     if (content_container.querySelector("#racingupdates")) {
       await PageContent.loadOfficialEvents();
+    } else if (content_container.querySelector(".custom-race-wrap")) {
+      await PageContent.loadCustomEvents();
     } else if (content_container.querySelector(".pm-categories")) {
       await PageContent.loadModifications();
     } else if (content_container.querySelector("#racing-leaderboard-root")) {
       await PageContent.loadStatistics();
     } else if (content_container.querySelector(".enlist-wrap")) {
-      const title = content_container.querySelector(".enlisted-btn-wrap");
-      if (title?.innerText.toLowerCase().includes("official race")) {
+      // TODO: fix this - seems hacky
+      if (content_container.querySelector(".enlisted-btn-wrap")?.innerText.toLowerCase().includes("official race")) {
         await PageContent.loadOfficialEvents();
-      } else if (title?.innerText.toLowerCase().includes("custom race")) {
-        await PageContent.loadCustomEvents();
       } else if (content_container.querySelector(".info-msg")) {
         await PageContent.loadModifications();
       } else {
