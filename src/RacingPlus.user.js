@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.61-alpha
+// @version      1.0.62-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -224,6 +224,7 @@ class Store {
     rplus_showracelink: "RACINGPLUS_SHOWRACELINK",
     rplus_showexportlink: "RACINGPLUS_SHOWEXPORTLINK",
     rplus_showwinrate: "RACINGPLUS_SHOWCARWINRATE",
+    rplus_highlightcar: "RACINGPLUS_HIGHLIGHTCAR",
     rplus_showparts: "RACINGPLUS_SHOWCARPARTS",
     rplus_driver: "RACINGPLUS_DRIVER",
   });
@@ -739,9 +740,13 @@ class TornAPI {
      * @param {NodeList|Array} drivers - List of driver DOM elements
      */
     async updateLeaderboard(drivers) {
-      /* Logger.debug("Updating Leaderboard..."); */
+      Logger.debug("Updating Leaderboard...");
+
+      // TODO: FIX THIS
+
       /* Process each driver entry in the leaderboard */
       for (const drvr of Array.from(drivers)) {
+        const driverItem = drvr.querySelector("ul.driver-item");
         //Array.from(drivers).forEach(async (drvr) => {
         /* Cache frequently used lookups to avoid repeated DOM queries */
         const driverId = (drvr.id || "").substring(4);
@@ -835,6 +840,7 @@ class TornAPI {
             }
           }
         }
+        driverItem.classList.toggle("show", true);
       } //);
     }
   }
@@ -892,6 +898,7 @@ class TornAPI {
    * @returns {Promise<void>}
    */
   const addStyles = async () => {
+    Logger.debug(`Injecting styles...`, w.racing_plus);
     // Build dynamic CSS rules for part colors if parts display is enabled
     const dynRules = [];
     if (Store.getValue(Store.keys.rplus_showparts) === "1") {
@@ -906,6 +913,7 @@ class TornAPI {
       });
     }
     w.document.head.appendChild(newElement("style", { innerHTML: `__MINIFIED_CSS__` + dynRules.join("") }));
+    Logger.debug(`Styles injected.`, w.racing_plus);
   };
 
   /**
@@ -914,6 +922,7 @@ class TornAPI {
    * @returns {Promise<void>}
    */
   const addRacingPlusPanel = async () => {
+    Logger.debug("Adding settings panel...", w.racing_plus);
     /* Check if panel already exists */
     if (w.document.querySelector(".racing-plus-panel")) return;
     /* create panel */
@@ -972,11 +981,17 @@ class TornAPI {
             newElement("label", { for: "rplus_showracelink", innerText: "Add race link" }),
             newElement("div", { children: [newElement("input", { type: "checkbox", id: "rplus_showracelink" })] }),
 
+            newElement("label", { for: "rplus_showracelink", innerText: "Show race results" }),
+            newElement("div", { children: [newElement("input", { type: "checkbox", id: "rplus_showresults" })] }),
+
             newElement("label", { for: "rplus_showexportlink", innerText: "Add export link" }),
             newElement("div", { children: [newElement("input", { type: "checkbox", id: "rplus_showexportlink" })] }),
 
             newElement("label", { for: "rplus_showwinrate", innerText: "Show car win rate" }),
             newElement("div", { children: [newElement("input", { type: "checkbox", id: "rplus_showwinrate" })] }),
+
+            newElement("label", { for: "rplus_highlightcar", innerText: "Highlight best lap car" }),
+            newElement("div", { children: [newElement("input", { type: "checkbox", id: "rplus_highlightcar" })] }),
 
             newElement("label", { for: "rplus_showparts", innerText: "Show available parts" }),
             newElement("div", { children: [newElement("input", { type: "checkbox", id: "rplus_showparts" })] }),
@@ -992,6 +1007,7 @@ class TornAPI {
     /* wait for the main container to be loaded then append panel to container */
     const main_container = await defer(SELECTORS.main_container);
     main_container.insertAdjacentElement("beforeBegin", rplus_panel);
+    Logger.debug("Settings panel added.", w.racing_plus);
   };
 
   /**
@@ -999,6 +1015,8 @@ class TornAPI {
    * @returns {Promise<void>}
    */
   const initRacingPlusPanel = async () => {
+    Logger.debug("Initializing settings panel...", w.racing_plus);
+
     /** @type {HTMLInputElement} */ const apiInput = await defer("#rplus-apikey");
     /** @type {HTMLAnchorElement} */ const apiSave = await defer(".racing-plus-apikey-save");
     /** @type {HTMLAnchorElement} */ const apiReset = await defer(".racing-plus-apikey-reset");
@@ -1095,6 +1113,7 @@ class TornAPI {
         Logger.debug(`${el.id} saved ${t.checked ? "on" : "off"}.`);
       });
     });
+    Logger.debug("Settings panel initialized.", w.racing_plus);
   };
 
   /**
@@ -1103,6 +1122,7 @@ class TornAPI {
    * @returns {Promise<void>}
    */
   const addRacingPlusButton = async (links_container) => {
+    Logger.debug("Adding settings button...", w.racing_plus);
     /* Check if button already exists */
     if (w.document.querySelector("#racing-plus-button")) return;
     /* Load and validate required elements */
@@ -1134,6 +1154,7 @@ class TornAPI {
       Logger.debug("'rplus_button' clicked.");
       w.document.querySelector(".racing-plus-panel")?.classList.toggle("show");
     });
+    Logger.debug("Settings button added.", w.racing_plus);
   };
 
   /**
@@ -1141,6 +1162,7 @@ class TornAPI {
    * @returns {Promise<void>}
    */
   const fixTopBanner = async () => {
+    Logger.debug("Fixing top banner...", w.racing_plus);
     const banner = await defer(SELECTORS.main_banner);
     const leftBanner = w.document.createElement("div");
     leftBanner.className = "left-banner";
@@ -1163,6 +1185,7 @@ class TornAPI {
     banner.innerHTML = "";
     banner.appendChild(leftBanner);
     banner.appendChild(rightBanner);
+    Logger.debug("Top banner fixed.", w.racing_plus);
   };
 
   /**
@@ -1172,6 +1195,7 @@ class TornAPI {
    * @returns {Promise<void>}
    */
   const fixActiveTabHighlighting = async () => {
+    Logger.debug("Fixing active tab highlighting...", w.racing_plus);
     // TODO: add comments
     const container = await defer(SELECTORS.tabs_container);
     const tabs = container.querySelectorAll("li:not(.clear)");
@@ -1180,6 +1204,7 @@ class TornAPI {
         tab.classList.toggle("active", !!tab.querySelector(".official-events"));
       }
     }
+    Logger.debug("Active tab highlighting fixed.", w.racing_plus);
   };
 
   /* ------------------------------------------------------------------------
@@ -1193,9 +1218,7 @@ class TornAPI {
       Logger.info(`Application loaded. Starting...`, w.racing_plus);
 
       /* Inject Racing+ CSS into document head */
-      Logger.debug(`Injecting styles...`, w.racing_plus);
       await addStyles();
-      Logger.debug(`Styles injected.`, w.racing_plus);
 
       /* Initialize Torn API client with stored key or PDA key if available */
       torn_api = new TornAPI();
@@ -1221,30 +1244,20 @@ class TornAPI {
       }
 
       /* Add settings panel to the DOM */
-      Logger.debug("Adding settings panel...", w.racing_plus);
       await addRacingPlusPanel();
-      Logger.debug("Settings panel added.", w.racing_plus);
 
       /* Add settings button to the DOM */
       const links_container = await defer(SELECTORS.links_container);
-      Logger.debug("Adding settings button...", w.racing_plus);
       await addRacingPlusButton(links_container);
-      Logger.debug("Settings button added.", w.racing_plus);
 
       /* Initialize the settings panel */
-      Logger.debug("Initializing settings panel...", w.racing_plus);
       await initRacingPlusPanel(torn_api.key);
-      Logger.debug("Settings panel initialized.", w.racing_plus);
 
       /* Fix top banner (skill, class) */
-      Logger.debug("Fixing top banner...", w.racing_plus);
       await fixTopBanner();
-      Logger.debug("Top banner fixed.", w.racing_plus);
 
       /* Fix tabs */
-      Logger.debug("Fixing active tab highlighting...", w.racing_plus);
       await fixActiveTabHighlighting();
-      Logger.debug("Active tab highlighting fixed.", w.racing_plus);
 
       /* Fetch driver racing records and enlisted cars in parallel */
       Logger.debug("Updating driver records and cars...", w.racing_plus);
@@ -1333,6 +1346,7 @@ class TornAPI {
       Logger.debug(`Adding page observer...`, w.racing_plus);
       const content_container = await defer(SELECTORS.content_container);
       const page_observer = new MutationObserver(async (mutations) => {
+        Logger.debug(`Content Update -> ${mutations}.`);
         /* Iterate through mutations */
         for (const mutation of mutations) {
           /* Check for info spot updates (race status) */
