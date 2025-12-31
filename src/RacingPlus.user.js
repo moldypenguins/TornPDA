@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.66-alpha
+// @version      1.0.68-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -38,7 +38,7 @@ const SPEED_INTERVAL = MS.second;
 const CACHE_TTL = MS.hour;
 /* CSS Selectors */
 const SELECTORS = Object.freeze({
-  links_container: "#racing-leaderboard-header-root div[class^='linksContainer']",
+  header_root: "#racing-leaderboard-header-root",
   main_container: "#racingMainContainer",
   main_banner: "#racingMainContainer .header-wrap div.banner",
   tabs_container: "#racingMainContainer .header-wrap ul.categories",
@@ -222,6 +222,7 @@ class Store {
     rplus_showskill: "RACINGPLUS_SHOWRACINGSKILL",
     rplus_showspeed: "RACINGPLUS_SHOWCARSPEED",
     rplus_showracelink: "RACINGPLUS_SHOWRACELINK",
+    rplus_showresults: "RACINGPLUS_SHOWRESULTS",
     rplus_showexportlink: "RACINGPLUS_SHOWEXPORTLINK",
     rplus_showwinrate: "RACINGPLUS_SHOWCARWINRATE",
     rplus_highlightcar: "RACINGPLUS_HIGHLIGHTCAR",
@@ -728,8 +729,8 @@ class TornAPI {
           this.status = "finished";
           break;
         default:
-          // Case-insensitive check for "Starts:" marker
-          this.status = text.includes("starts: ") ? "joined" : "waiting";
+          // Case-insensitive check for "Race will Start in" marker
+          this.status = text.includes("Race will Start in") ? "waiting" : "joined";
           break;
       }
       return this.status;
@@ -761,15 +762,21 @@ class TornAPI {
         if (driverStatus) {
           switch (this.status) {
             case "joined":
-              driverStatus.className = "status success";
+              driverStatus.classList.toggle("success", true);
+              driverStatus.classList.toggle("waiting", false);
+              driverStatus.classList.toggle("racing", false);
               driverStatus.textContent = "";
               break;
             case "waiting":
-              driverStatus.className = "status waiting";
+              driverStatus.classList.toggle("success", false);
+              driverStatus.classList.toggle("waiting", true);
+              driverStatus.classList.toggle("racing", false);
               driverStatus.textContent = "";
               break;
             case "racing":
-              driverStatus.className = "status racing";
+              driverStatus.classList.toggle("success", false);
+              driverStatus.classList.toggle("waiting", false);
+              driverStatus.classList.toggle("racing", true);
               driverStatus.textContent = "";
               break;
             case "finished":
@@ -876,6 +883,29 @@ class TornAPI {
       obs.observe(w.document.documentElement || w.document, { childList: true, subtree: true });
     });
 
+  const deferChild = (parent, selector) =>
+    new Promise((resolve, reject) => {
+      const found = parent.querySelector(selector);
+      if (found) return resolve(found);
+      let obs;
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error(`deferral timed out: '${parent}' -> '${selector}'`));
+      }, DEFERRAL_TIMEOUT);
+      const cleanup = () => {
+        clearTimeout(timer);
+        obs?.disconnect();
+      };
+      obs = new MutationObserver(() => {
+        const el = w.document.querySelector(selector);
+        if (el) {
+          cleanup();
+          resolve(el);
+        }
+      });
+      obs.observe(parent, { childList: true, subtree: true });
+    });
+
   /**
    * Creates an element with supplied properties.
    * @param {keyof HTMLElementTagNameMap} tag - The HTML tag to create.
@@ -913,7 +943,7 @@ class TornAPI {
       });
     }
     w.document.head.appendChild(newElement("style", { innerHTML: `__MINIFIED_CSS__` + dynRules.join("") }));
-    Logger.debug(`Styles injected.`, w.racing_plus);
+    Logger.info(`Styles injected.`, w.racing_plus);
   };
 
   /**
@@ -981,7 +1011,7 @@ class TornAPI {
             newElement("label", { for: "rplus_showracelink", innerText: "Add race link" }),
             newElement("div", { children: [newElement("input", { type: "checkbox", id: "rplus_showracelink" })] }),
 
-            newElement("label", { for: "rplus_showracelink", innerText: "Show race results" }),
+            newElement("label", { for: "rplus_showresults", innerText: "Show race results" }),
             newElement("div", { children: [newElement("input", { type: "checkbox", id: "rplus_showresults" })] }),
 
             newElement("label", { for: "rplus_showexportlink", innerText: "Add export link" }),
@@ -1007,7 +1037,7 @@ class TornAPI {
     /* wait for the main container to be loaded then append panel to container */
     const main_container = await defer(SELECTORS.main_container);
     main_container.insertAdjacentElement("beforeBegin", rplus_panel);
-    Logger.debug("Settings panel added.", w.racing_plus);
+    Logger.info("Settings panel added.", w.racing_plus);
   };
 
   /**
@@ -1113,7 +1143,7 @@ class TornAPI {
         Logger.debug(`${el.id} saved ${t.checked ? "on" : "off"}.`);
       });
     });
-    Logger.debug("Settings panel initialized.", w.racing_plus);
+    Logger.info("Settings panel initialized.", w.racing_plus);
   };
 
   /**
@@ -1121,11 +1151,12 @@ class TornAPI {
    * @param {HTMLElement} links_container
    * @returns {Promise<void>}
    */
-  const addRacingPlusButton = async (links_container) => {
+  const addRacingPlusButton = async (header_root) => {
     Logger.debug("Adding settings button...", w.racing_plus);
     /* Check if button already exists */
     if (w.document.querySelector("#racing-plus-button")) return;
     /* Load and validate required elements */
+    const links_container = await deferChild(header_root, "div[class^='linksContainer']");
     const city_button = links_container.querySelector('[href="city.php"]');
     if (!city_button) return;
     const city_label = city_button.querySelector(`#${city_button.getAttribute("aria-labelledby")}`);
@@ -1154,15 +1185,15 @@ class TornAPI {
       Logger.debug("'rplus_button' clicked.");
       w.document.querySelector(".racing-plus-panel")?.classList.toggle("show");
     });
-    Logger.debug("Settings button added.", w.racing_plus);
+    Logger.info("Settings button added.", w.racing_plus);
   };
 
   /**
-   * Fixes the top banner skill and class
+   * Fixes the header banner (racing skill and class)
    * @returns {Promise<void>}
    */
-  const fixTopBanner = async () => {
-    Logger.debug("Fixing top banner...", w.racing_plus);
+  const fixHeaderBanner = async () => {
+    Logger.debug("Fixing header banner...", w.racing_plus);
     const banner = await defer(SELECTORS.main_banner);
     const leftBanner = w.document.createElement("div");
     leftBanner.className = "left-banner";
@@ -1185,99 +1216,41 @@ class TornAPI {
     banner.innerHTML = "";
     banner.appendChild(leftBanner);
     banner.appendChild(rightBanner);
-    Logger.debug("Top banner fixed.", w.racing_plus);
+    Logger.info("Header banner fixed.", w.racing_plus);
   };
 
   /**
-   * Fixes active tab highlighting for racing categories
-   * @param {MouseEvent} event
-   * @param {} tabs
-   * @returns {Promise<void>}
+   * Sets
+   * @param {string} selector
    */
-  const fixActiveTabHighlighting = async () => {
-    Logger.debug("Fixing active tab highlighting...", w.racing_plus);
-    // TODO: add comments
-    const container = await defer(SELECTORS.tabs_container);
-    const tabs = container.querySelectorAll("li:not(.clear)");
-    for (const tab of tabs) {
-      if (!tab.classList.contains("clear")) {
-        tab.classList.toggle("active", !!tab.querySelector(".official-events"));
-      }
-    }
-    Logger.debug("Active tab highlighting fixed.", w.racing_plus);
+  const activateTab = async (selector) => {
+    const tabs_container = await defer(SELECTORS.tabs_container);
+    const tabs = tabs_container.querySelectorAll("li:not(.clear)");
+    tabs.forEach((t) => t.classList.toggle("active", !!t.querySelector(`.icon.${selector}`)));
   };
 
-  /* ------------------------------------------------------------------------
-   * App lifecycle
-   * --------------------------------------------------------------------- */
   /**
-   * start - Main entry point for the application.
+   * PageContent
+   * @class
    */
-  const start = async () => {
-    try {
-      Logger.info(`Application loaded. Starting...`, w.racing_plus);
-
-      /* Inject Racing+ CSS into document head */
-      await addStyles();
-
-      /* Initialize Torn API client with stored key or PDA key if available */
-      torn_api = new TornAPI();
-      if (torn_api.key?.length == 0 && IS_PDA && PDA_KEY.length > 0) {
-        await torn_api.validate(PDA_KEY);
-      }
-
-      /* Load or initialize current driver data from storage or DOM */
-      Logger.info(`Loading Driver Data...`, w.racing_plus);
-      if (!this_driver) {
-        try {
-          /* Attempt to load from storage first */
-          let scriptData = Store.getValue(Store.keys.rplus_driver);
-          if (!scriptData) {
-            /* Create new driver - '#torn-user' a hidden input with JSON { id, ... } */
-            scriptData = await defer("#torn-user").value;
-          }
-          this_driver = new TornDriver(JSON.parse(scriptData).id);
-          this_driver.load();
-        } catch (err) {
-          Logger.error(`Failed to load driver data. ${err}`);
-        }
-      }
-
-      /* Add settings panel to the DOM */
-      await addRacingPlusPanel();
-
-      /* Add settings button to the DOM */
-      const links_container = await defer(SELECTORS.links_container);
-      await addRacingPlusButton(links_container);
-
-      /* Initialize the settings panel */
-      await initRacingPlusPanel(torn_api.key);
-
-      /* Fix top banner (skill, class) */
-      await fixTopBanner();
-
-      /* Fix tabs */
-      await fixActiveTabHighlighting();
-
-      /* Fetch driver racing records and enlisted cars in parallel */
-      Logger.debug("Updating driver records and cars...", w.racing_plus);
-      // await this_driver.updateRecords(); await this_driver.updateCars();
-      // TODO: add condition/cache + fix possible store write conflict
-      const results = await Promise.allSettled([this_driver.updateRecords(), this_driver.updateCars()]);
-      if (!results.map((r) => r.status === "fulfilled")) {
-        Logger.error(
-          results
-            .filter((r) => r.status === "rejected")
-            .map((r) => `${r.status} - ${r.reason}`)
-            .join("\n")
-        );
-      }
-      Logger.debug("Driver records and cars updated.", w.racing_plus);
-
-      /* ------------------------------------------------------------ */
-      // TODO: start loading the official events tab
-      /* ------------------------------------------------------------ */
-
+  class PageContent {
+    /**
+     * loads content for 'Your Cars'.
+     */
+    static loadCars = async () => {
+      await activateTab("cars");
+    };
+    /**
+     * loads content for 'Parts & Modifications'
+     */
+    static loadModifications = async () => {
+      await activateTab("modification");
+    };
+    /**
+     * loads content for 'Official Events'
+     */
+    static loadOfficialEvents = async () => {
+      await activateTab("official-events");
       /* Initialize race object from current track if not already set */
       const drivers_list = await defer(SELECTORS.drivers_list);
       const leaderboard = await defer(SELECTORS.drivers_list_leaderboard);
@@ -1300,7 +1273,7 @@ class TornAPI {
       /* Instantiate this_race if it does not exist */
       if (!this_race) {
         try {
-          Logger.info(`Loading track data...`, w.racing_plus);
+          Logger.debug(`Loading track data...`, w.racing_plus);
 
           // TODO: error check vars below
 
@@ -1327,82 +1300,176 @@ class TornAPI {
       }
 
       await this_race.updateLeaderboard(leaderboard.childNodes);
+    };
+    /**
+     * loads content for 'Custom Events'
+     */
+    static loadCustomEvents = async () => {
+      await activateTab("custom-events");
+    };
+    /**
+     * loads content for 'Statistics'
+     */
+    static loadStatistics = async () => {
+      await activateTab("statistics");
+    };
+  }
 
-      /* ------------------------------------------------------------ */
-      // TODO: end loading the official events tab
-      /* ------------------------------------------------------------ */
+  /**
+   * loadContent
+   * @returns {Promise<void>}
+   */
+  const loadContent = async (content_container) => {
+    Logger.debug(`Loading content...`, w.racing_plus);
+    // TODO: add comments
 
-      // /* Watch for settings button removal and re-add if necessary */
-      // const button_observer = new MutationObserver(async (mutations) => {
-      //   //for (const mutation of mutations) {}
+    if (content_container.querySelector("#racingupdates")) {
+      await PageContent.loadOfficialEvents();
+    } else if (content_container.querySelector(".pm-categories")) {
+      await PageContent.loadModifications();
+    } else if (content_container.querySelector("#racing-leaderboard-root")) {
+      await PageContent.loadStatistics();
+    } else if (content_container.querySelector(".enlist-wrap")) {
+      const title = content_container.querySelector(".enlisted-btn-wrap");
+      if (title?.innerText.toLowerCase().includes("official race")) {
+        await PageContent.loadOfficialEvents();
+      } else if (title?.innerText.toLowerCase().includes("custom race")) {
+        await PageContent.loadCustomEvents();
+      } else if (content_container.querySelector(".info-msg")) {
+        await PageContent.loadModifications();
+      } else {
+        await PageContent.loadCars();
+      }
+    }
+    Logger.info(`Content loaded.`, w.racing_plus);
+  };
 
-      //   Logger.debug("Adding settings button...");
-      //   await addRacingPlusButton(links_container);
-      //   Logger.debug("Settings button added.");
-      // });
-      // button_observer.observe(links_container, { childList: true, subtree: true });
+  /* ------------------------------------------------------------------------
+   * App lifecycle
+   * --------------------------------------------------------------------- */
+  /**
+   * start - Main entry point for the application.
+   */
+  const start = async () => {
+    try {
+      Logger.info(`Application loaded. Starting...`, w.racing_plus);
 
-      /* Setup content container observer */
-      Logger.debug(`Adding page observer...`, w.racing_plus);
-      const content_container = await defer(SELECTORS.content_container);
-      const page_observer = new MutationObserver(async (mutations) => {
-        Logger.debug(
-          `Content Update -> '${Object.values(mutations)
-            .map(
-              (m) =>
-                `target: [${m.type}] ${m.target.tagName?.toLowerCase()}${m.target.id ? `#${m.target.id}` : m.target.className.length > 0 ? `.${m.target.className}` : ""}`
-            )
-            .join(", ")}'`
+      /* Inject Racing+ CSS into document head */
+      await addStyles();
+
+      /* Initialize Torn API client with stored key or PDA key if available */
+      torn_api = new TornAPI();
+      if (torn_api.key?.length == 0 && IS_PDA && PDA_KEY.length > 0) {
+        await torn_api.validate(PDA_KEY);
+      }
+
+      /* Load or initialize current driver data from storage or DOM */
+      Logger.debug(`Loading driver data...`, w.racing_plus);
+      if (!this_driver) {
+        try {
+          /* Attempt to load from storage first */
+          let scriptData = Store.getValue(Store.keys.rplus_driver);
+          if (!scriptData) {
+            /* Create new driver - '#torn-user' a hidden input with JSON { id, ... } */
+            scriptData = await defer("#torn-user").value;
+          }
+          this_driver = new TornDriver(JSON.parse(scriptData).id);
+          this_driver.load();
+        } catch (err) {
+          Logger.error(`Failed to load driver data. ${err}`);
+        }
+      }
+      Logger.info(`Driver data loaded.`, w.racing_plus);
+
+      /* Add the settings button */
+      const header_root = await defer(SELECTORS.header_root);
+      await addRacingPlusButton(header_root);
+
+      /* Add and initialize the settings panel */
+      await addRacingPlusPanel();
+      await initRacingPlusPanel(torn_api.key);
+
+      /* Fix header banner (racing skill + class) */
+      await fixHeaderBanner();
+
+      /* Fetch driver racing records and enlisted cars in parallel */
+      Logger.debug("Updating driver records and cars...", w.racing_plus);
+      // await this_driver.updateRecords(); await this_driver.updateCars();
+      // TODO: add condition/cache + fix possible store write conflict
+      const results = await Promise.allSettled([this_driver.updateRecords(), this_driver.updateCars()]);
+      if (!results.map((r) => r.status === "fulfilled")) {
+        Logger.error(
+          results
+            .filter((r) => r.status === "rejected")
+            .map((r) => `${r.status} - ${r.reason}`)
+            .join("\n")
         );
-        /* Iterate through mutations */
-        for (const mutation of mutations) {
-          /* Check for info spot updates (race status) */
-          if (mutation.type === "characterData" || mutation.type === "childList") {
-            const tNode = mutation.target;
-            let el;
-            if (tNode.nodeType === Node.ELEMENT_NODE) {
-              el = tNode;
-            } else {
-              el = tNode.parentElement;
-            }
+      }
+      Logger.info("Driver records and cars updated.", w.racing_plus);
 
-            if (el) {
-              switch (el.id) {
-                case "racingAdditionalContainer":
-                  //
-                  break;
-                case "infoSpot":
-                  //
-                  break;
-                case "leaderBoard":
-                  //
-                  break;
+      /* Load initial page content */
+      const content_container = await defer(SELECTORS.content_container);
+      await loadContent(content_container);
+
+      /* Setup observers */
+      Logger.debug(`Adding observers...`, w.racing_plus);
+      /* Watch for settings button removal and re-add if necessary */
+      const button_observer = new MutationObserver(async () => {
+        await addRacingPlusButton(header_root);
+      });
+      button_observer.observe(header_root, { childList: true, subtree: true });
+
+      /* Watch content_container, which contains leaderboard and infospot */
+      const page_observer = new MutationObserver(async (mutations) => {
+        const preloader_added = Array.from(mutations[0]?.addedNodes).find((n) => n.classList?.contains(`ajax-preloader`));
+        if (!preloader_added) {
+          // Logger.debug(
+          //   `Content Update -> '${Object.values(mutations)
+          //     .map(
+          //       (m) =>
+          //         `target: [${m.type}] ${m.target.tagName?.toLowerCase()}${m.target.id ? `#${m.target.id}` : m.target.className.length > 0 ? `.${m.target.className}` : ""}`
+          //     )
+          //     .join(", ")}'`
+          // );
+          /* Iterate through mutations */
+          for (const mutation of mutations) {
+            //
+            const preloader_removed = Array.from(mutation.removedNodes).find((n) => n.classList?.contains(`ajax-preloader`));
+            if (!preloader_removed && (mutation.type === "characterData" || mutation.type === "childList")) {
+              const tNode = mutation.target;
+              let el = tNode.nodeType === Node.ELEMENT_NODE ? tNode : tNode.parentElement;
+              if (el) {
+                switch (el.id) {
+                  case "racingAdditionalContainer":
+                    /* If tab changed, correct tab selected */
+                    await loadContent(content_container);
+                    break;
+                  case "infoSpot":
+                    /* If info spot changed, update race status */
+                    this_race?.updateStatus(el.textContent || "");
+                    // TODO: update driver status instead
+                    /* Logger.debug(`Race Status Update -> ${el.textContent}`); */
+                    break;
+                  case "leaderBoard":
+                    /* If leaderboard changed, update drivers */
+                    await this_race?.updateLeaderboard(el.childNodes || []);
+                    /* Logger.debug(`Leaderboard Update -> ${el.childNodes.length}`); */
+                    break;
+                }
               }
             }
-
-            /* If info spot changed, update race status */
-            if (el && el.id === "infoSpot") {
-              this_race?.updateStatus(el.textContent || "");
-              /* Logger.debug(`Race Status Update -> ${el.textContent}`); */
-            }
-            if (el && el.id === "leaderBoard") {
-              await this_race?.updateLeaderboard(el.childNodes || []);
-              /* Logger.debug(`Leaderboard Update -> ${el.childNodes.length}`); */
-            }
-
-            /* await fixActiveTabHighlighting(); */
           }
         }
       });
       page_observer.observe(content_container, { characterData: true, childList: true, subtree: true });
-      Logger.debug(`Page observer added.`, w.racing_plus);
+      Logger.info(`Observers added.`, w.racing_plus);
 
       /**
        * Safely disconnects all mutation observers on page unload.
        */
       const disconnectObservers = () => {
         try {
-          //button_observer?.disconnect();
+          button_observer?.disconnect();
           page_observer?.disconnect();
         } catch (err) {
           Logger.error(err);
