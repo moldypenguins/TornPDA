@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.70-alpha
+// @version      1.0.72-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -241,7 +241,7 @@ Logger.warn(`Failed to load driver cache.\n${err}`)}}}
 /**
      * Update stored skill if newer value is higher (skill increases only)
      * @param {number|string} skill - New skill value
-     */updateSkill(skill){const v=Number(skill);if(isNumber(v)){this.skill=Math.max(this.skill,v);this.save()}}
+     */updateSkill(racing_skill){if(isNumber(racing_skill)){const skill=Number(racing_skill).toFixed(5);this.skill=Math.max(this.skill,skill);this.save();return this.skill-skill}}
 /**
      * Fetch racing records from API and store best lap per car/track
      * @returns {Promise<void>}
@@ -329,39 +329,46 @@ const dynRules=[];if(Store.getValue(Store.keys.rplus_showparts)==="1"){Object.en
    * @param {string} selector
    */const activateTab=async selector=>{const tabs_container=await defer(SELECTORS.tabs_container);const tabs=tabs_container.querySelectorAll("li:not(.clear)");tabs.forEach(t=>t.classList.toggle("active",!!t.querySelector(`.icon.${selector}`)))};
 /**
+   * XML HTTP Request Monkey
+   * @class
+   */class XMLHttpRequestMonkey{constructor(){this.original=null}load=()=>{if(!this.original){this.original=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(...args){this.addEventListener("load",ev=>{if(ev.target?.responseURL?.startsWith(`${w.location.origin}${w.location.pathname}`)&&ev.target?.response?.trim().startsWith("{")){try{let data=JSON.parse(ev.target.response);let gains=this_driver.updateSkill(data.user.racinglevel);w.document.querySelector(".banner .skill").textContent=this_driver.skill;if(gains>0)w.document.querySelector(".banner .lastgain").textContent=`+${gains}`;
+
+}catch(err){
+Logger.error(err)}}});this.original.apply(this,args)}}};unload=()=>{if(this.original){XMLHttpRequest.prototype.open=this.original;this.original=null}}}
+/**
    * PageContent
    * @class
    */class PageContent{
 /**
      * loads content for 'Your Cars'.
      */
-static loadCars=async()=>{await activateTab("cars")};
+static _cars=async()=>{await activateTab("cars")};
 /**
      * loads content for 'Parts & Modifications'
      */
-static loadModifications=async()=>{await activateTab("modification")};
+static _modifications=async()=>{await activateTab("modification")};
 /**
      * loads content for 'Official Events'
      */
-static loadOfficialEvents=async()=>{await activateTab("official-events");const drivers_list=await defer(SELECTORS.drivers_list);const leaderboard=await defer(SELECTORS.drivers_list_leaderboard);
+static _official=async()=>{await activateTab("official-events");const drivers_list=await defer(SELECTORS.drivers_list);const leaderboard=await defer(SELECTORS.drivers_list_leaderboard);
 /** @type {NodeListOf<ChildNode>} */const drivers=await new Promise(resolve=>{if(leaderboard.childNodes.length>0){resolve(leaderboard.childNodes)}else{const observer=new MutationObserver(()=>{if(leaderboard.childNodes.length>0){observer.disconnect();resolve(leaderboard.childNodes)}});observer.observe(leaderboard,{childList:true})}});if(!this_race){try{Logger.debug(`Loading track data...`,w.racing_plus);const driver=Array.from(drivers).find(d=>d.id===`lbr-${this_driver.id}`);const dataId=driver.getAttribute("data-id");const raceId=dataId?.split("-")[0]??-1;const trackInfo=drivers_list.querySelector(".track-info");const track=Object.values(RACE_TRACKS).find(t=>t.name===trackInfo.getAttribute("title"));this_race=new TornRace({id:raceId,title:track.name,distance:track.distance,laps:track.laps});this_driver.load();Logger.info(`Track data loaded.`,w.racing_plus)}catch(err){Logger.error(`Failed to load track data. ${err}`)}}await this_race.updateLeaderboard(leaderboard.childNodes)};
 /**
      * loads content for 'Custom Events'
      */
-static loadCustomEvents=async()=>{await activateTab("custom-events")};
+static _custom=async()=>{await activateTab("custom-events")};
 /**
      * loads content for 'Statistics'
      */
-static loadStatistics=async()=>{await activateTab("statistics")}}
+static _statistics=async()=>{await activateTab("statistics")};
 /**
-   * loadContent
-   * @returns {Promise<void>}
-   */const loadContent=async content_container=>{Logger.debug(`Loading content...`,w.racing_plus);if(content_container.querySelector("#racingupdates")){await PageContent.loadOfficialEvents()}else if(content_container.querySelector(".custom-race-wrap")){await PageContent.loadCustomEvents()}else if(content_container.querySelector(".pm-categories")){await PageContent.loadModifications()}else if(content_container.querySelector("#racing-leaderboard-root")){await PageContent.loadStatistics()}else if(content_container.querySelector(".enlist-wrap")){if(content_container.querySelector(".enlisted-btn-wrap")?.innerText.toLowerCase().includes("official race")){await PageContent.loadOfficialEvents()}else if(content_container.querySelector(".info-msg")){await PageContent.loadModifications()}else{await PageContent.loadCars()}}Logger.info(`Content loaded.`,w.racing_plus)};
+     * directs content to proper loader
+     */
+static load=async content_container=>{Logger.debug(`Loading content...`,w.racing_plus);if(content_container.querySelector("#racingupdates")){await PageContent._official()}else if(content_container.querySelector(".custom-race-wrap")){await PageContent._custom()}else if(content_container.querySelector(".pm-categories")){await PageContent._modifications()}else if(content_container.querySelector("#racing-leaderboard-root")){await PageContent._statistics()}else if(content_container.querySelector(".enlist-wrap")){if(content_container.querySelector(".enlisted-btn-wrap")?.innerText.toLowerCase().includes("official race")){await PageContent._official()}else if(content_container.querySelector(".info-msg")){await PageContent._modifications()}else{await this._cars()}}Logger.info(`Content loaded.`,w.racing_plus)}}
 /**
    * start - Main entry point for the application.
    */const start=async()=>{try{Logger.info(`Application loaded. Starting...`,w.racing_plus);await addStyles();torn_api=new TornAPI;if(torn_api.key?.length==0&&IS_PDA&&PDA_KEY.length>0){await torn_api.validate(PDA_KEY)}Logger.debug(`Loading driver data...`,w.racing_plus);if(!this_driver){try{let scriptData=Store.getValue(Store.keys.rplus_driver);if(!scriptData){scriptData=await defer("#torn-user").value}this_driver=new TornDriver(JSON.parse(scriptData).id);this_driver.load()}catch(err){Logger.error(`Failed to load driver data. ${err}`)}}Logger.info(`Driver data loaded.`,w.racing_plus);const header_root=await defer(SELECTORS.header_root);await addRacingPlusButton(header_root);await addRacingPlusPanel();await initRacingPlusPanel(torn_api.key);await fixHeaderBanner();Logger.debug("Updating driver records and cars...",w.racing_plus);
 // await this_driver.updateRecords(); await this_driver.updateCars();
-const results=await Promise.allSettled([this_driver.updateRecords(),this_driver.updateCars()]);if(!results.map(r=>r.status==="fulfilled")){Logger.error(results.filter(r=>r.status==="rejected").map(r=>`${r.status} - ${r.reason}`).join("\n"))}Logger.info("Driver records and cars updated.",w.racing_plus);const content_container=await defer(SELECTORS.content_container);await loadContent(content_container);Logger.debug(`Adding observers...`,w.racing_plus);const button_observer=new MutationObserver(async()=>{await addRacingPlusButton(header_root)});button_observer.observe(header_root,{childList:true,subtree:true});const page_observer=new MutationObserver(async mutations=>{const preloader_added=Array.from(mutations[0]?.addedNodes).find(n=>n.classList?.contains(`ajax-preloader`));if(!preloader_added){
+const results=await Promise.allSettled([this_driver.updateRecords(),this_driver.updateCars()]);if(!results.map(r=>r.status==="fulfilled")){Logger.error(results.filter(r=>r.status==="rejected").map(r=>`${r.status} - ${r.reason}`).join("\n"))}Logger.info("Driver records and cars updated.",w.racing_plus);const content_container=await defer(SELECTORS.content_container);await PageContent.load(content_container);Logger.debug(`Adding observers...`,w.racing_plus);const button_observer=new MutationObserver(async()=>{await addRacingPlusButton(header_root)});button_observer.observe(header_root,{childList:true,subtree:true});const page_observer=new MutationObserver(async mutations=>{const preloader_added=Array.from(mutations[0]?.addedNodes).some(node=>node.classList?.contains("ajax-preloader"));if(!preloader_added){
 // Logger.debug(
 //   `Content Update -> '${Object.values(mutations)
 //     .map(
@@ -371,9 +378,11 @@ const results=await Promise.allSettled([this_driver.updateRecords(),this_driver.
 //     .join(", ")}'`
 // );
 for(const mutation of mutations){
-const preloader_removed=Array.from(mutation.removedNodes).find(n=>n.classList?.contains(`ajax-preloader`));if(!preloader_removed&&(mutation.type==="characterData"||mutation.type==="childList")){const tNode=mutation.target;let el=tNode.nodeType===Node.ELEMENT_NODE?tNode:tNode.parentElement;if(el){switch(el.id){case"racingAdditionalContainer":await loadContent(content_container);break;case"infoSpot":this_race?.updateStatus(el.textContent||"");break;case"leaderBoard":await(this_race?.updateLeaderboard(el.childNodes||[]));break}}}}}});page_observer.observe(content_container,{characterData:true,childList:true,subtree:true});Logger.info(`Observers added.`,w.racing_plus);
+const preloader_removed=Array.from(mutation.removedNodes).some(n=>n.classList?.contains(`ajax-preloader`));if(!preloader_removed&&(mutation.type==="characterData"||mutation.type==="childList")){const tNode=mutation.target;let el=tNode.nodeType===Node.ELEMENT_NODE?tNode:tNode.parentElement;if(el){switch(el.id){case"racingAdditionalContainer":await PageContent.load(content_container);break;case"infoSpot":
+// this_race?.updateStatus(el.textContent || "");
+break;case"leaderBoard":
+// await this_race?.updateLeaderboard(el.childNodes || []);
+break}}}}}});page_observer.observe(content_container,{characterData:true,childList:true,subtree:true});const xml_monkey=new XMLHttpRequestMonkey;xml_monkey.load();Logger.info(`Observers added.`,w.racing_plus);
 /**
-       * Safely disconnects all mutation observers on page unload.
-       */const disconnectObservers=()=>{try{button_observer?.disconnect();page_observer?.disconnect()}catch(err){Logger.error(err)}};w.addEventListener("pagehide",disconnectObservers,{once:true});w.addEventListener("beforeunload",disconnectObservers,{once:true});Logger.info(`Application started.`,w.racing_plus)}catch(err){Logger.error(err)}};
-// Start application
-await start()})(window);
+       * Safely disconnects all observers.
+       */const disconnect=()=>{try{xml_monkey?.unload();button_observer?.disconnect();page_observer?.disconnect()}catch(err){Logger.error(err)}};w.addEventListener("pagehide",disconnect,{once:true});w.addEventListener("beforeunload",disconnect,{once:true});Logger.info(`Application started.`,w.racing_plus)}catch(err){Logger.error(err)}};await start()})(window);

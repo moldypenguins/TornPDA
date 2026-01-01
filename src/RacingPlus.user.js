@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.70-alpha
+// @version      1.0.72-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -597,11 +597,12 @@ class TornAPI {
      * Update stored skill if newer value is higher (skill increases only)
      * @param {number|string} skill - New skill value
      */
-    updateSkill(skill) {
-      const v = Number(skill);
-      if (isNumber(v)) {
-        this.skill = Math.max(this.skill, v);
+    updateSkill(racing_skill) {
+      if (isNumber(racing_skill)) {
+        const skill = Number(racing_skill).toFixed(5);
+        this.skill = Math.max(this.skill, skill);
         this.save();
+        return this.skill - skill;
       }
     }
 
@@ -1230,6 +1231,45 @@ class TornAPI {
   };
 
   /**
+   * XML HTTP Request Monkey
+   * @class
+   */
+  class XMLHttpRequestMonkey {
+    constructor() {
+      this.original = null;
+    }
+    load = () => {
+      if (!this.original) {
+        this.original = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function (...args) {
+          this.addEventListener("load", (ev) => {
+            if (ev.target?.responseURL?.startsWith(`${w.location.origin}${w.location.pathname}`) && ev.target?.response?.trim().startsWith("{")) {
+              try {
+                let data = JSON.parse(ev.target.response);
+                /* Update driver skill */
+                let gains = this_driver.updateSkill(data.user.racinglevel);
+                w.document.querySelector(".banner .skill").textContent = this_driver.skill;
+                if (gains > 0) w.document.querySelector(".banner .lastgain").textContent = `+${gains}`;
+                //
+              } catch (err) {
+                //
+                Logger.error(err);
+              }
+            }
+          });
+          this.original.apply(this, args);
+        };
+      }
+    };
+    unload = () => {
+      if (this.original) {
+        XMLHttpRequest.prototype.open = this.original;
+        this.original = null;
+      }
+    };
+  }
+
+  /**
    * PageContent
    * @class
    */
@@ -1237,19 +1277,19 @@ class TornAPI {
     /**
      * loads content for 'Your Cars'.
      */
-    static loadCars = async () => {
+    static _cars = async () => {
       await activateTab("cars");
     };
     /**
      * loads content for 'Parts & Modifications'
      */
-    static loadModifications = async () => {
+    static _modifications = async () => {
       await activateTab("modification");
     };
     /**
      * loads content for 'Official Events'
      */
-    static loadOfficialEvents = async () => {
+    static _official = async () => {
       await activateTab("official-events");
       /* Initialize race object from current track if not already set */
       const drivers_list = await defer(SELECTORS.drivers_list);
@@ -1304,45 +1344,44 @@ class TornAPI {
     /**
      * loads content for 'Custom Events'
      */
-    static loadCustomEvents = async () => {
+    static _custom = async () => {
       await activateTab("custom-events");
     };
     /**
      * loads content for 'Statistics'
      */
-    static loadStatistics = async () => {
+    static _statistics = async () => {
       await activateTab("statistics");
     };
-  }
 
-  /**
-   * loadContent
-   * @returns {Promise<void>}
-   */
-  const loadContent = async (content_container) => {
-    Logger.debug(`Loading content...`, w.racing_plus);
-    // TODO: add comments
+    /**
+     * directs content to proper loader
+     */
+    static load = async (content_container) => {
+      Logger.debug(`Loading content...`, w.racing_plus);
+      // TODO: add comments
 
-    if (content_container.querySelector("#racingupdates")) {
-      await PageContent.loadOfficialEvents();
-    } else if (content_container.querySelector(".custom-race-wrap")) {
-      await PageContent.loadCustomEvents();
-    } else if (content_container.querySelector(".pm-categories")) {
-      await PageContent.loadModifications();
-    } else if (content_container.querySelector("#racing-leaderboard-root")) {
-      await PageContent.loadStatistics();
-    } else if (content_container.querySelector(".enlist-wrap")) {
-      // TODO: fix this - seems hacky
-      if (content_container.querySelector(".enlisted-btn-wrap")?.innerText.toLowerCase().includes("official race")) {
-        await PageContent.loadOfficialEvents();
-      } else if (content_container.querySelector(".info-msg")) {
-        await PageContent.loadModifications();
-      } else {
-        await PageContent.loadCars();
+      if (content_container.querySelector("#racingupdates")) {
+        await PageContent._official();
+      } else if (content_container.querySelector(".custom-race-wrap")) {
+        await PageContent._custom();
+      } else if (content_container.querySelector(".pm-categories")) {
+        await PageContent._modifications();
+      } else if (content_container.querySelector("#racing-leaderboard-root")) {
+        await PageContent._statistics();
+      } else if (content_container.querySelector(".enlist-wrap")) {
+        // TODO: fix this - seems hacky
+        if (content_container.querySelector(".enlisted-btn-wrap")?.innerText.toLowerCase().includes("official race")) {
+          await PageContent._official();
+        } else if (content_container.querySelector(".info-msg")) {
+          await PageContent._modifications();
+        } else {
+          await this._cars();
+        }
       }
-    }
-    Logger.info(`Content loaded.`, w.racing_plus);
-  };
+      Logger.info(`Content loaded.`, w.racing_plus);
+    };
+  }
 
   /* ------------------------------------------------------------------------
    * App lifecycle
@@ -1409,7 +1448,7 @@ class TornAPI {
 
       /* Load initial page content */
       const content_container = await defer(SELECTORS.content_container);
-      await loadContent(content_container);
+      await PageContent.load(content_container);
 
       /* Setup observers */
       Logger.debug(`Adding observers...`, w.racing_plus);
@@ -1421,7 +1460,7 @@ class TornAPI {
 
       /* Watch content_container, which contains leaderboard and infospot */
       const page_observer = new MutationObserver(async (mutations) => {
-        const preloader_added = Array.from(mutations[0]?.addedNodes).find((n) => n.classList?.contains(`ajax-preloader`));
+        const preloader_added = Array.from(mutations[0]?.addedNodes).some((node) => node.classList?.contains("ajax-preloader"));
         if (!preloader_added) {
           // Logger.debug(
           //   `Content Update -> '${Object.values(mutations)
@@ -1434,7 +1473,7 @@ class TornAPI {
           /* Iterate through mutations */
           for (const mutation of mutations) {
             //
-            const preloader_removed = Array.from(mutation.removedNodes).find((n) => n.classList?.contains(`ajax-preloader`));
+            const preloader_removed = Array.from(mutation.removedNodes).some((n) => n.classList?.contains(`ajax-preloader`));
             if (!preloader_removed && (mutation.type === "characterData" || mutation.type === "childList")) {
               const tNode = mutation.target;
               let el = tNode.nodeType === Node.ELEMENT_NODE ? tNode : tNode.parentElement;
@@ -1442,17 +1481,17 @@ class TornAPI {
                 switch (el.id) {
                   case "racingAdditionalContainer":
                     /* If tab changed, correct tab selected */
-                    await loadContent(content_container);
+                    await PageContent.load(content_container);
                     break;
                   case "infoSpot":
                     /* If info spot changed, update race status */
-                    this_race?.updateStatus(el.textContent || "");
+                    // this_race?.updateStatus(el.textContent || "");
                     // TODO: update driver status instead
                     /* Logger.debug(`Race Status Update -> ${el.textContent}`); */
                     break;
                   case "leaderBoard":
                     /* If leaderboard changed, update drivers */
-                    await this_race?.updateLeaderboard(el.childNodes || []);
+                    // await this_race?.updateLeaderboard(el.childNodes || []);
                     /* Logger.debug(`Leaderboard Update -> ${el.childNodes.length}`); */
                     break;
                 }
@@ -1462,13 +1501,19 @@ class TornAPI {
         }
       });
       page_observer.observe(content_container, { characterData: true, childList: true, subtree: true });
+
+      /* Watch XMLHttpRequest */
+      const xml_monkey = new XMLHttpRequestMonkey();
+      xml_monkey.load();
+
       Logger.info(`Observers added.`, w.racing_plus);
 
       /**
-       * Safely disconnects all mutation observers on page unload.
+       * Safely disconnects all observers.
        */
-      const disconnectObservers = () => {
+      const disconnect = () => {
         try {
+          xml_monkey?.unload();
           button_observer?.disconnect();
           page_observer?.disconnect();
         } catch (err) {
@@ -1477,8 +1522,10 @@ class TornAPI {
       };
 
       /* Register cleanup on page hide and unload */
-      w.addEventListener("pagehide", disconnectObservers, { once: true });
-      w.addEventListener("beforeunload", disconnectObservers, { once: true });
+      w.addEventListener("pagehide", disconnect, { once: true });
+      w.addEventListener("beforeunload", disconnect, { once: true });
+
+      // TODO: add xml http request monkey
 
       Logger.info(`Application started.`, w.racing_plus);
     } catch (err) {
@@ -1486,7 +1533,7 @@ class TornAPI {
     }
   };
 
-  // Start application
+  /* Start application */
   await start();
 })(window);
 
