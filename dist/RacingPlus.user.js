@@ -44,41 +44,39 @@ static duration=duration=>`${String(Math.floor(duration%MS.hour/MS.minute)).padS
    * @param {Error|object|string} error - Error object or string
    * @returns {string}
    */
-static error=error=>`${error?.name?String(error.name):"Error"}: ${error?.message?String(error.message):error}`}
+static error=error=>`${error?.name?String(error.name):"Error"}: ${error?.message?String(error.message):error}`}(w=>{if(w.racing_plus)return;w.racing_plus=Date.now();const PDA_KEY="###PDA-APIKEY###";const IS_PDA=(()=>{if(typeof w.flutter_inappwebview!=="undefined"&&typeof w.flutter_inappwebview.callHandler==="function"){try{return w.flutter_inappwebview.callHandler("isTornPDA")}catch(err){Logger.error(err);return}}return false})();
 /**
- * LOG_LEVEL - Log level enumeration
- * @readonly
- * @enum {number}
- */const LOG_LEVEL=Object.freeze({debug:10,info:20,warn:30,error:40,silent:50});
+   * LOG_LEVEL - Log level enumeration
+   * @readonly
+   * @enum {number}
+   */const LOG_LEVEL=Object.freeze({debug:10,info:20,warn:30,error:40,silent:50});
 /**
- * LOG_MODE - Log level threshold LOG_LEVEL[debug|info|warn|error|silent]
- * @type {number}
- */const LOG_MODE=LOG_LEVEL.debug;
+   * LOG_MODE - Log level threshold LOG_LEVEL[debug|info|warn|error|silent]
+   * @type {number}
+   */const LOG_MODE=LOG_LEVEL.debug;
 /**
- * Static methods for leveled console logging with timestamp and color formatting.
- * @class
- */class Logger{
+   * Static methods for leveled console logging with timestamp and color formatting.
+   * @class
+   */class Logger{
 /**
-   * Logs a debug-level message.
-   * @param {string} message - Message to log
-   * @param {number|null} time - Optional start timestamp for duration calculation
-   */
-static debug(message,time=null){if(LOG_MODE>LOG_LEVEL.debug)return;const dt=Date.now();console.log("%c[DEBUG][TornPDA.Racing+]: ","color:#6aa84f;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}
+     * Logs a debug-level message.
+     * @param {string} message - Message to log
+     * @param {number|null} time - Optional start timestamp for duration calculation
+     */
+static debug(message,time=null){if(LOG_MODE>LOG_LEVEL.debug)return;const dt=Date.now();const c=IS_PDA?"":"%c";console.log(`${c}[DEBUG][TornPDA.Racing+]: `,"color:#6aa84f;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}
 /**
-   * Logs an info-level message.
-   * @param {string} message - Message to log
-   * @param {number|null} time - Optional start timestamp for duration calculation
-   */static info(message,time=null){if(LOG_MODE>LOG_LEVEL.info)return;const dt=Date.now();console.log("%c[INFO][TornPDA.Racing+]: ","color:#3d85c6;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}
+     * Logs an info-level message.
+     * @param {string} message - Message to log
+     * @param {number|null} time - Optional start timestamp for duration calculation
+     */static info(message,time=null){if(LOG_MODE>LOG_LEVEL.info)return;const dt=Date.now();console.log("%c[INFO][TornPDA.Racing+]: ","color:#3d85c6;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}
 /**
-   * Logs a warning-level message.
-   * @param {string} message - Message to log
-   * @param {number|null} time - Optional start timestamp for duration calculation
-   */static warn(message,time=null){if(LOG_MODE>LOG_LEVEL.warn)return;const dt=Date.now();console.log("%c[WARN][TornPDA.Racing+]: ","color:#e69138;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}
+     * Logs a warning-level message.
+     * @param {string} message - Message to log
+     * @param {number|null} time - Optional start timestamp for duration calculation
+     */static warn(message,time=null){if(LOG_MODE>LOG_LEVEL.warn)return;const dt=Date.now();console.log("%c[WARN][TornPDA.Racing+]: ","color:#e69138;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}
 /**
-   * Logs an error-level message.
-   * @param {string} message - Message to log
-   * @param {number|null} time - Optional start timestamp for duration calculation
-   */static error(message,time=null){if(LOG_MODE>LOG_LEVEL.error)return;const dt=Date.now();console.log("%c[ERROR][TornPDA.Racing+]: ","color:#d93025;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}}(async w=>{if(w.racing_plus)return;w.racing_plus=Date.now();Logger.info(`Application loading...`);const PDA_KEY="###PDA-APIKEY###";const IS_PDA=(()=>{if(typeof w.flutter_inappwebview!=="undefined"&&typeof w.flutter_inappwebview.callHandler==="function"){try{return w.flutter_inappwebview.callHandler("isTornPDA")}catch(err){Logger.error(err);return}}return false})();
-/**
-   * Main entry point for the application.
-   */const start=async()=>{try{Logger.info(`Application loaded. Starting...`,w.racing_plus);Logger.debug(`IS_PDA ? ${IS_PDA}`+(IS_PDA?`\nkey: ${PDA_KEY}`:""));Logger.info(`Application started.`,w.racing_plus)}catch(err){Logger.error(err)}};await start()})(window);
+     * Logs an error-level message.
+     * @param {string} message - Message to log
+     * @param {number|null} time - Optional start timestamp for duration calculation
+     */static error(message,time=null){if(LOG_MODE>LOG_LEVEL.error)return;const dt=Date.now();console.log("%c[ERROR][TornPDA.Racing+]: ","color:#d93025;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}}
+/** Main entry point for the application. */const start=()=>{try{Logger.debug(`IS_PDA ? ${IS_PDA}`+(IS_PDA?`\nkey: ${PDA_KEY}`:""));Logger.info(`Userscript started.`,w.racing_plus)}catch(err){Logger.error(err)}};Logger.info(`Userscript loaded. Starting...`,w.racing_plus);start()})(window);
