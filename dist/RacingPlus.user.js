@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.75-alpha
+// @version      1.0.76-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -44,7 +44,7 @@ static duration=duration=>`${String(Math.floor(duration%MS.hour/MS.minute)).padS
    * @param {Error|object|string} error - Error object or string
    * @returns {string}
    */
-static error=error=>`${error?.name?String(error.name):"Error"}: ${error?.message?String(error.message):error}`}(w=>{if(w.racing_plus)return;w.racing_plus=Date.now();const PDA_KEY="###PDA-APIKEY###";const IS_PDA=(()=>{if(typeof w.flutter_inappwebview!=="undefined"&&typeof w.flutter_inappwebview.callHandler==="function"){try{return w.flutter_inappwebview.callHandler("isTornPDA")}catch(err){Logger.error(err);return}}return false})();
+static error=error=>`${error?.name?String(error.name):"Error"}: ${error?.message?String(error.message):error}`}(w=>{if(w.racing_plus)return;w.racing_plus=Date.now();const PDA_KEY="###PDA-APIKEY###";function _isPDA(){if(typeof w.flutter_inappwebview!=="undefined"&&typeof w.flutter_inappwebview.callHandler==="function"){try{return w.flutter_inappwebview.callHandler("isTornPDA")}catch(err){Logger.error(err);return}}return false}const IS_PDA=_isPDA();
 /**
    * LOG_LEVEL - Log level enumeration
    * @readonly
@@ -63,20 +63,20 @@ static error=error=>`${error?.name?String(error.name):"Error"}: ${error?.message
      * @param {string} message - Message to log
      * @param {number|null} time - Optional start timestamp for duration calculation
      */
-static debug(message,time=null){if(LOG_MODE>LOG_LEVEL.debug)return;const dt=Date.now();const c=IS_PDA?"":"%c";console.log(`${c}[DEBUG][TornPDA.Racing+]: `,"color:#6aa84f;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}
+static debug(message,time=null){if(LOG_MODE>LOG_LEVEL.debug)return;const dt=Date.now();const c=IS_PDA?"":"%c";const st=IS_PDA?"":"color:#6aa84f;font-weight:600";console.log(`${c}[DEBUG][TornPDA.Racing+]: `,st,message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}
 /**
      * Logs an info-level message.
      * @param {string} message - Message to log
      * @param {number|null} time - Optional start timestamp for duration calculation
-     */static info(message,time=null){if(LOG_MODE>LOG_LEVEL.info)return;const dt=Date.now();console.log("%c[INFO][TornPDA.Racing+]: ","color:#3d85c6;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}
+     */static info(message,time=null){if(LOG_MODE>LOG_LEVEL.info)return;const dt=Date.now();const c=IS_PDA?"":"%c";const st=IS_PDA?"":"color:#3d85c6;font-weight:600";console.log(`${c}[INFO][TornPDA.Racing+]: `,st,message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}
 /**
      * Logs a warning-level message.
      * @param {string} message - Message to log
      * @param {number|null} time - Optional start timestamp for duration calculation
-     */static warn(message,time=null){if(LOG_MODE>LOG_LEVEL.warn)return;const dt=Date.now();console.log("%c[WARN][TornPDA.Racing+]: ","color:#e69138;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}
+     */static warn(message,time=null){if(LOG_MODE>LOG_LEVEL.warn)return;const dt=Date.now();const c=IS_PDA?"":"%c";const st=IS_PDA?"":"color:#e69138;font-weight:600";console.log(`${c}[WARN][TornPDA.Racing+]: `,st,message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}
 /**
      * Logs an error-level message.
      * @param {string} message - Message to log
      * @param {number|null} time - Optional start timestamp for duration calculation
-     */static error(message,time=null){if(LOG_MODE>LOG_LEVEL.error)return;const dt=Date.now();console.log("%c[ERROR][TornPDA.Racing+]: ","color:#d93025;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}}
-/** Main entry point for the application. */const start=()=>{try{Logger.debug(`IS_PDA ? ${IS_PDA}`+(IS_PDA?`\nkey: ${PDA_KEY}`:""));Logger.info(`Userscript started.`,w.racing_plus)}catch(err){Logger.error(err)}};Logger.info(`Userscript loaded. Starting...`,w.racing_plus);start()})(window);
+     */static error(message,time=null){if(LOG_MODE>LOG_LEVEL.error)return;const dt=Date.now();const c=IS_PDA?"":"%c";const st=IS_PDA?"":"color:#d93025;font-weight:600";console.log(`${c}[ERROR][TornPDA.Racing+]: `,st,message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}}
+/** Main entry point for the application. */function start(){try{Logger.debug(`IS_PDA ? ${IS_PDA}`+(IS_PDA?`\nkey: ${PDA_KEY}`:""));Logger.info(`Userscript started.`,w.racing_plus)}catch(err){Logger.error(err)}}Logger.info(`Userscript loaded. Starting...`,w.racing_plus);start()})(window);

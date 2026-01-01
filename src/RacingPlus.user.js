@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.75-alpha
+// @version      1.0.76-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -83,7 +83,7 @@ class Format {
   /* TornPDA Integration Stub */
   const PDA_KEY = "###PDA-APIKEY###";
   /* A boolean indicating whether userscript is running in TornPDA. */
-  const IS_PDA = (() => {
+  function _isPDA() {
     if (typeof w.flutter_inappwebview !== "undefined" && typeof w.flutter_inappwebview.callHandler === "function") {
       try {
         return w.flutter_inappwebview.callHandler("isTornPDA");
@@ -93,7 +93,8 @@ class Format {
       }
     }
     return false;
-  })();
+  }
+  const IS_PDA = _isPDA();
 
   /* ------------------------------------------------------------------------
    * Logger
@@ -125,12 +126,8 @@ class Format {
       if (LOG_MODE > LOG_LEVEL.debug) return;
       const dt = Date.now();
       const c = IS_PDA ? "" : "%c";
-      console.log(
-        `${c}[DEBUG][TornPDA.Racing+]: `,
-        "color:#6aa84f;font-weight:600",
-        message,
-        time ? ` ${dt - time}ms` : ` ${Format.date(dt)} ${Format.time(dt)}`
-      );
+      const st = IS_PDA ? "" : "color:#6aa84f;font-weight:600";
+      console.log(`${c}[DEBUG][TornPDA.Racing+]: `, st, message, time ? ` ${dt - time}ms` : ` ${Format.date(dt)} ${Format.time(dt)}`);
     }
     /**
      * Logs an info-level message.
@@ -140,7 +137,9 @@ class Format {
     static info(message, time = null) {
       if (LOG_MODE > LOG_LEVEL.info) return;
       const dt = Date.now();
-      console.log("%c[INFO][TornPDA.Racing+]: ", "color:#3d85c6;font-weight:600", message, time ? ` ${dt - time}ms` : ` ${Format.date(dt)} ${Format.time(dt)}`);
+      const c = IS_PDA ? "" : "%c";
+      const st = IS_PDA ? "" : "color:#3d85c6;font-weight:600";
+      console.log(`${c}[INFO][TornPDA.Racing+]: `, st, message, time ? ` ${dt - time}ms` : ` ${Format.date(dt)} ${Format.time(dt)}`);
     }
     /**
      * Logs a warning-level message.
@@ -150,7 +149,9 @@ class Format {
     static warn(message, time = null) {
       if (LOG_MODE > LOG_LEVEL.warn) return;
       const dt = Date.now();
-      console.log("%c[WARN][TornPDA.Racing+]: ", "color:#e69138;font-weight:600", message, time ? ` ${dt - time}ms` : ` ${Format.date(dt)} ${Format.time(dt)}`);
+      const c = IS_PDA ? "" : "%c";
+      const st = IS_PDA ? "" : "color:#e69138;font-weight:600";
+      console.log(`${c}[WARN][TornPDA.Racing+]: `, st, message, time ? ` ${dt - time}ms` : ` ${Format.date(dt)} ${Format.time(dt)}`);
     }
     /**
      * Logs an error-level message.
@@ -160,12 +161,9 @@ class Format {
     static error(message, time = null) {
       if (LOG_MODE > LOG_LEVEL.error) return;
       const dt = Date.now();
-      console.log(
-        "%c[ERROR][TornPDA.Racing+]: ",
-        "color:#d93025;font-weight:600",
-        message,
-        time ? ` ${dt - time}ms` : ` ${Format.date(dt)} ${Format.time(dt)}`
-      );
+      const c = IS_PDA ? "" : "%c";
+      const st = IS_PDA ? "" : "color:#d93025;font-weight:600";
+      console.log(`${c}[ERROR][TornPDA.Racing+]: `, st, message, time ? ` ${dt - time}ms` : ` ${Format.date(dt)} ${Format.time(dt)}`);
     }
   }
 
@@ -174,7 +172,7 @@ class Format {
    * --------------------------------------------------------------------- */
 
   /** Main entry point for the application. */
-  const start = () => {
+  function start() {
     try {
       Logger.debug(`IS_PDA ? ${IS_PDA}` + (IS_PDA ? `\nkey: ${PDA_KEY}` : ""));
 
@@ -182,7 +180,7 @@ class Format {
     } catch (err) {
       Logger.error(err);
     }
-  };
+  }
 
   /* Start userscript */
   Logger.info(`Userscript loaded. Starting...`, w.racing_plus);
