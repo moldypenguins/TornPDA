@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.73-alpha
+// @version      1.0.74-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -161,51 +161,6 @@ class Logger {
     }
     return false;
   })();
-
-  /**
-   * Wrapper class for localStorage with typed keys and convenience methods.
-   * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
-   * @class
-   */
-  class Store {
-    /**
-     * Get a value by key from localStorage
-     * @param {string} key - Storage key
-     * @returns {string|null} Stored value or null
-     */
-    static getValue = (key) => s.getItem(key);
-
-    /**
-     * Set a value by key in localStorage
-     * @param {string} key - Storage key
-     * @param {string} value - Value to store
-     */
-    static setValue = (key, value) => s.setItem(key, value);
-
-    /**
-     * Delete a value by key from localStorage
-     * @param {string} key - Storage key
-     */
-    static deleteValue = (key) => s.removeItem(key);
-
-    /**
-     * Clears all keys out of the storage.
-     */
-    static deleteAll = () => s.clear();
-
-    /**
-     * List all stored values (for debugging)
-     * @returns {Array<string>} Array of stored values
-     */
-    static listValues = () => Object.values(s);
-
-    /**
-     * Map from toggle/control ids to persistent localStorage keys.
-     */
-    static keys = Object.freeze({
-      TORNAPIKEY: "RACINGPLUS_TORNAPIKEY",
-    });
-  }
 
   /* ------------------------------------------------------------------------
    * App lifecycle

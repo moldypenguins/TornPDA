@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.73-alpha
+// @version      1.0.74-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -79,41 +79,6 @@ static debug(message,time=null){if(LOG_MODE>LOG_LEVEL.debug)return;const dt=Date
    * @param {string} message - Message to log
    * @param {number|null} time - Optional start timestamp for duration calculation
    */static error(message,time=null){if(LOG_MODE>LOG_LEVEL.error)return;const dt=Date.now();console.log("%c[ERROR][TornPDA.Racing+]: ","color:#d93025;font-weight:600",message,time?` ${dt-time}ms`:` ${Format.date(dt)} ${Format.time(dt)}`)}}(async(w,s)=>{if(w.racing_plus)return;w.racing_plus=Date.now();Logger.info(`Application loading...`);const PDA_KEY="###PDA-APIKEY###";const IS_PDA=(()=>{if(typeof w.flutter_inappwebview!=="undefined"&&typeof w.flutter_inappwebview.callHandler==="function"){try{return w.flutter_inappwebview.callHandler("isTornPDA")}catch(err){Logger.error(err);return}}return false})();
-/**
-   * Wrapper class for localStorage with typed keys and convenience methods.
-   * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
-   * @class
-   */class Store{
-/**
-     * Get a value by key from localStorage
-     * @param {string} key - Storage key
-     * @returns {string|null} Stored value or null
-     */
-static getValue=key=>s.getItem(key);
-/**
-     * Set a value by key in localStorage
-     * @param {string} key - Storage key
-     * @param {string} value - Value to store
-     */
-static setValue=(key,value)=>s.setItem(key,value);
-/**
-     * Delete a value by key from localStorage
-     * @param {string} key - Storage key
-     */
-static deleteValue=key=>s.removeItem(key);
-/**
-     * Clears all keys out of the storage.
-     */
-static deleteAll=()=>s.clear();
-/**
-     * List all stored values (for debugging)
-     * @returns {Array<string>} Array of stored values
-     */
-static listValues=()=>Object.values(s);
-/**
-     * Map from toggle/control ids to persistent localStorage keys.
-     */
-static keys=Object.freeze({TORNAPIKEY:"RACINGPLUS_TORNAPIKEY"})}
 /**
    * Main entry point for the application.
    */const start=async()=>{try{Logger.info(`Application loaded. Starting...`,w.racing_plus);Logger.debug(`IS_PDA ? ${IS_PDA}`+(IS_PDA?`\nkey: ${PDA_KEY}`:""));Logger.info(`Application started.`,w.racing_plus)}catch(err){Logger.error(err)}};await start()})(window,localStorage);
