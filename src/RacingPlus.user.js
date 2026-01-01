@@ -138,7 +138,7 @@ class Logger {
 /* ------------------------------------------------------------------------
  * Application start
  * --------------------------------------------------------------------- */
-(async (w, s) => {
+(async (w) => {
   /* Check if userscript has already been initialized */
   if (w.racing_plus) return;
   /* Set application start time */
@@ -182,6 +182,6 @@ class Logger {
 
   /* Start application */
   await start();
-})(window, localStorage);
+})(window);
 
 /* End of file: RacingPlus.user.js */
