@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.81-alpha
+// @version      1.0.82-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -912,7 +912,7 @@ class TornRace {
       }
 
       /* Conditionally add clickable profile links to driver names */
-      if (w.racing_plus.store.getValue(Store.keys.rplus_addlinks) === "1") {
+      if (store.getValue(Store.keys.rplus_addlinks) === "1") {
         if (!nameLink && nameSpan?.outerHTML) {
           nameSpan.outerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${nameSpan.outerHTML}</a>`;
         }
@@ -940,7 +940,7 @@ class TornRace {
       }
 
       /* Add real-time speed display if enabled */
-      if (w.racing_plus.store.getValue(Store.keys.rplus_showspeed) === "1") {
+      if (store.getValue(Store.keys.rplus_showspeed) === "1") {
         if (!stats.querySelector(".speed")) {
           stats.insertAdjacentHTML("beforeEnd", '<div class="speed">0.00mph</div>');
         }
@@ -950,7 +950,7 @@ class TornRace {
         // }
       }
       /* Add racing skill display if enabled */
-      if (w.racing_plus.store.getValue(Store.keys.rplus_showskill) === "1") {
+      if (store.getValue(Store.keys.rplus_showskill) === "1") {
         if (!stats.querySelector(".skill")) {
           stats.insertAdjacentHTML("afterBegin", '<div class="skill">RS: ?</div>');
         }
@@ -1001,9 +1001,9 @@ class TornRace {
       /** Initialize Torn API client with stored key or PDA key if applicable */
       logger.debug(`Initializing Torn API client...`, w.racing_plus);
       try {
-        torn_api = new TornAPI(w.racing_plus.store.getValue(Store.keys.rplus_apikey));
+        torn_api = new TornAPI(store.getValue(Store.keys.rplus_apikey));
         if (torn_api.key?.length == 0 && IS_PDA && PDA_KEY.length > 0) {
-          await torn_api.validate(w.racing_plus.store, PDA_KEY);
+          await torn_api.validate(store, PDA_KEY);
           logger.debug("Valid API key.");
         }
         logger.info(`Torn API client nitialized.`, w.racing_plus.start);
@@ -1016,11 +1016,11 @@ class TornRace {
       try {
         /* Attempt to load from storage else get driver data from DOM */
         /* '#torn-user' a hidden input with JSON { id, ... } */
-        let scriptData = w.racing_plus.store.getValue(Store.keys.rplus_driver);
+        let scriptData = store.getValue(Store.keys.rplus_driver);
         if (!scriptData) scriptData = await defer("#torn-user").value;
         /* Instantiate new driver */
         torn_driver = new TornDriver(JSON.parse(scriptData).id);
-        torn_driver.load(w.racing_plus.store.getValue(Store.keys.rplus_driver));
+        torn_driver.load(store.getValue(Store.keys.rplus_driver));
         logger.info(`Driver data loaded.`, w.racing_plus.start);
       } catch (err) {
         logger.error(`Failed to load driver data. ${err}`);
