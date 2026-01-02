@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.78-alpha
+// @version      1.0.79-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -716,8 +716,8 @@ class TornRace {
    * @param {RaceTrack} [args.track] - Race Track
    */
   constructor(args = {}) {
-    this.id = args.id ?? null;
-    this.track = args.track ?? null;
+    this.id = args.id;
+    this.track = args.track;
     this.status = "joined";
   }
 
@@ -1015,11 +1015,11 @@ class TornRace {
       try {
         /* Attempt to load from storage else get driver data from DOM */
         /* '#torn-user' a hidden input with JSON { id, ... } */
-        let scriptData = Store.getValue(Store.keys.rplus_driver);
+        let scriptData = store.getValue(Store.keys.rplus_driver);
         if (!scriptData) scriptData = await defer("#torn-user").value;
         /* Instantiate new driver */
         w.racing_plus.driver = new TornDriver(JSON.parse(scriptData).id);
-        w.racing_plus.driver.load();
+        w.racing_plus.driver.load(store);
         w.racing_plus.logger.info(`Driver data loaded.`, w.racing_plus.start);
       } catch (err) {
         w.racing_plus.logger.error(`Failed to load driver data. ${err}`);
@@ -1027,7 +1027,7 @@ class TornRace {
 
       // #################################################################################################################################################### //
       /**
-       * loads content for 'Official Events'
+       * Start content for 'Official Events'
        */
 
       /* Load or init current race data */
@@ -1053,7 +1053,7 @@ class TornRace {
         }
 
         // sfdsdf
-
+        // w.racing_plus.driver.load();
         //
         updateLeaderboard(store, w.racing_plus.api, leaderboard);
 
@@ -1061,6 +1061,11 @@ class TornRace {
       } catch (err) {
         w.racing_plus.logger.error(`Failed to load track data. ${err}`);
       }
+
+      /**
+       * End content for 'Official Events'
+       */
+      // #################################################################################################################################################### //
 
       //
       w.racing_plus.logger.info(`Userscript started.`, w.racing_plus.start);
