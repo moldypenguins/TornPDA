@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.87-alpha
+// @version      1.0.88-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -1222,7 +1222,7 @@ const PART_CATEGORIES = Object.freeze({
     w.document.querySelectorAll(".racing-plus-settings input[type=checkbox]").forEach((el) => {
       const key = Store.keys[el.id];
       if (!key) return;
-      el.checked = Store.getValue(key) === "1";
+      el.checked = store.getValue(key) === "1";
       el.addEventListener("click", (ev) => {
         const t = /** @type {HTMLInputElement} */ (ev.currentTarget);
         Store.setValue(key, t.checked ? "1" : "0");
