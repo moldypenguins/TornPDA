@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.86-alpha
+// @version      1.0.87-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -797,6 +797,116 @@ const PART_CATEGORIES = Object.freeze({
       }
       return this.status;
     }
+
+    /**
+     * Normalizes leaderboard DOM entries and adds driver info
+     * @param {Element} leaderboard - Leaderboard container element
+     */
+    async updateLeaderboard(leaderboard) {
+      /* Process each driver entry in the leaderboard */
+      for (const driver of Array.from(leaderboard.childNodes)) {
+        const driverItem = driver.querySelector("ul.driver-item");
+        /* Cache frequently used lookups to avoid repeated DOM queries */
+        const driverId = (driver.id || "").substring(4);
+        const driverStatus = driver.querySelector(".status");
+        const drvrName = driver.querySelector("li.name");
+        const nameLink = drvrName?.querySelector("a");
+        const nameSpan = drvrName?.querySelector("span");
+        const drvrColour = driver.querySelector("li.color");
+
+        /* Update status icon based on current race state */
+        // TODO: FIX THIS
+        if (driverStatus) {
+          switch (torn_race.status) {
+            case "joined":
+              driverStatus.classList.toggle("success", true);
+              driverStatus.classList.toggle("waiting", false);
+              driverStatus.classList.toggle("racing", false);
+              driverStatus.textContent = "";
+              break;
+            case "waiting":
+              driverStatus.classList.toggle("success", false);
+              driverStatus.classList.toggle("waiting", true);
+              driverStatus.classList.toggle("racing", false);
+              driverStatus.textContent = "";
+              break;
+            case "racing":
+              driverStatus.classList.toggle("success", false);
+              driverStatus.classList.toggle("waiting", false);
+              driverStatus.classList.toggle("racing", true);
+              driverStatus.textContent = "";
+              break;
+            case "finished":
+            default:
+              break;
+          }
+        }
+
+        /* Move color styling from separate element to name span */
+        if (drvrColour && nameSpan) {
+          drvrColour.classList.remove("color");
+          nameSpan.className = drvrColour.className;
+        }
+
+        /* Conditionally add clickable profile links to driver names */
+        if (store.getValue(Store.keys.rplus_addlinks) === "1") {
+          if (!nameLink && nameSpan?.outerHTML) {
+            nameSpan.outerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${nameSpan.outerHTML}</a>`;
+          }
+        } else {
+          if (nameLink) {
+            drvrName.innerHTML = `${nameLink.innerHTML}`;
+          }
+        }
+
+        /* Create stats container if missing */
+        if (!driver.querySelector(".statistics")) {
+          drvrName.insertAdjacentHTML("beforeEnd", `<div class="statistics"></div>`);
+        }
+        const stats = driver.querySelector(".statistics");
+
+        /* Move time element into separate container next to stats */
+        const timeLi = driver.querySelector("li.time");
+        if (timeLi) {
+          if (timeLi.textContent === "") {
+            timeLi.textContent = "0.00 %";
+          }
+          const timeContainer = w.document.createElement("ul");
+          timeContainer.appendChild(timeLi);
+          stats.insertAdjacentElement("afterEnd", timeContainer);
+        }
+
+        /* Add real-time speed display if enabled */
+        if (store.getValue(Store.keys.rplus_showspeed) === "1") {
+          if (!stats.querySelector(".speed")) {
+            stats.insertAdjacentHTML("beforeEnd", '<div class="speed">0.00mph</div>');
+          }
+          // if (!["joined", "finished"].includes(racestatus) && !speedIntervalByDriverId.has(driverId)) {
+          //   logger.debug(`Adding speed interval for driver ${driverId}.`);
+          //   speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId));
+          // }
+        }
+        /* Add racing skill display if enabled */
+        if (store.getValue(Store.keys.rplus_showskill) === "1") {
+          if (!stats.querySelector(".skill")) {
+            stats.insertAdjacentHTML("afterBegin", '<div class="skill">RS: ?</div>');
+          }
+          if (torn_api.key) {
+            /* Fetch racing skill from API and update display */
+            try {
+              let user = await torn_api.request("user", `${driverId}/personalStats`, { stat: "racingskill" });
+              if (user) {
+                let skill = stats.querySelector(".skill");
+                skill.textContent = `RS: ${user.personalstats?.racing?.skill ?? "?"}`;
+              }
+            } catch (err) {
+              console.log(`[TornPDA.Racing+]: ${err.error ?? err}`);
+            }
+          }
+        }
+        driverItem.classList.toggle("show", true);
+      } //);
+    }
   }
 
   /** @type {TornRace} */ let torn_race = null;
@@ -1029,7 +1139,7 @@ const PART_CATEGORIES = Object.freeze({
     /** @type {HTMLAnchorElement} */ const apiStatus = await defer(".racing-plus-apikey-status");
 
     const apikey = torn_api.key ?? "";
-    if (IS_PDA()) {
+    if (IS_PDA) {
       /* In TornPDA, API key is managed by app; make field read-only */
       apiInput.value = apikey;
       apiInput.disabled = true;
@@ -1120,116 +1230,6 @@ const PART_CATEGORIES = Object.freeze({
       });
     });
     logger.info("Settings panel initialized.", w.racing_plus);
-  };
-
-  /**
-   * Normalizes leaderboard DOM entries and adds driver info
-   * @param {Element} leaderboard - Leaderboard container element
-   */
-  const updateLeaderboard = async (leaderboard) => {
-    /* Process each driver entry in the leaderboard */
-    for (const driver of Array.from(leaderboard.childNodes)) {
-      const driverItem = driver.querySelector("ul.driver-item");
-      /* Cache frequently used lookups to avoid repeated DOM queries */
-      const driverId = (driver.id || "").substring(4);
-      const driverStatus = driver.querySelector(".status");
-      const drvrName = driver.querySelector("li.name");
-      const nameLink = drvrName?.querySelector("a");
-      const nameSpan = drvrName?.querySelector("span");
-      const drvrColour = driver.querySelector("li.color");
-
-      /* Update status icon based on current race state */
-      // TODO: FIX THIS
-      if (driverStatus) {
-        switch (torn_race.status) {
-          case "joined":
-            driverStatus.classList.toggle("success", true);
-            driverStatus.classList.toggle("waiting", false);
-            driverStatus.classList.toggle("racing", false);
-            driverStatus.textContent = "";
-            break;
-          case "waiting":
-            driverStatus.classList.toggle("success", false);
-            driverStatus.classList.toggle("waiting", true);
-            driverStatus.classList.toggle("racing", false);
-            driverStatus.textContent = "";
-            break;
-          case "racing":
-            driverStatus.classList.toggle("success", false);
-            driverStatus.classList.toggle("waiting", false);
-            driverStatus.classList.toggle("racing", true);
-            driverStatus.textContent = "";
-            break;
-          case "finished":
-          default:
-            break;
-        }
-      }
-
-      /* Move color styling from separate element to name span */
-      if (drvrColour && nameSpan) {
-        drvrColour.classList.remove("color");
-        nameSpan.className = drvrColour.className;
-      }
-
-      /* Conditionally add clickable profile links to driver names */
-      if (store.getValue(Store.keys.rplus_addlinks) === "1") {
-        if (!nameLink && nameSpan?.outerHTML) {
-          nameSpan.outerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${nameSpan.outerHTML}</a>`;
-        }
-      } else {
-        if (nameLink) {
-          drvrName.innerHTML = `${nameLink.innerHTML}`;
-        }
-      }
-
-      /* Create stats container if missing */
-      if (!driver.querySelector(".statistics")) {
-        drvrName.insertAdjacentHTML("beforeEnd", `<div class="statistics"></div>`);
-      }
-      const stats = driver.querySelector(".statistics");
-
-      /* Move time element into separate container next to stats */
-      const timeLi = driver.querySelector("li.time");
-      if (timeLi) {
-        if (timeLi.textContent === "") {
-          timeLi.textContent = "0.00 %";
-        }
-        const timeContainer = w.document.createElement("ul");
-        timeContainer.appendChild(timeLi);
-        stats.insertAdjacentElement("afterEnd", timeContainer);
-      }
-
-      /* Add real-time speed display if enabled */
-      if (store.getValue(Store.keys.rplus_showspeed) === "1") {
-        if (!stats.querySelector(".speed")) {
-          stats.insertAdjacentHTML("beforeEnd", '<div class="speed">0.00mph</div>');
-        }
-        // if (!["joined", "finished"].includes(racestatus) && !speedIntervalByDriverId.has(driverId)) {
-        //   logger.debug(`Adding speed interval for driver ${driverId}.`);
-        //   speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId));
-        // }
-      }
-      /* Add racing skill display if enabled */
-      if (store.getValue(Store.keys.rplus_showskill) === "1") {
-        if (!stats.querySelector(".skill")) {
-          stats.insertAdjacentHTML("afterBegin", '<div class="skill">RS: ?</div>');
-        }
-        if (torn_api.key) {
-          /* Fetch racing skill from API and update display */
-          try {
-            let user = await torn_api.request("user", `${driverId}/personalStats`, { stat: "racingskill" });
-            if (user) {
-              let skill = stats.querySelector(".skill");
-              skill.textContent = `RS: ${user.personalstats?.racing?.skill ?? "?"}`;
-            }
-          } catch (err) {
-            console.log(`[TornPDA.Racing+]: ${err.error ?? err}`);
-          }
-        }
-      }
-      driverItem.classList.toggle("show", true);
-    } //);
   };
 
   /* -------------------------------------------------------------------------------------------------------
@@ -1337,7 +1337,7 @@ const PART_CATEGORIES = Object.freeze({
         }
 
         /* Update leaderboard display */
-        updateLeaderboard(leaderboard);
+        torn_race.updateLeaderboard(leaderboard);
 
         logger.info(`Track data loaded.`, w.racing_plus);
       } catch (err) {
