@@ -604,6 +604,100 @@ class TornDriver {
     });
     store.setValue(Store.keys.rplus_driver, payload);
   }
+
+  /**
+   * Update stored skill if newer value is higher (skill increases only)
+   * @param {number|string} skill - New skill value
+   */
+  updateSkill(store, racing_skill) {
+    if (isNumber(racing_skill)) {
+      const skill = Number(racing_skill).toFixed(5);
+      this.skill = Math.max(this.skill, skill);
+      this.save(store);
+      return this.skill - skill;
+    }
+  }
+
+  /**
+   * Fetch racing records from API and store best lap per car/track
+   * @returns {Promise<void>}
+   */
+  async updateRecords(store, torn_api) {
+    // TODO: add logging
+    try {
+      if (!torn_api.key) throw new Error("TornAPI not initialized.");
+      const results = await torn_api.request("user", "racingrecords", {
+        timestamp: `${unixTimestamp()}`,
+      });
+      if (Array.isArray(results?.racingrecords)) {
+        /* Parse records array and store best lap time per car per track */
+        results.racingrecords.forEach(({ track, records }) => {
+          if (!track?.id || !Array.isArray(records)) return;
+          this.records[track.id] = records.reduce((acc, rec) => {
+            if (!acc[rec.car_id]) {
+              acc[rec.car_id] = {
+                name: rec.car_name,
+                lap_time: rec.lap_time,
+                count: 1,
+              };
+            } else {
+              acc[rec.car_id].lap_time = Math.min(acc[rec.car_id].lap_time, rec.lap_time);
+              acc[rec.car_id].count += 1;
+            }
+            return acc;
+          }, {});
+        });
+        this.save(store);
+      } else {
+        Logger.debug("Racing records response missing 'racingrecords' array.");
+      }
+    } catch (err) {
+      Logger.warn(`Racing records fetch failed.\n${err}`);
+    }
+  }
+
+  /**
+   * Fetch and store enlisted cars with win rate calculation
+   * @returns {Promise<void>}
+   */
+  async updateCars(store, torn_api) {
+    // TODO: add logging
+    try {
+      if (!torn_api.key) throw new Error("TornAPI not initialized.");
+      const results = await torn_api.request("user", "enlistedcars", {
+        timestamp: `${unixTimestamp()}`,
+      });
+      if (Array.isArray(results?.enlistedcars)) {
+        /* Filter active cars and reduce to object indexed by car_item_id with win rate calculation */
+        this.cars = results.enlistedcars
+          .filter((car) => !car.is_removed)
+          .reduce((acc, car) => {
+            acc[car.car_item_id] = {
+              name: car.car_item_name,
+              top_speed: car.top_speed,
+              acceleration: car.acceleration,
+              braking: car.braking,
+              handling: car.handling,
+              safety: car.safety,
+              dirt: car.dirt,
+              tarmac: car.tarmac,
+              class: car.car_class,
+              worth: car.worth,
+              points_spent: car.points_spent,
+              races_entered: car.races_entered,
+              races_won: car.races_won,
+              win_rate: car.races_entered > 0 ? car.races_won / car.races_entered : 0,
+            };
+            return acc;
+          }, {});
+        this.save(store);
+      } else {
+        Logger.debug("Enlisted cars response missing 'enlistedcars' array.");
+      }
+    } catch (err) {
+      Logger.warn(`Enlisted cars fetch failed.\n${err}`);
+    }
+  }
 }
 
 /**
@@ -760,100 +854,6 @@ class TornRace {
       el.append(...childrenArray);
     }
     return el;
-  };
-
-  /**
-   * Update stored skill if newer value is higher (skill increases only)
-   * @param {number|string} skill - New skill value
-   */
-  const updateSkill = (racing_skill) => {
-    if (isNumber(racing_skill)) {
-      const skill = Number(racing_skill).toFixed(5);
-      this.skill = Math.max(this.skill, skill);
-      this.save(store);
-      return this.skill - skill;
-    }
-  };
-
-  /**
-   * Fetch racing records from API and store best lap per car/track
-   * @returns {Promise<void>}
-   */
-  const updateRecords = async (store, torn_api) => {
-    // TODO: add logging
-    try {
-      if (!torn_api.key) throw new Error("TornAPI not initialized.");
-      const results = await torn_api.request("user", "racingrecords", {
-        timestamp: `${unixTimestamp()}`,
-      });
-      if (Array.isArray(results?.racingrecords)) {
-        /* Parse records array and store best lap time per car per track */
-        results.racingrecords.forEach(({ track, records }) => {
-          if (!track?.id || !Array.isArray(records)) return;
-          this.records[track.id] = records.reduce((acc, rec) => {
-            if (!acc[rec.car_id]) {
-              acc[rec.car_id] = {
-                name: rec.car_name,
-                lap_time: rec.lap_time,
-                count: 1,
-              };
-            } else {
-              acc[rec.car_id].lap_time = Math.min(acc[rec.car_id].lap_time, rec.lap_time);
-              acc[rec.car_id].count += 1;
-            }
-            return acc;
-          }, {});
-        });
-        this.save(store);
-      } else {
-        Logger.debug("Racing records response missing 'racingrecords' array.");
-      }
-    } catch (err) {
-      Logger.warn(`Racing records fetch failed.\n${err}`);
-    }
-  };
-
-  /**
-   * Fetch and store enlisted cars with win rate calculation
-   * @returns {Promise<void>}
-   */
-  const updateCars = async () => {
-    // TODO: add logging
-    try {
-      if (!torn_api.key) throw new Error("TornAPI not initialized.");
-      const results = await torn_api.request("user", "enlistedcars", {
-        timestamp: `${unixTimestamp()}`,
-      });
-      if (Array.isArray(results?.enlistedcars)) {
-        /* Filter active cars and reduce to object indexed by car_item_id with win rate calculation */
-        this.cars = results.enlistedcars
-          .filter((car) => !car.is_removed)
-          .reduce((acc, car) => {
-            acc[car.car_item_id] = {
-              name: car.car_item_name,
-              top_speed: car.top_speed,
-              acceleration: car.acceleration,
-              braking: car.braking,
-              handling: car.handling,
-              safety: car.safety,
-              dirt: car.dirt,
-              tarmac: car.tarmac,
-              class: car.car_class,
-              worth: car.worth,
-              points_spent: car.points_spent,
-              races_entered: car.races_entered,
-              races_won: car.races_won,
-              win_rate: car.races_entered > 0 ? car.races_won / car.races_entered : 0,
-            };
-            return acc;
-          }, {});
-        this.save(store);
-      } else {
-        Logger.debug("Enlisted cars response missing 'enlistedcars' array.");
-      }
-    } catch (err) {
-      Logger.warn(`Enlisted cars fetch failed.\n${err}`);
-    }
   };
 
   /**
@@ -1038,7 +1038,7 @@ class TornRace {
           if (el.classList.contains("skill-desc") || el.classList.contains("skill") || el.classList.contains("lastgain")) {
             if (el.classList.contains("skill")) {
               /* Update cached skill value (only if higher) and replace DOM content */
-              torn_driver.updateSkill(el.textContent);
+              torn_driver.updateSkill(store, el.textContent);
               el.textContent = String(torn_driver.skill);
             }
             leftBanner.appendChild(el);
