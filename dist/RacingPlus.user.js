@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.83-alpha
+// @version      1.0.84-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -284,7 +284,7 @@ constructor(args={}){this.id=args.id;this.track=args.track;this.status="joined"}
 this.status=text.includes("Race will Start in")?"waiting":"joined";break}return this.status}}
 // ########################################################################################################################################################## //
 (async w=>{if(w.racing_plus)return;
-/** @type {number} timestamp representing the userscript start time */w.racing_plus=Date.now();const PDA_KEY="###PDA-APIKEY###";const IS_PDA=await(async()=>{if(typeof w.flutter_inappwebview!=="undefined"&&typeof w.flutter_inappwebview.callHandler==="function"){try{return await w.flutter_inappwebview.callHandler("isTornPDAF")}catch(error){console.error("isTornPDA - ",error);return false}}return false})();
+/** @type {number} timestamp representing the userscript start time */w.racing_plus=Date.now();const PDA_KEY="###PDA-APIKEY###";const IS_PDA=await(async()=>{if(typeof w.flutter_inappwebview!=="undefined"&&typeof w.flutter_inappwebview.callHandler==="function"){try{return await w.flutter_inappwebview.callHandler("isTornPDA")}catch(error){console.error("isTornPDA - ",error);return false}}return false})();
 /** @type {Store} */const store=new Store(w.localStorage);
 /** @type {Logger} */const logger=new Logger(LOG_LEVEL.debug,IS_PDA);
 /** @type {TornAPI} */let torn_api=null;
@@ -308,11 +308,8 @@ this.status=text.includes("Race will Start in")?"waiting":"joined";break}return 
    */const newElement=(tag,props={})=>{const{children:children,...rest}=props;const el=Object.assign(w.document.createElement(tag),rest);if(children){const childrenArray=Array.isArray(children)?children:[children];el.append(...childrenArray)}return el};
 /**
    * Normalizes leaderboard DOM entries and adds driver info
-   */const updateLeaderboard=async leaderboard=>{
-// Logger.debug("Updating Leaderboard...");
-for(const driver of Array.from(leaderboard.childNodes)){const driverItem=driver.querySelector("ul.driver-item");
-//Array.from(drivers).forEach(async (drvr) => {
-const driverId=(driver.id||"").substring(4);const driverStatus=driver.querySelector(".status");const drvrName=driver.querySelector("li.name");const nameLink=drvrName?.querySelector("a");const nameSpan=drvrName?.querySelector("span");const drvrColour=driver.querySelector("li.color");if(driverStatus){switch(torn_race.status){case"joined":driverStatus.classList.toggle("success",true);driverStatus.classList.toggle("waiting",false);driverStatus.classList.toggle("racing",false);driverStatus.textContent="";break;case"waiting":driverStatus.classList.toggle("success",false);driverStatus.classList.toggle("waiting",true);driverStatus.classList.toggle("racing",false);driverStatus.textContent="";break;case"racing":driverStatus.classList.toggle("success",false);driverStatus.classList.toggle("waiting",false);driverStatus.classList.toggle("racing",true);driverStatus.textContent="";break;case"finished":default:break}}if(drvrColour&&nameSpan){drvrColour.classList.remove("color");nameSpan.className=drvrColour.className}if(store.getValue(Store.keys.rplus_addlinks)==="1"){if(!nameLink&&nameSpan?.outerHTML){nameSpan.outerHTML=`<a target="_blank" href="/profiles.php?XID=${driverId}">${nameSpan.outerHTML}</a>`}}else{if(nameLink){drvrName.innerHTML=`${nameLink.innerHTML}`}}if(!driver.querySelector(".statistics")){drvrName.insertAdjacentHTML("beforeEnd",`<div class="statistics"></div>`)}const stats=driver.querySelector(".statistics");const timeLi=driver.querySelector("li.time");if(timeLi){if(timeLi.textContent===""){timeLi.textContent="0.00 %"}const timeContainer=w.document.createElement("ul");timeContainer.appendChild(timeLi);stats.insertAdjacentElement("afterEnd",timeContainer)}if(store.getValue(Store.keys.rplus_showspeed)==="1"){if(!stats.querySelector(".speed")){stats.insertAdjacentHTML("beforeEnd",'<div class="speed">0.00mph</div>')}
+   * @param {Element} leaderboard - Leaderboard container element
+   */const updateLeaderboard=async leaderboard=>{for(const driver of Array.from(leaderboard.childNodes)){const driverItem=driver.querySelector("ul.driver-item");const driverId=(driver.id||"").substring(4);const driverStatus=driver.querySelector(".status");const drvrName=driver.querySelector("li.name");const nameLink=drvrName?.querySelector("a");const nameSpan=drvrName?.querySelector("span");const drvrColour=driver.querySelector("li.color");if(driverStatus){switch(torn_race.status){case"joined":driverStatus.classList.toggle("success",true);driverStatus.classList.toggle("waiting",false);driverStatus.classList.toggle("racing",false);driverStatus.textContent="";break;case"waiting":driverStatus.classList.toggle("success",false);driverStatus.classList.toggle("waiting",true);driverStatus.classList.toggle("racing",false);driverStatus.textContent="";break;case"racing":driverStatus.classList.toggle("success",false);driverStatus.classList.toggle("waiting",false);driverStatus.classList.toggle("racing",true);driverStatus.textContent="";break;case"finished":default:break}}if(drvrColour&&nameSpan){drvrColour.classList.remove("color");nameSpan.className=drvrColour.className}if(store.getValue(Store.keys.rplus_addlinks)==="1"){if(!nameLink&&nameSpan?.outerHTML){nameSpan.outerHTML=`<a target="_blank" href="/profiles.php?XID=${driverId}">${nameSpan.outerHTML}</a>`}}else{if(nameLink){drvrName.innerHTML=`${nameLink.innerHTML}`}}if(!driver.querySelector(".statistics")){drvrName.insertAdjacentHTML("beforeEnd",`<div class="statistics"></div>`)}const stats=driver.querySelector(".statistics");const timeLi=driver.querySelector("li.time");if(timeLi){if(timeLi.textContent===""){timeLi.textContent="0.00 %"}const timeContainer=w.document.createElement("ul");timeContainer.appendChild(timeLi);stats.insertAdjacentElement("afterEnd",timeContainer)}if(store.getValue(Store.keys.rplus_showspeed)==="1"){if(!stats.querySelector(".speed")){stats.insertAdjacentHTML("beforeEnd",'<div class="speed">0.00mph</div>')}
 // if (!["joined", "finished"].includes(racestatus) && !speedIntervalByDriverId.has(driverId)) {
 //   Logger.debug(`Adding speed interval for driver ${driverId}.`);
 //   speedIntervalByDriverId.set(driverId, setInterval(updateSpeed, SPEED_INTERVAL, trackData, driverId));
@@ -327,18 +324,9 @@ logger.debug(IS_PDA?"Torn PDA context detected.":"Browser context detected.",w.r
 // #################################################################################################################################################### //
 /**
        * Start content for 'Official Events'
-       */logger.debug(`Loading track data...`,w.racing_plus);try{const drivers_list=await defer(SELECTORS.drivers_list);const leaderboard=await deferChild(SELECTORS.drivers_list_leaderboard,"li[id^=lbr-]");
-
-if(!torn_race){const driver=Array.from(leaderboard.childNodes).find(d=>d.id===`lbr-${torn_driver.id}`);const dataId=driver.getAttribute("data-id");const raceId=dataId?.split("-")[0]??-1;const trackInfo=drivers_list.querySelector(".track-info");const trackId=Object.values(RACE_TRACKS).indexOf(t=>t.name===trackInfo.getAttribute("title"));
-
-torn_race=new TornRace({id:raceId,track:trackId})}
-// sfdsdf
-// torn_driver.load();
-
-updateLeaderboard(leaderboard);logger.info(`Track data loaded.`,w.racing_plus)}catch(err){logger.error(`Failed to load track data. ${err}`)}
+       */logger.debug(`Loading track data...`,w.racing_plus);try{const drivers_list=await defer(SELECTORS.drivers_list);const leaderboard=await deferChild(SELECTORS.drivers_list_leaderboard,"li[id^=lbr-]");if(!torn_race){const driver=Array.from(leaderboard.childNodes).find(d=>d.id===`lbr-${torn_driver.id}`);const dataId=driver.getAttribute("data-id");const raceId=dataId?.split("-")[0]??-1;const trackInfo=drivers_list.querySelector(".track-info");const trackTitle=trackInfo?.getAttribute("title")??"";const trackEntry=Object.entries(RACE_TRACKS).find(([,track])=>track.title===trackTitle);const trackId=trackEntry?Number(trackEntry[0]):null;torn_race=new TornRace({id:raceId,track:trackId?RACE_TRACKS[trackId]:null})}updateLeaderboard(leaderboard);logger.info(`Track data loaded.`,w.racing_plus)}catch(err){logger.error(`Failed to load track data. ${err}`)}
 /**
        * End content for 'Official Events'
        */
 // #################################################################################################################################################### //
-
 logger.info(`Userscript started.`,w.racing_plus)}catch(err){logger.error(err)}};logger.info(`Userscript loaded. Starting...`,w.racing_plus);await start()})(window);

@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.83-alpha
+// @version      1.0.84-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -761,7 +761,7 @@ class TornRace {
   const IS_PDA = await (async () => {
     if (typeof w.flutter_inappwebview !== "undefined" && typeof w.flutter_inappwebview.callHandler === "function") {
       try {
-        return await w.flutter_inappwebview.callHandler("isTornPDAF");
+        return await w.flutter_inappwebview.callHandler("isTornPDA");
       } catch (error) {
         console.error("isTornPDA - ", error);
         return false;
@@ -858,21 +858,16 @@ class TornRace {
 
   /**
    * Normalizes leaderboard DOM entries and adds driver info
+   * @param {Element} leaderboard - Leaderboard container element
    */
   const updateLeaderboard = async (leaderboard) => {
-    // Logger.debug("Updating Leaderboard...");
-
-    // TODO: FIX THIS
-
     /* Process each driver entry in the leaderboard */
     for (const driver of Array.from(leaderboard.childNodes)) {
       const driverItem = driver.querySelector("ul.driver-item");
-      //Array.from(drivers).forEach(async (drvr) => {
       /* Cache frequently used lookups to avoid repeated DOM queries */
       const driverId = (driver.id || "").substring(4);
       const driverStatus = driver.querySelector(".status");
       const drvrName = driver.querySelector("li.name");
-      // TODO: better null safety check
       const nameLink = drvrName?.querySelector("a");
       const nameSpan = drvrName?.querySelector("span");
       const drvrColour = driver.querySelector("li.color");
@@ -1060,28 +1055,28 @@ class TornRace {
       /* Load or init current race data */
       logger.debug(`Loading track data...`, w.racing_plus);
       try {
-        /* Initialize race object from current track if not already set */
+        /* Wait for drivers list and leaderboard elements */
         const drivers_list = await defer(SELECTORS.drivers_list);
         const leaderboard = await deferChild(SELECTORS.drivers_list_leaderboard, "li[id^=lbr-]");
 
-        //
+        /* Initialize race object from current track if not already set */
         if (!torn_race) {
-          /* Find this_driver in leaderboard */
+          /* Find current driver in leaderboard */
           const driver = Array.from(leaderboard.childNodes).find((d) => d.id === `lbr-${torn_driver.id}`);
           /* Parse race ID from driver row's data-id attribute */
           const dataId = driver.getAttribute("data-id");
           const raceId = dataId?.split("-")[0] ?? -1;
-          /* Use track-info to find track object */
+          /* Find track object by matching title from track-info element */
           const trackInfo = drivers_list.querySelector(".track-info");
-          const trackId = Object.values(RACE_TRACKS).indexOf((t) => t.name === trackInfo.getAttribute("title"));
+          const trackTitle = trackInfo?.getAttribute("title") ?? "";
+          const trackEntry = Object.entries(RACE_TRACKS).find(([, track]) => track.title === trackTitle);
+          const trackId = trackEntry ? Number(trackEntry[0]) : null;
 
-          //
-          torn_race = new TornRace({ id: raceId, track: trackId });
+          /* Create race instance with parsed metadata */
+          torn_race = new TornRace({ id: raceId, track: trackId ? RACE_TRACKS[trackId] : null });
         }
 
-        // sfdsdf
-        // torn_driver.load();
-        //
+        /* Update leaderboard display */
         updateLeaderboard(leaderboard);
 
         logger.info(`Track data loaded.`, w.racing_plus);
@@ -1094,7 +1089,6 @@ class TornRace {
        */
       // #################################################################################################################################################### //
 
-      //
       logger.info(`Userscript started.`, w.racing_plus);
     } catch (err) {
       logger.error(err);
