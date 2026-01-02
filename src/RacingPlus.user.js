@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.79-alpha
+// @version      1.0.80-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -457,11 +457,11 @@ class TornAPI {
    * Creates a TornAPI instance
    * @param {string|null} key
    */
-  constructor(store) {
+  constructor(key) {
     /** @type {Map<string, {data:any, timestamp:number}>} */
     this.cache = new Map();
     /** @type {string|null} */
-    this.key = store.getValue(Store.keys.rplus_apikey);
+    this.key = key;
   }
   /**
    * Makes a Torn API request (with caching) after validating the path and root.
@@ -542,7 +542,6 @@ class TornAPI {
       timestamp: `${unixTimestamp()}`,
     });
     if (data?.info?.access && Number(data.info.access.level) >= ACCESS_LEVEL.Minimal) {
-      Logger.debug("Valid API key.");
       /* Valid key; persist to localStorage */
       store.setValue(Store.keys.rplus_apikey, this.key);
       return true;
@@ -579,20 +578,17 @@ class TornDriver {
   /**
    * Load driver data from localStorage
    */
-  load(store) {
-    const raw = store.getValue(Store.keys.rplus_driver);
-    if (raw) {
-      try {
-        const driver = JSON.parse(raw);
-        if (driver && driver.id === this.id) {
-          this.skill = Number(driver.skill) || 0;
-          this.records = driver.records || {};
-          this.cars = driver.cars || {};
-        }
-      } catch (err) {
-        // Log parse errors in debug mode
-        Logger.warn(`Failed to load driver cache.\n${err}`);
+  load(data) {
+    try {
+      const driver = JSON.parse(data);
+      if (driver && driver.id === this.id) {
+        this.skill = Number(driver.skill) || 0;
+        this.records = driver.records || {};
+        this.cars = driver.cars || {};
       }
+    } catch (err) {
+      // Log parse errors in debug mode
+      Logger.warn(`Failed to load driver cache.\n${err}`);
     }
   }
 
@@ -775,6 +771,7 @@ class TornRace {
   } else {
     w.racing_plus = {
       /** @type {number} */ start: Date.now(),
+      /** @type {Store} */ store: new Store(w.localStorage),
       /** @type {Logger} */ logger: new Logger(LOG_LEVEL.debug, IS_PDA),
       /** @type {TornAPI} */ api: null,
       /** @type {TornDriver} */ driver: null,
@@ -786,12 +783,12 @@ class TornRace {
    * DOM methods
    * --------------------------------------------------------------------- */
   /**
-   * defer - Wait for a selector to appear using MutationObserver with timeout.
+   * Wait for a selector to appear using MutationObserver with timeout.
    * @param {string} selectors - CSS selector(s)
    * @returns {Promise<Element>} Resolved element
    */
-  const defer = (selectors) =>
-    new Promise((resolve, reject) => {
+  const defer = (selectors) => {
+    return new Promise((resolve, reject) => {
       const found = w.document.querySelector(selectors);
       if (found) return resolve(found);
       let obs;
@@ -812,22 +809,29 @@ class TornRace {
       });
       obs.observe(w.document.documentElement || w.document, { childList: true, subtree: true });
     });
+  };
 
-  const deferChild = (parent, selector) =>
-    new Promise((resolve, reject) => {
-      const found = parent.querySelector(selector);
+  /**
+   * Wait for a selector to appear with children using MutationObserver with timeout.
+   * @param {string} selectors - CSS selector(s)
+   * @returns {Promise<Element>} Resolved element
+   */
+  const deferChild = async (parentSelector, childSelector) => {
+    const parent = await defer(parentSelector);
+    return new Promise((resolve, reject) => {
+      const found = parent.querySelector(childSelector);
       if (found) return resolve(parent);
       let obs;
       const timer = setTimeout(() => {
         cleanup();
-        reject(new Error(`deferral timed out: '${parent}' -> '${selector}'`));
+        reject(new Error(`deferral timed out: '${parent}' -> '${childSelector}'`));
       }, DEFERRAL_TIMEOUT);
       const cleanup = () => {
         clearTimeout(timer);
         obs?.disconnect();
       };
       obs = new MutationObserver(() => {
-        const el = parent.querySelector(selector);
+        const el = parent.querySelector(childSelector);
         if (el) {
           cleanup();
           resolve(parent);
@@ -835,6 +839,7 @@ class TornRace {
       });
       obs.observe(parent, { childList: true, subtree: true });
     });
+  };
 
   /**
    * Creates an element with supplied properties.
@@ -856,7 +861,7 @@ class TornRace {
   /**
    * Normalizes leaderboard DOM entries and adds driver info
    */
-  const updateLeaderboard = async (store, torn_api, leaderboard) => {
+  const updateLeaderboard = async (leaderboard) => {
     // Logger.debug("Updating Leaderboard...");
 
     // TODO: FIX THIS
@@ -909,7 +914,7 @@ class TornRace {
       }
 
       /* Conditionally add clickable profile links to driver names */
-      if (store.getValue(Store.keys.rplus_addlinks) === "1") {
+      if (w.racing_plus.store.getValue(Store.keys.rplus_addlinks) === "1") {
         if (!nameLink && nameSpan?.outerHTML) {
           nameSpan.outerHTML = `<a target="_blank" href="/profiles.php?XID=${driverId}">${nameSpan.outerHTML}</a>`;
         }
@@ -937,7 +942,7 @@ class TornRace {
       }
 
       /* Add real-time speed display if enabled */
-      if (store.getValue(Store.keys.rplus_showspeed) === "1") {
+      if (w.racing_plus.store.getValue(Store.keys.rplus_showspeed) === "1") {
         if (!stats.querySelector(".speed")) {
           stats.insertAdjacentHTML("beforeEnd", '<div class="speed">0.00mph</div>');
         }
@@ -947,14 +952,14 @@ class TornRace {
         // }
       }
       /* Add racing skill display if enabled */
-      if (store.getValue(Store.keys.rplus_showskill) === "1") {
+      if (w.racing_plus.store.getValue(Store.keys.rplus_showskill) === "1") {
         if (!stats.querySelector(".skill")) {
           stats.insertAdjacentHTML("afterBegin", '<div class="skill">RS: ?</div>');
         }
-        if (torn_api.key) {
+        if (w.racing_plus.api.key) {
           /* Fetch racing skill from API and update display */
           try {
-            let user = await torn_api.request("user", `${driverId}/personalStats`, { stat: "racingskill" });
+            let user = await w.racing_plus.api.request("user", `${driverId}/personalStats`, { stat: "racingskill" });
             if (user) {
               let skill = stats.querySelector(".skill");
               skill.textContent = `RS: ${user.personalstats?.racing?.skill ?? "?"}`;
@@ -977,14 +982,11 @@ class TornRace {
       /** Check userscript context */
       w.racing_plus.logger.debug(IS_PDA ? "Torn PDA context detected." : "Browser context detected.", w.racing_plus.start);
 
-      /** Instantiate the local storage */
-      const store = new Store(w.localStorage);
-
       /** Inject CSS into document head */
       w.racing_plus.logger.debug(`Injecting styles...`, w.racing_plus.start);
       /* Build dynamic CSS rules for part colors if parts display is enabled */
       const dynRules = [];
-      if (store.getValue(Store.keys.rplus_showparts) === "1") {
+      if (w.racing_plus.store.getValue(Store.keys.rplus_showparts) === "1") {
         Object.entries(PART_CATEGORIES).forEach(([, parts]) => {
           parts.forEach((g, i) => {
             dynRules.push(
@@ -1001,9 +1003,10 @@ class TornRace {
       /** Initialize Torn API client with stored key or PDA key if applicable */
       w.racing_plus.logger.debug(`Initializing Torn API client...`, w.racing_plus.start);
       try {
-        w.racing_plus.api = new TornAPI(store);
+        w.racing_plus.api = new TornAPI(w.racing_plus.store.getValue(Store.keys.rplus_apikey));
         if (w.racing_plus.api.key?.length == 0 && IS_PDA && PDA_KEY.length > 0) {
-          await w.racing_plus.api.validate(store, PDA_KEY);
+          await w.racing_plus.api.validate(w.racing_plus.store, PDA_KEY);
+          w.racing_plus.logger.debug("Valid API key.");
         }
         w.racing_plus.logger.info(`Torn API client nitialized.`, w.racing_plus.start);
       } catch (err) {
@@ -1015,14 +1018,40 @@ class TornRace {
       try {
         /* Attempt to load from storage else get driver data from DOM */
         /* '#torn-user' a hidden input with JSON { id, ... } */
-        let scriptData = store.getValue(Store.keys.rplus_driver);
+        let scriptData = w.racing_plus.store.getValue(Store.keys.rplus_driver);
         if (!scriptData) scriptData = await defer("#torn-user").value;
         /* Instantiate new driver */
         w.racing_plus.driver = new TornDriver(JSON.parse(scriptData).id);
-        w.racing_plus.driver.load(store);
+        w.racing_plus.driver.load(w.racing_plus.store.getValue(Store.keys.rplus_driver));
         w.racing_plus.logger.info(`Driver data loaded.`, w.racing_plus.start);
       } catch (err) {
         w.racing_plus.logger.error(`Failed to load driver data. ${err}`);
+      }
+
+      /* Fix header banner (racing skill + class) */
+      if (!IS_PDA) {
+        Logger.debug("Fixing header banner...", w.racing_plus.start);
+        const banner = await defer(SELECTORS.main_banner);
+        const leftBanner = newElement("div", { className: "left-banner" });
+        const rightBanner = newElement("div", { className: "right-banner" });
+        // TODO: add comment here */
+        const elements = Array.from(banner.children);
+        elements.forEach((el) => {
+          if (el.classList.contains("skill-desc") || el.classList.contains("skill") || el.classList.contains("lastgain")) {
+            if (el.classList.contains("skill")) {
+              /* Update cached skill value (only if higher) and replace DOM content */
+              w.document.driver.updateSkill(el.textContent);
+              el.textContent = String(w.document.driver.skill);
+            }
+            leftBanner.appendChild(el);
+          } else if (el.classList.contains("class-desc") || el.classList.contains("class-letter")) {
+            rightBanner.appendChild(el);
+          }
+        });
+        banner.innerHTML = "";
+        banner.appendChild(leftBanner);
+        banner.appendChild(rightBanner);
+        Logger.info("Header banner fixed.", w.racing_plus.start);
       }
 
       // #################################################################################################################################################### //
@@ -1055,7 +1084,7 @@ class TornRace {
         // sfdsdf
         // w.racing_plus.driver.load();
         //
-        updateLeaderboard(store, w.racing_plus.api, leaderboard);
+        updateLeaderboard(leaderboard);
 
         w.racing_plus.logger.info(`Track data loaded.`, w.racing_plus.start);
       } catch (err) {
