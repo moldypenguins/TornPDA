@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.82-alpha
+// @version      1.0.83-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -1006,13 +1006,13 @@ class TornRace {
           await torn_api.validate(store, PDA_KEY);
           logger.debug("Valid API key.");
         }
-        logger.info(`Torn API client nitialized.`, w.racing_plus.start);
+        logger.info(`Torn API client nitialized.`, w.racing_plus);
       } catch (err) {
         logger.error(err);
       }
 
       /* Load or initialize current driver data */
-      logger.debug(`Loading driver data...`, w.racing_plus.start);
+      logger.debug(`Loading driver data...`, w.racing_plus);
       try {
         /* Attempt to load from storage else get driver data from DOM */
         /* '#torn-user' a hidden input with JSON { id, ... } */
@@ -1021,14 +1021,14 @@ class TornRace {
         /* Instantiate new driver */
         torn_driver = new TornDriver(JSON.parse(scriptData).id);
         torn_driver.load(store.getValue(Store.keys.rplus_driver));
-        logger.info(`Driver data loaded.`, w.racing_plus.start);
+        logger.info(`Driver data loaded.`, w.racing_plus);
       } catch (err) {
         logger.error(`Failed to load driver data. ${err}`);
       }
 
       /* Fix header banner (racing skill + class) */
       if (!IS_PDA) {
-        logger.debug("Fixing header banner...", w.racing_plus.start);
+        logger.debug("Fixing header banner...", w.racing_plus);
         const banner = await defer(SELECTORS.main_banner);
         const leftBanner = newElement("div", { className: "left-banner" });
         const rightBanner = newElement("div", { className: "right-banner" });
@@ -1049,7 +1049,7 @@ class TornRace {
         banner.innerHTML = "";
         banner.appendChild(leftBanner);
         banner.appendChild(rightBanner);
-        logger.info("Header banner fixed.", w.racing_plus.start);
+        logger.info("Header banner fixed.", w.racing_plus);
       }
 
       // #################################################################################################################################################### //
@@ -1058,7 +1058,7 @@ class TornRace {
        */
 
       /* Load or init current race data */
-      logger.debug(`Loading track data...`, w.racing_plus.start);
+      logger.debug(`Loading track data...`, w.racing_plus);
       try {
         /* Initialize race object from current track if not already set */
         const drivers_list = await defer(SELECTORS.drivers_list);
@@ -1084,7 +1084,7 @@ class TornRace {
         //
         updateLeaderboard(leaderboard);
 
-        logger.info(`Track data loaded.`, w.racing_plus.start);
+        logger.info(`Track data loaded.`, w.racing_plus);
       } catch (err) {
         logger.error(`Failed to load track data. ${err}`);
       }
@@ -1095,14 +1095,14 @@ class TornRace {
       // #################################################################################################################################################### //
 
       //
-      logger.info(`Userscript started.`, w.racing_plus.start);
+      logger.info(`Userscript started.`, w.racing_plus);
     } catch (err) {
       logger.error(err);
     }
   };
 
   /* Start userscript */
-  logger.info(`Userscript loaded. Starting...`, w.racing_plus.start);
+  logger.info(`Userscript loaded. Starting...`, w.racing_plus);
   await start();
   /* End userscript */
 })(window);
