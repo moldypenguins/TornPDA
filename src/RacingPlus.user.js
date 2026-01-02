@@ -3,7 +3,7 @@
 // @namespace    TornPDA.RacingPlus
 // @copyright    Copyright © 2025 moldypenguins
 // @license      MIT
-// @version      1.0.85-alpha
+// @version      1.0.86-alpha
 // @description  Show racing skill, current speed, race results, precise skill, upgrade parts.
 // @author       moldypenguins [2881784] - Adapted from Lugburz [2386297] + some styles from TheProgrammer [2782979]
 // @match        https://www.torn.com/page.php?sid=racing*
@@ -885,12 +885,12 @@ const PART_CATEGORIES = Object.freeze({
    * @param {HTMLElement} links_container
    * @returns {Promise<void>}
    */
-  const addRacingPlusButton = async (header_root) => {
+  const addRacingPlusButton = async (headerSelector) => {
     logger.debug("Adding settings button...", w.racing_plus);
     /* Check if button already exists */
     if (w.document.querySelector("#racing-plus-button")) return;
     /* Load and validate required elements */
-    const links_container = await deferChild(header_root, "div[class^='linksContainer']");
+    const links_container = await deferChild(headerSelector, "div[class^='linksContainer']");
     const city_button = links_container.querySelector('[href="city.php"]');
     if (!city_button) return;
     const city_label = city_button.querySelector(`#${city_button.getAttribute("aria-labelledby")}`);
@@ -1275,8 +1275,7 @@ const PART_CATEGORIES = Object.freeze({
       }
 
       /* Add the settings button */
-      const header_root = await defer(SELECTORS.header_root);
-      await addRacingPlusButton(header_root);
+      await addRacingPlusButton(SELECTORS.header_root);
 
       /* Add and initialize the settings panel */
       await addRacingPlusPanel();
